@@ -25,7 +25,7 @@ class _ScanPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final inset = 24.0;
     final rect = RRect.fromRectAndRadius(
-      Rect.fromLTWH(inset, inset + 60, size.width - inset * 2, size.height - inset * 2 - 160),
+      Rect.fromLTWH(inset, inset + 99, size.width - inset * 2, size.height - inset * 2 - 225),
       const Radius.circular(24),
     );
 
@@ -40,10 +40,10 @@ class _ScanPainter extends CustomPainter {
     // bottom-right
     canvas.drawPath(_cornerPath(rect.right, rect.bottom, false, false, corner), _paint);
 
-    // horizontal guide line (middle)
-    final midY = rect.top + rect.height * .62;
-    canvas.drawLine(Offset(rect.left + 20, midY), Offset(rect.right - 20, midY),
-        _paint..strokeWidth = 4);
+    // // horizontal guide line (middle)
+    // final midY = rect.top + rect.height * .42;
+    // canvas.drawLine(Offset(rect.left + 20, midY), Offset(rect.right - 20, midY),
+    //     _paint..strokeWidth = 4);
   }
 
   Path _cornerPath(double x, double y, bool left, bool top, double len) {
