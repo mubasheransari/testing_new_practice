@@ -277,8 +277,8 @@ class _CarCard extends StatelessWidget {
               //   bottomRight: Radius.circular(radius),
               // ),
               child: SizedBox(
-                width: 200 * s,
-                height: 235 * s,
+                width: 180 * s,
+                height: 255 * s,
                 child: Image.asset(
                   'assets/car_tyres.png',
                   fit: BoxFit.contain,
