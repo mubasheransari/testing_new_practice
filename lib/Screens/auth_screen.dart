@@ -718,14 +718,27 @@ class _FooterSwitch extends StatelessWidget {
       alignment: WrapAlignment.center,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        Text(
-          prompt,
-          style: const TextStyle(
+        GradientText(
+                 prompt, 
+                    gradient:  LinearGradient(
+                      colors: [Color(0xFF00C6FF), Color(0xFF7F53FD)],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                    ),
+                    style:  TextStyle(
             fontFamily: 'ClashGrotesk',
             fontSize: 14.5,
             color: Color(0xFF1B1B1B),
           ),
-        ),
+                  ),
+        // Text(
+        //   prompt,
+          // style: const TextStyle(
+          //   fontFamily: 'ClashGrotesk',
+          //   fontSize: 14.5,
+          //   color: Color(0xFF1B1B1B),
+          // ),
+        // ),
         GestureDetector(
           onTap: onTap,
           child: Text(
@@ -734,8 +747,8 @@ class _FooterSwitch extends StatelessWidget {
               fontFamily: 'ClashGrotesk',
               fontSize: 14.5,
               color: Color(0xFF1E9BFF),
-              decoration: TextDecoration.underline,
-              decorationThickness: 1.4,
+              // decoration: TextDecoration.underline,
+              // decorationThickness: 1.4,
             ),
           ),
         ),
