@@ -43,55 +43,56 @@ class InspectionHomePixelPerfect extends StatelessWidget {
   );
 
   void _toast(BuildContext ctx, String msg) =>
-    ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(msg)));
+      ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(msg)));
 
-Future<void> _openTwoWheelerScanner(BuildContext context) async {
-  // Navigate to your camera/reticle screen to capture FRONT + BACK
-  final result = await 
-// from anywhere inside AppShell / a tab:
-Navigator.of(context, rootNavigator: true).push(
-  MaterialPageRoute(
-    builder: (_) => const ScannerFrontTireScreen(),
-  ),
-);
+  Future<void> _openTwoWheelerScanner(BuildContext context) async {
+    // Navigate to your camera/reticle screen to capture FRONT + BACK
+    final result =
+        await
+        // from anywhere inside AppShell / a tab:
+        Navigator.of(context, rootNavigator: true).push(
+          MaterialPageRoute(builder: (_) => const ScannerFrontTireScreen()),
+        );
 
-  // Navigator.push( Testing@123 .com
-  //   context,
-  //   MaterialPageRoute(builder: (_) => const ScannerFrontTireScreen()),
-  // );
+    // Navigator.push( Testing@123 .com
+    //   context,
+    //   MaterialPageRoute(builder: (_) => const ScannerFrontTireScreen()),
+    // );
 
-  // User backed out
-  if (result == null) return;
+    // User backed out
+    if (result == null) return;
 
-  // Grab anything you need from auth state (token, userId, selected vehicleId)
-  final authState = context.read<AuthBloc>().state;
-   final box   = GetStorage();  
-      final token = (box.read<String>('auth_token') ?? '').trim();//final token     = authState.loginResponse?.token ?? '';      // adjust field names
-  // final userId    = '';
-  // final vehicleId = 'YOUR_SELECTED_BIKE_ID';                   // supply from your UI/selection
+    // Grab anything you need from auth state (token, userId, selected vehicleId)
+    final authState = context.read<AuthBloc>().state;
+    final box = GetStorage();
+    final token = (box.read<String>('auth_token') ?? '')
+        .trim(); //final token     = authState.loginResponse?.token ?? '';      // adjust field names
+    // final userId    = '';
+    // final vehicleId = 'YOUR_SELECTED_BIKE_ID';                   // supply from your UI/selection
 
-  if (token.isEmpty ) {
-    _toast(context, 'Please login again.');
-    return;
-  }
+    if (token.isEmpty) {
+      _toast(context, 'Please login again.');
+      return;
+    }
 
-  // Fire the upload event (this triggers the “generating” flow)
-  context.read<AuthBloc>().add(UploadTwoWheelerRequested(
-        userId:    context.read<AuthBloc>().state.profile!.userId.toString(),
+    // Fire the upload event (this triggers the “generating” flow)
+    context.read<AuthBloc>().add(
+      UploadTwoWheelerRequested(
+        userId: context.read<AuthBloc>().state.profile!.userId.toString(),
         vehicleId: '993163bd-01a1-4c3b-9f18-4df2370ed954',
-        token:     token,
+        token: token,
         frontPath: result.frontPath,
-        backPath:  result.backPath,
+        backPath: result.backPath,
         vehicleType: 'bike',
         vin: result.vin, // optional
-  ));
+      ),
+    );
 
-  // Optionally show a “Generating Report” screen while Bloc uploads/parses
-  // Navigator.push(context,
-  //   MaterialPageRoute(builder: (_) => const GeneratingReportScreen()),
-  // );
-}
-
+    // Optionally show a “Generating Report” screen while Bloc uploads/parses
+    // Navigator.push(context,
+    //   MaterialPageRoute(builder: (_) => const GeneratingReportScreen()),
+    // );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -109,7 +110,7 @@ Navigator.of(context, rootNavigator: true).push(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                    SizedBox(height: 6 * s),
+                  SizedBox(height: 6 * s),
                   _Header(s: s),
                   SizedBox(height: 16 * s),
                   _SearchBar(s: s),
@@ -117,15 +118,14 @@ Navigator.of(context, rootNavigator: true).push(
                   _CarCard(s: s),
                   SizedBox(height: 30 * s),
                   InkWell(
-                    onTap: (){
-                     _openTwoWheelerScanner(context);
+                    onTap: () {
+                      _openTwoWheelerScanner(context);
                     },
-                    child: _BikeCard(s: s)),
+                    child: _BikeCard(s: s),
+                  ),
                 ],
               ),
             ),
-
-        
           ],
         ),
       ),
@@ -146,24 +146,27 @@ class _Header extends StatelessWidget {
           child: RichText(
             text: TextSpan(
               style: TextStyle(
-                fontFamily: 'ClashGrotesk',//Testing@123
+                fontFamily: 'ClashGrotesk', //Testing@123
                 fontSize: 14 * s,
                 color: Color(0xFF6A6F7B),
                 height: 1.2,
               ),
               children: [
-                 TextSpan(text: 'Good morning,\n',   style: TextStyle(
-                      fontFamily: 'ClashGrotesk',
-                      fontSize: 21 * s,
-                      fontWeight: FontWeight.w700,
-                      height: 1.2,
-                      letterSpacing: 0.1 * s,
-                    ),),
+                TextSpan(
+                  text: 'Good morning,\n',
+                  style: TextStyle(
+                    fontFamily: 'ClashGrotesk',
+                    fontSize: 21 * s,
+                    fontWeight: FontWeight.w700,
+                    height: 1.2,
+                    letterSpacing: 0.1 * s,
+                  ),
+                ),
                 WidgetSpan(
                   alignment: PlaceholderAlignment.baseline,
                   baseline: TextBaseline.alphabetic,
                   child: GradientText(
-                  "${context.read<AuthBloc>().state.profile!.firstName.toString() + context.read<AuthBloc>().state.profile!.lastName.toString()}", // 'William David',
+                    "${context.read<AuthBloc>().state.profile!.firstName.toString() + context.read<AuthBloc>().state.profile!.lastName.toString()}", // 'William David',
                     gradient: const LinearGradient(
                       colors: [Color(0xFF00C6FF), Color(0xFF7F53FD)],
                       begin: Alignment.centerLeft,
@@ -229,11 +232,7 @@ class _SearchBar extends StatelessWidget {
               color: Colors.white,
               shape: BoxShape.circle,
             ),
-            child: const Icon(
-              Icons.search,
-              size: 20,
-              color: Colors.black,
-            ),
+            child: const Icon(Icons.search, size: 20, color: Colors.black),
           ),
           SizedBox(width: 10 * s),
           Expanded(
@@ -261,10 +260,6 @@ class _SearchBar extends StatelessWidget {
     );
   }
 }
-
-
-
-
 
 class _CarCard extends StatelessWidget {
   const _CarCard({required this.s});
@@ -306,10 +301,7 @@ class _CarCard extends StatelessWidget {
               child: SizedBox(
                 width: 180 * s,
                 height: 255 * s,
-                child: Image.asset(
-                  'assets/car_tyres.png',
-                  fit: BoxFit.contain,
-                ),
+                child: Image.asset('assets/car_tyres.png', fit: BoxFit.contain),
               ),
             ),
           ),
@@ -341,13 +333,10 @@ class _CarCard extends StatelessWidget {
                 ),
                 SizedBox(height: 22),
                 InkWell(
-
-
-                  onTap: () {//Testing@123
-                    Navigator.push(
-                      context,
+                  onTap: () {
+                    Navigator.of(context, rootNavigator: true).push(
                       MaterialPageRoute(
-                        builder: (_) => const NewScannerScreem() //ScannerFrontTireScreen(),
+                        builder: (_) => const ScannerFrontTireScreen(),
                       ),
                     );
                   },
@@ -365,7 +354,6 @@ class _CarCard extends StatelessWidget {
     );
   }
 }
-
 
 class _BikeCard extends StatelessWidget {
   const _BikeCard({required this.s, this.onTap});
@@ -441,10 +429,7 @@ class _BikeCard extends StatelessWidget {
                 const Spacer(),
                 GestureDetector(
                   onTap: onTap,
-                  child: _ChipButtonGradient(
-                    s: s,
-                    label: 'Scan Bike Tries',
-                  ),
+                  child: _ChipButtonGradient(s: s, label: 'Scan Bike Tries'),
                 ),
               ],
             ),
@@ -455,13 +440,13 @@ class _BikeCard extends StatelessWidget {
   }
 }
 
-
-
-
-
 /* ------------------------ Chip Buttons ------------------------ */
 class _ChipButtonWhite extends StatelessWidget {
-  const _ChipButtonWhite({required this.s, required this.icon, required this.label});
+  const _ChipButtonWhite({
+    required this.s,
+    required this.icon,
+    required this.label,
+  });
   final double s;
   final String icon;
   final String label;
@@ -485,7 +470,12 @@ class _ChipButtonWhite extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-        Image.asset(icon,height: 22 * s,width: 22 * s,color: Colors.black,), // Icon(icon, color: Color(0xFF1F2937), size: 18 * s),
+          Image.asset(
+            icon,
+            height: 22 * s,
+            width: 22 * s,
+            color: Colors.black,
+          ), // Icon(icon, color: Color(0xFF1F2937), size: 18 * s),
           SizedBox(width: 8 * s),
           Text(
             label,
@@ -510,7 +500,7 @@ class _ChipButtonGradient extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-     height: 40 * s,
+      height: 40 * s,
       padding: EdgeInsets.symmetric(horizontal: 12 * s),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
@@ -528,14 +518,19 @@ class _ChipButtonGradient extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-                  Image.asset('assets/scan_icon.png',height: 22 * s,width: 22 * s,color: Colors.white,),
-        //  Icon(icon, color: Colors.white, size: 18 * s),
+          Image.asset(
+            'assets/scan_icon.png',
+            height: 22 * s,
+            width: 22 * s,
+            color: Colors.white,
+          ),
+          //  Icon(icon, color: Colors.white, size: 18 * s),
           SizedBox(width: 8 * s),
           Text(
             label,
             style: TextStyle(
               fontFamily: 'ClashGrotesk',
-            color: Colors.white,
+              color: Colors.white,
               fontSize: 16 * s,
               fontWeight: FontWeight.bold,
             ),
@@ -545,7 +540,3 @@ class _ChipButtonGradient extends StatelessWidget {
     );
   }
 }
-
-
-
-
