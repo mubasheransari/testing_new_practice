@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:ios_tiretest_ai/Models/tyre_upload_response.dart';
 
 
-
-
+import 'dart:io';
+import 'package:flutter/material.dart';
 
 class InspectionResultScreen extends StatelessWidget {
   const InspectionResultScreen({
@@ -20,146 +20,198 @@ class InspectionResultScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final s = MediaQuery.sizeOf(context).width / 390.0;
-    final blue = const Color(0xFF4F7BFF);
+    final s = MediaQuery.sizeOf(context).width / 393; // base like iPhone
+    final data = response?.data;
 
-    final d = response?.data;
+    // images
+    final frontImg = (data?.frontWheelUrl != null && data!.frontWheelUrl!.isNotEmpty)
+        ? NetworkImage(data.frontWheelUrl!)
+        : FileImage(File(frontPath)) as ImageProvider;
 
-final frontImg = (d?.frontWheelUrl != null)
-    ? NetworkImage(d!.frontWheelUrl!)
-    : FileImage(File(frontPath)) as ImageProvider;
+    final backImg = (data?.backWheelUrl != null && data!.backWheelUrl!.isNotEmpty)
+        ? NetworkImage(data.backWheelUrl!)
+        : FileImage(File(backPath)) as ImageProvider;
 
-final backImg = (d?.backWheelUrl != null)
-    ? NetworkImage(d!.backWheelUrl!)
-    : FileImage(File(backPath)) as ImageProvider;
+    final extraImg = const AssetImage('assets/bike_wheel.png');
 
-    final frontStatus = d?.frontTyreStatus ?? 'Unknown';
-    final backStatus = d?.backTyreStatus ?? 'Unknown';
-    final vehicleId = d?.vehicleId ?? '—';
-    final vehicleType = d?.vehicleType ?? '—';
-    final recordId = d?.recordId;
+    // text data
+    final treadDepth = data?.treadDepth ?? '7.2 mm';
+    final treadStatus = data?.treadStatus ?? 'Good';
+
+    final tyrePressure = data?.tyrePressure?.toString() ?? '32 psi';
+    final tyrePressureStatus = data?.tyrePressureStatus ?? 'Optimal';
+
+    final damageCheck = data?.damageCheck ?? 'No cracks';
+    final damageStatus = data?.damageStatus ?? 'Safe';
 
     final summary = response?.message ??
-        'Record #${recordId ?? "-"}, $vehicleType ($vehicleId).\n'
-            'Front: $frontStatus, Back: $backStatus.';
+        'Your wheel is in good condition with optimal tread depth and balanced pressure. '
+            'No major wear or cracks detected.';
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF3F2F8),
       appBar: AppBar(
+        elevation: 0,
+        backgroundColor: Colors.white,
+        scrolledUnderElevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.chevron_left_rounded),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 22, color: Colors.black),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text('Inspection Report',
-            style: TextStyle(fontFamily: 'ClashGrotesk', fontWeight: FontWeight.w800)),
         centerTitle: true,
+        title: Text(
+          'inspection Report',
+          style: TextStyle(
+            fontFamily: 'ClashGrotesk',
+            fontSize: 20 * s,
+            fontWeight: FontWeight.w800,
+            color: Colors.black,
+          ),
+        ),
       ),
       body: ListView(
-        padding: EdgeInsets.fromLTRB(16 * s, 10 * s, 16 * s, 24 * s),
+        padding: EdgeInsets.fromLTRB(16 * s, 10 * s, 16 * s, 28 * s),
         children: [
-          // 3 thumbnails like mock (front/back/extra)
-          Row(
+          // top images
+        /*  Row(
             children: [
-              _thumb(frontImg),
-              SizedBox(width: 10 * s),
-              _thumb(backImg),
-              SizedBox(width: 10 * s),
+              _PhotoCard(
+                s: s,
+                image: frontImg,
+                label: 'left',
+            
+              ),
+              SizedBox(width: 12 * s),
+              _PhotoCard(
+                s: s,
+                image: backImg,
+                label: 'gvbr',
+
+              ),
+              SizedBox(width: 12 * s),
               Expanded(
-                child: Container(
-                  height: 90 * s,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF2F5FF),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFFE5E8F5)),
+                child: _PhotoCard(
+                  s: s,
+                  image: extraImg,
+                  label: 'middle',
+        
+                ),
+              ),
+            ],
+          ),*/
+          SizedBox(height: 18 * s),
+
+          // metrics area like mock
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // big left card: Tread Depth
+              Expanded(
+                flex: 14,
+                child: _BigMetricCard(
+                  s: s,
+                  iconBg: const 
+                  LinearGradient(
+                    colors: [Color(0xFF4F7BFF), Color(0xFFA6C8FF)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-                  child: const Center(
-                    child: Icon(Icons.tire_repair_rounded, color: Color(0xFF4F7BFF)),
-                  ),
+                  icon: Icons.sync, // use tyre icon if you have
+                  title: 'Tread Depth',
+                  value: 'Value: $treadDepth',
+                  status: 'Status: $treadStatus',
+                ),
+              ),
+              SizedBox(width: 14 * s),
+              // right column: 2 small cards
+              Expanded(
+                flex: 10,
+                child: Column(
+                  children: [
+                    _SmallMetricCard(
+                      s: s,
+                      title: 'Tire Pressure',
+                      value: 'Value: $tyrePressure',
+                      status: 'Status: $tyrePressureStatus',
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF4F7BFF), Color(0xFF80B3FF)],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                      ),
+                    ),
+                    SizedBox(height: 12 * s),
+                    _SmallMetricCard(
+                      s: s,
+                      title: 'Damage Check',
+                      value: 'Value: $damageCheck',
+                      status: 'Status: $damageStatus',
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF69A3FF), Color(0xFF9C7FFF)],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-          SizedBox(height: 14 * s),
+          SizedBox(height: 18 * s),
 
-          // metric cards (mapped to your fields)
-          Row(
-            children: [
-              Expanded(
-                child: _metricCard(
-                  s,
-                  title: 'Front Tyre',
-                  value: frontStatus,
-                  status: 'Vehicle: $vehicleId',
-                ),
-              ),
-              SizedBox(width: 10 * s),
-              Expanded(
-                child: _metricCard(
-                  s,
-                  title: 'Back Tyre',
-                  value: backStatus,
-                  status: 'Type: $vehicleType',
-                ),
-              ),
-            ],
+          // report summary card
+          _ReportSummaryCard(
+            s: s,
+            title: 'Report Summary:',
+            summary: summary,
           ),
-          SizedBox(height: 10 * s),
-          if (recordId != null)
-            _metricWide(
-              s,
-              title: 'Record',
-              value: '#$recordId',
-              status: d?.vin?.isNotEmpty == true ? 'VIN: ${d!.vin}' : '—',
-            ),
-          SizedBox(height: 14 * s),
+          SizedBox(height: 18 * s),
 
-          // summary
-          Container(
-            padding: EdgeInsets.all(14 * s),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFFE5E8F5)),
-              boxShadow: const [BoxShadow(color: Color(0x140E1631), blurRadius: 12, offset: Offset(0, 8))],
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(Icons.article_rounded, color: blue),
-                SizedBox(width: 10 * s),
-                Expanded(
-                  child: Text(
-                    summary,
-                    style: TextStyle(fontFamily: 'ClashGrotesk', color: const Color(0xFF111826)),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(height: 22 * s),
-
-          // actions
+          // actions (keep your buttons)
           Row(
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  icon: const Icon(Icons.share_rounded),
-                  label: Text('Share Report',
-                      style: TextStyle(fontFamily: 'ClashGrotesk', fontWeight: FontWeight.w700)),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Color(0xFFB8C1D9)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16 * s),
+                    ),
+                    padding: EdgeInsets.symmetric(vertical: 14 * s),
+                    backgroundColor: Colors.white,
+                  ),
+                  icon: const Icon(Icons.share_rounded, color: Color(0xFF4F7BFF)),
+                  label: Text(
+                    'Share Report',
+                    style: TextStyle(
+                      fontFamily: 'ClashGrotesk',
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF4F7BFF),
+                    ),
+                  ),
                   onPressed: () => _toast(context, 'Share pressed'),
                 ),
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: 12 * s),
               Expanded(
                 child: ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: blue,
+                    backgroundColor: const Color(0xFF4F7BFF),
                     foregroundColor: Colors.white,
-                    padding: EdgeInsets.symmetric(vertical: 14 * s),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16 * s),
+                    ),
+                    padding: EdgeInsets.symmetric(vertical: 15 * s),
+                    elevation: 4,
                   ),
                   icon: const Icon(Icons.download_rounded),
-                  label: Text('Download PDF',
-                      style: TextStyle(fontFamily: 'ClashGrotesk', fontWeight: FontWeight.w800)),
+                  label: Text(
+                    'Download PDF',
+                    style: TextStyle(
+                      fontFamily: 'ClashGrotesk',
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14 * s,
+                    ),
+                  ),
                   onPressed: () => _toast(context, 'Download pressed'),
                 ),
               ),
@@ -170,79 +222,606 @@ final backImg = (d?.backWheelUrl != null)
     );
   }
 
-  Widget _thumb(ImageProvider image) {
-    return Expanded(
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: AspectRatio(
-          aspectRatio: 1.2,
-          child: Image(image: image, fit: BoxFit.cover),
-        ),
-      ),
-    );
-  }
+  void _toast(BuildContext ctx, String msg) =>
+      ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(msg)));
+}
 
-  Widget _metricCard(double s,
-      {required String title, required String value, required String status}) {
-    return Container(
-      padding: EdgeInsets.all(12 * s),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE5E8F5)),
-        boxShadow: const [BoxShadow(color: Color(0x140E1631), blurRadius: 12, offset: Offset(0, 8))],
-      ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: const Color(0xFFE9F0FF),
-            borderRadius: BorderRadius.circular(999),
-          ),
-          child: Text(title,
-              style: TextStyle(
-                  fontFamily: 'ClashGrotesk', fontWeight: FontWeight.w800, color: const Color(0xFF4F7BFF))),
-        ),
-        SizedBox(height: 8 * s),
-        Text('Value: $value',
-            style: TextStyle(fontFamily: 'ClashGrotesk', fontWeight: FontWeight.w700, color: const Color(0xFF1F2937))),
-        SizedBox(height: 4 * s),
-        Text(status, style: const TextStyle(color: Color(0xFF6B7280))),
-      ]),
-    );
-  }
+/* ====== widgets ====== */
 
-  Widget _metricWide(double s, {required String title, required String value, required String status}) {
+class _PhotoCard extends StatelessWidget {
+  const _PhotoCard({
+    required this.s,
+    required this.image,
+    required this.label,
+    // required this.gradient,
+  });
+
+  final double s;
+  final ImageProvider image;
+  final String label;
+  // final Gradient gradient;
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.all(12 * s),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE5E8F5)),
-        boxShadow: const [BoxShadow(color: Color(0x140E1631), blurRadius: 12, offset: Offset(0, 8))],
-      ),
-      child: Row(
+      width: 103 * s,
+      // decoration: BoxDecoration(
+      //   borderRadius: BorderRadius.circular(18 * s),
+      //   boxShadow: [
+      //     BoxShadow(
+      //       color: Colors.black.withOpacity(.04),
+      //       blurRadius: 8 * s,
+      //       offset: Offset(0, 3 * s),
+      //     ),
+      //   ],
+      // ),
+      child: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: const Color(0xFFE9F0FF),
-              borderRadius: BorderRadius.circular(999),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(18 * s),
+            child: AspectRatio(
+              aspectRatio: 0.9,
+              child: Image(image: image, fit: BoxFit.cover),
             ),
-            child: Text(title,
-                style: TextStyle(
-                    fontFamily: 'ClashGrotesk', fontWeight: FontWeight.w800, color: const Color(0xFF4F7BFF))),
           ),
-          SizedBox(width: 12 * s),
-          Expanded(
-            child: Text('Value: $value   •   $status',
-                style: TextStyle(fontFamily: 'ClashGrotesk', color: const Color(0xFF1F2937))),
+          SizedBox(height: 8 * s),
+          Container(
+            height: 28 * s,
+            alignment: Alignment.center,
+                      decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF4F7BFF), Color(0xFF5FD1FF)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF4F7BFF).withOpacity(.35),
+                  blurRadius: 14 * s,
+                  offset: Offset(0, 6 * s),
+                ),
+              ],
+            ),
+            child: Text(
+              'gtgt',
+              style: TextStyle(
+                fontFamily: 'ClashGrotesk',
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+                fontSize: 13 * s,
+              ),
+            ),
           ),
         ],
       ),
     );
   }
-
-  void _toast(BuildContext ctx, String msg) =>
-      ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(msg)));
 }
+
+class _BigMetricCard extends StatelessWidget {
+  const _BigMetricCard({
+    required this.s,
+    required this.iconBg,
+    required this.icon,
+    required this.title,
+    required this.value,
+    required this.status,
+  });
+
+  final double s;
+  final Gradient iconBg;
+  final IconData icon;
+  final String title;
+  final String value;
+  final String status;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 195 * s,
+      padding: EdgeInsets.all(16 * s),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18 * s),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(.05),
+            blurRadius: 14 * s,
+            offset: Offset(0, 8 * s),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // icon
+          Container(
+            width: 50 * s,
+            height: 50 * s,
+            decoration: BoxDecoration(
+              gradient: iconBg,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF7B9BFF).withOpacity(.35),
+                  blurRadius: 12 * s,
+                  offset: Offset(0, 5 * s),
+                ),
+              ],
+            ),
+            child: Icon(icon, color: Colors.white, size: 26 * s),
+          ),
+          SizedBox(height: 12 * s),
+          Text(
+            title,
+            style: TextStyle(
+              fontFamily: 'ClashGrotesk',
+              fontSize: 20 * s,
+              fontWeight: FontWeight.w800,
+              color: const Color(0xFF4F7BFF),
+            ),
+          ),
+          SizedBox(height: 6 * s),
+          Text(
+            value,
+            style: TextStyle(
+              fontFamily: 'ClashGrotesk',
+              fontWeight: FontWeight.w700,
+              fontSize: 15 * s,
+            ),
+          ),
+          SizedBox(height: 4 * s),
+          Text(
+            status,
+            style: TextStyle(
+              color: Colors.black.withOpacity(.8),
+              fontSize: 14 * s,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SmallMetricCard extends StatelessWidget {
+  const _SmallMetricCard({
+    required this.s,
+    required this.title,
+    required this.value,
+    required this.status,
+    required this.gradient,
+  });
+
+  final double s;
+  final String title;
+  final String value;
+  final String status;
+  final Gradient gradient;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.all(13 * s),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18 * s),
+        border: Border.all(color: const Color(0xFFE8E9F1)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(.03),
+            blurRadius: 9 * s,
+            offset: Offset(0, 5 * s),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ShaderMask(
+            shaderCallback: (r) => gradient.createShader(r),
+            blendMode: BlendMode.srcIn,
+            child: Text(
+              title,
+              style: TextStyle(
+                fontFamily: 'ClashGrotesk',
+                fontWeight: FontWeight.w800,
+                fontSize: 17 * s,
+              ),
+            ),
+          ),
+          SizedBox(height: 6 * s),
+          Text(
+            value,
+            style: TextStyle(
+              fontFamily: 'ClashGrotesk',
+              fontWeight: FontWeight.w600,
+              fontSize: 14.5 * s,
+              color: const Color(0xFF111826),
+            ),
+          ),
+          SizedBox(height: 4 * s),
+          Text(
+            status,
+            style: TextStyle(
+              color: Colors.black.withOpacity(.5),
+              fontSize: 13 * s,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReportSummaryCard extends StatelessWidget {
+  const _ReportSummaryCard({
+    required this.s,
+    required this.title,
+    required this.summary,
+  });
+
+  final double s;
+  final String title;
+  final String summary;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.all(16 * s),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18 * s),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(.04),
+            blurRadius: 12 * s,
+            offset: Offset(0, 6 * s),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // left icon circle
+          Container(
+            width: 54 * s,
+            height: 54 * s,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF4F7BFF), Color(0xFF5FD1FF)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF4F7BFF).withOpacity(.35),
+                  blurRadius: 14 * s,
+                  offset: Offset(0, 6 * s),
+                ),
+              ],
+            ),
+            child: Icon(Icons.receipt_long_rounded, color: Colors.white, size: 26 * s),
+          ),
+          SizedBox(width: 14 * s),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontFamily: 'ClashGrotesk',
+                        fontWeight: FontWeight.w800,
+                        fontSize: 18 * s,
+                      ),
+                    ),
+                    const Spacer(),
+                    Icon(Icons.chevron_right_rounded, color: Colors.black, size: 24 * s),
+                  ],
+                ),
+                SizedBox(height: 6 * s),
+                Text(
+                  summary,
+                  style: TextStyle(
+                    fontFamily: 'ClashGrotesk',
+                    fontSize: 14.5 * s,
+                    color: Colors.black.withOpacity(.75),
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/* ====== dummy model so code compiles ====== */
+class TyreUploadResponse {
+  final String? message;
+  final TyreData? data;
+  TyreUploadResponse({this.message, this.data});
+}
+
+class TyreData {
+  final String? frontWheelUrl;
+  final String? backWheelUrl;
+  final String? frontTyreStatus;
+  final String? backTyreStatus;
+  final String? vehicleId;
+  final String? vehicleType;
+  final String? recordId;
+  final String? vin;
+  final String? treadDepth;
+  final String? treadStatus;
+  final num? tyrePressure;
+  final String? tyrePressureStatus;
+  final String? damageCheck;
+  final String? damageStatus;
+  TyreData({
+    this.frontWheelUrl,
+    this.backWheelUrl,
+    this.frontTyreStatus,
+    this.backTyreStatus,
+    this.vehicleId,
+    this.vehicleType,
+    this.recordId,
+    this.vin,
+    this.treadDepth,
+    this.treadStatus,
+    this.tyrePressure,
+    this.tyrePressureStatus,
+    this.damageCheck,
+    this.damageStatus,
+  });
+}
+
+
+
+// class InspectionResultScreen extends StatelessWidget {
+//   const InspectionResultScreen({
+//     super.key,
+//     required this.frontPath,
+//     required this.backPath,
+//     this.response,
+//   });
+
+//   final String frontPath;
+//   final String backPath;
+//   final TyreUploadResponse? response;
+
+//   @override
+//   Widget build(BuildContext context) {
+//     final s = MediaQuery.sizeOf(context).width / 390.0;
+//     final blue = const Color(0xFF4F7BFF);
+
+//     final d = response?.data;
+
+// final frontImg = (d?.frontWheelUrl != null)
+//     ? NetworkImage(d!.frontWheelUrl!)
+//     : FileImage(File(frontPath)) as ImageProvider;
+
+// final backImg = (d?.backWheelUrl != null)
+//     ? NetworkImage(d!.backWheelUrl!)
+//     : FileImage(File(backPath)) as ImageProvider;
+
+//     final frontStatus = d?.frontTyreStatus ?? 'Unknown';
+//     final backStatus = d?.backTyreStatus ?? 'Unknown';
+//     final vehicleId = d?.vehicleId ?? '—';
+//     final vehicleType = d?.vehicleType ?? '—';
+//     final recordId = d?.recordId;
+
+//     final summary = response?.message ??
+//         'Record #${recordId ?? "-"}, $vehicleType ($vehicleId).\n'
+//             'Front: $frontStatus, Back: $backStatus.';
+
+//     return Scaffold(
+//       appBar: AppBar(
+//         leading: IconButton(
+//           icon: const Icon(Icons.chevron_left_rounded),
+//           onPressed: () => Navigator.pop(context),
+//         ),
+//         title: Text('Inspection Report',
+//             style: TextStyle(fontFamily: 'ClashGrotesk', fontWeight: FontWeight.w800)),
+//         centerTitle: true,
+//       ),
+//       body: ListView(
+//         padding: EdgeInsets.fromLTRB(16 * s, 10 * s, 16 * s, 24 * s),
+//         children: [
+//           // 3 thumbnails like mock (front/back/extra)
+//           Row(
+//             children: [
+//               _thumb(frontImg),
+//               SizedBox(width: 10 * s),
+//               _thumb(backImg),
+//               SizedBox(width: 10 * s),
+//               Expanded(
+//                 child: Container(
+//                   height: 90 * s,
+//                   decoration: BoxDecoration(
+//                     color: const Color(0xFFF2F5FF),
+//                     borderRadius: BorderRadius.circular(12),
+//                     border: Border.all(color: const Color(0xFFE5E8F5)),
+//                   ),
+//                   child: const Center(
+//                     child: Icon(Icons.tire_repair_rounded, color: Color(0xFF4F7BFF)),
+//                   ),
+//                 ),
+//               ),
+//             ],
+//           ),
+//           SizedBox(height: 14 * s),
+
+//           // metric cards (mapped to your fields)
+//           Row(
+//             children: [
+//               Expanded(
+//                 child: _metricCard(
+//                   s,
+//                   title: 'Front Tyre',
+//                   value: frontStatus,
+//                   status: 'Vehicle: $vehicleId',
+//                 ),
+//               ),
+//               SizedBox(width: 10 * s),
+//               Expanded(
+//                 child: _metricCard(
+//                   s,
+//                   title: 'Back Tyre',
+//                   value: backStatus,
+//                   status: 'Type: $vehicleType',
+//                 ),
+//               ),
+//             ],
+//           ),
+//           SizedBox(height: 10 * s),
+//           if (recordId != null)
+//             _metricWide(
+//               s,
+//               title: 'Record',
+//               value: '#$recordId',
+//               status: d?.vin?.isNotEmpty == true ? 'VIN: ${d!.vin}' : '—',
+//             ),
+//           SizedBox(height: 14 * s),
+
+//           // summary
+//           Container(
+//             padding: EdgeInsets.all(14 * s),
+//             decoration: BoxDecoration(
+//               color: Colors.white,
+//               borderRadius: BorderRadius.circular(14),
+//               border: Border.all(color: const Color(0xFFE5E8F5)),
+//               boxShadow: const [BoxShadow(color: Color(0x140E1631), blurRadius: 12, offset: Offset(0, 8))],
+//             ),
+//             child: Row(
+//               crossAxisAlignment: CrossAxisAlignment.start,
+//               children: [
+//                 Icon(Icons.article_rounded, color: blue),
+//                 SizedBox(width: 10 * s),
+//                 Expanded(
+//                   child: Text(
+//                     summary,
+//                     style: TextStyle(fontFamily: 'ClashGrotesk', color: const Color(0xFF111826)),
+//                   ),
+//                 ),
+//               ],
+//             ),
+//           ),
+//           SizedBox(height: 22 * s),
+
+//           // actions
+//           Row(
+//             children: [
+//               Expanded(
+//                 child: OutlinedButton.icon(
+//                   icon: const Icon(Icons.share_rounded),
+//                   label: Text('Share Report',
+//                       style: TextStyle(fontFamily: 'ClashGrotesk', fontWeight: FontWeight.w700)),
+//                   onPressed: () => _toast(context, 'Share pressed'),
+//                 ),
+//               ),
+//               const SizedBox(width: 10),
+//               Expanded(
+//                 child: ElevatedButton.icon(
+//                   style: ElevatedButton.styleFrom(
+//                     backgroundColor: blue,
+//                     foregroundColor: Colors.white,
+//                     padding: EdgeInsets.symmetric(vertical: 14 * s),
+//                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+//                   ),
+//                   icon: const Icon(Icons.download_rounded),
+//                   label: Text('Download PDF',
+//                       style: TextStyle(fontFamily: 'ClashGrotesk', fontWeight: FontWeight.w800)),
+//                   onPressed: () => _toast(context, 'Download pressed'),
+//                 ),
+//               ),
+//             ],
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+
+//   Widget _thumb(ImageProvider image) {
+//     return Expanded(
+//       child: ClipRRect(
+//         borderRadius: BorderRadius.circular(12),
+//         child: AspectRatio(
+//           aspectRatio: 1.2,
+//           child: Image(image: image, fit: BoxFit.cover),
+//         ),
+//       ),
+//     );
+//   }
+
+//   Widget _metricCard(double s,
+//       {required String title, required String value, required String status}) {
+//     return Container(
+//       padding: EdgeInsets.all(12 * s),
+//       decoration: BoxDecoration(
+//         color: Colors.white,
+//         borderRadius: BorderRadius.circular(14),
+//         border: Border.all(color: const Color(0xFFE5E8F5)),
+//         boxShadow: const [BoxShadow(color: Color(0x140E1631), blurRadius: 12, offset: Offset(0, 8))],
+//       ),
+//       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+//         Container(
+//           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+//           decoration: BoxDecoration(
+//             color: const Color(0xFFE9F0FF),
+//             borderRadius: BorderRadius.circular(999),
+//           ),
+//           child: Text(title,
+//               style: TextStyle(
+//                   fontFamily: 'ClashGrotesk', fontWeight: FontWeight.w800, color: const Color(0xFF4F7BFF))),
+//         ),
+//         SizedBox(height: 8 * s),
+//         Text('Value: $value',
+//             style: TextStyle(fontFamily: 'ClashGrotesk', fontWeight: FontWeight.w700, color: const Color(0xFF1F2937))),
+//         SizedBox(height: 4 * s),
+//         Text(status, style: const TextStyle(color: Color(0xFF6B7280))),
+//       ]),
+//     );
+//   }
+
+//   Widget _metricWide(double s, {required String title, required String value, required String status}) {
+//     return Container(
+//       padding: EdgeInsets.all(12 * s),
+//       decoration: BoxDecoration(
+//         color: Colors.white,
+//         borderRadius: BorderRadius.circular(14),
+//         border: Border.all(color: const Color(0xFFE5E8F5)),
+//         boxShadow: const [BoxShadow(color: Color(0x140E1631), blurRadius: 12, offset: Offset(0, 8))],
+//       ),
+//       child: Row(
+//         children: [
+//           Container(
+//             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+//             decoration: BoxDecoration(
+//               color: const Color(0xFFE9F0FF),
+//               borderRadius: BorderRadius.circular(999),
+//             ),
+//             child: Text(title,
+//                 style: TextStyle(
+//                     fontFamily: 'ClashGrotesk', fontWeight: FontWeight.w800, color: const Color(0xFF4F7BFF))),
+//           ),
+//           SizedBox(width: 12 * s),
+//           Expanded(
+//             child: Text('Value: $value   •   $status',
+//                 style: TextStyle(fontFamily: 'ClashGrotesk', color: const Color(0xFF1F2937))),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+
+//   void _toast(BuildContext ctx, String msg) =>
+//       ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(msg)));
+// }

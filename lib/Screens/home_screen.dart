@@ -4,6 +4,7 @@ import 'package:get_storage/get_storage.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_bloc.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_event.dart';
 import 'package:ios_tiretest_ai/Screens/new_scanner_screen.dart';
+import 'package:ios_tiretest_ai/Screens/scanner_front_tire_screen.dart';
 import 'package:ios_tiretest_ai/Screens/scanner_screen.dart';
 import 'package:ios_tiretest_ai/Widgets/gradient_text_widget.dart';
 
@@ -51,7 +52,7 @@ class InspectionHomePixelPerfect extends StatelessWidget {
         await
         // from anywhere inside AppShell / a tab:
         Navigator.of(context, rootNavigator: true).push(
-          MaterialPageRoute(builder: (_) => const ScannerFrontTireScreen()),
+          MaterialPageRoute(builder: (_) => const ScannerFrontTireScreenNew()),
         );
 
     // Navigator.push( Testing@123 .com
@@ -74,6 +75,9 @@ class InspectionHomePixelPerfect extends StatelessWidget {
       _toast(context, 'Please login again.');
       return;
     }
+
+    print('front tire image ${result.frontPath}');
+    print('back tire image ${result.backPath}');
 
     // Fire the upload event (this triggers the “generating” flow)
     context.read<AuthBloc>().add(
@@ -119,7 +123,11 @@ class InspectionHomePixelPerfect extends StatelessWidget {
                   SizedBox(height: 30 * s),
                   InkWell(
                     onTap: () {
-                      _openTwoWheelerScanner(context);
+
+        //                   Navigator.of(context, rootNavigator: true).push(
+        //   MaterialPageRoute(builder: (_) => const ScannerFrontTireScreenNew()),
+        // );
+                   _openTwoWheelerScanner(context);
                     },
                     child: _BikeCard(s: s),
                   ),
