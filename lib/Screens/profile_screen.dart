@@ -9,7 +9,6 @@ import 'package:ios_tiretest_ai/Screens/auth_screen.dart';
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
 
-  // COLORS (matched to your design)
   static const _bg = Color(0xFFF6F7FB);
   static const _title = Color(0xFF111111);
   static const _sub = Color(0xFF7D8790);

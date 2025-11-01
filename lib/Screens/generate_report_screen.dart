@@ -8,22 +8,7 @@ import 'package:ios_tiretest_ai/Screens/inspection_result_screen.dart';
 
 
 
-import 'dart:async';
-import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 
-
-import 'dart:async';
-import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-
-import 'dart:async';
-import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-
-// import your own bloc/models/screens
-// import 'auth_bloc.dart';
-// import 'inspection_result_screen.dart';
 
 class GenerateReportScreen extends StatefulWidget {
   const GenerateReportScreen({

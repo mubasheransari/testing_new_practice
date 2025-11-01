@@ -1,11 +1,9 @@
-// main.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_bloc.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_event.dart';
-import 'package:ios_tiretest_ai/Screens/location_google_maos.dart';
-import 'package:ios_tiretest_ai/Screens/report_history_screen.dart';
+import 'package:ios_tiretest_ai/Screens/new_scanner_screen.dart';
 import 'package:ios_tiretest_ai/Screens/scanner_screen.dart';
 import 'package:ios_tiretest_ai/Widgets/gradient_text_widget.dart';
 
@@ -28,8 +26,6 @@ const kCardCarGrad = LinearGradient(
   end: Alignment.bottomRight,
 );
 
-/// Pixel-perfect screen; base width 393 for scaling.
-/// Replace avatar/wheel images with your assets for a 1:1 look.
 class InspectionHomePixelPerfect extends StatelessWidget {
   const InspectionHomePixelPerfect({super.key});
 
@@ -51,10 +47,18 @@ class InspectionHomePixelPerfect extends StatelessWidget {
 
 Future<void> _openTwoWheelerScanner(BuildContext context) async {
   // Navigate to your camera/reticle screen to capture FRONT + BACK
-  final result = await Navigator.push(
-    context,
-    MaterialPageRoute(builder: (_) => const ScannerFrontTireScreen()),
-  );
+  final result = await 
+// from anywhere inside AppShell / a tab:
+Navigator.of(context, rootNavigator: true).push(
+  MaterialPageRoute(
+    builder: (_) => const ScannerFrontTireScreen(),
+  ),
+);
+
+  // Navigator.push( Testing@123 .com
+  //   context,
+  //   MaterialPageRoute(builder: (_) => const ScannerFrontTireScreen()),
+  // );
 
   // User backed out
   if (result == null) return;
@@ -259,52 +263,6 @@ class _SearchBar extends StatelessWidget {
 }
 
 
-// class _SearchBar extends StatelessWidget {
-//   const _SearchBar({required this.s});
-//   final double s;
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Container(
-//       height: 50 * s,
-//       decoration: BoxDecoration(
-//         color: Colors.grey[300],
-//         borderRadius: BorderRadius.circular(999),
-//       ),
-//       padding: EdgeInsets.only(right: 16 * s),
-//       child: Row(
-//         children: [
-//           const SizedBox(width: 6),
-//           Container(
-//             width: 38 * s,
-//             height: 38 * s,
-//             decoration: const BoxDecoration(
-//               color: Colors.white,
-//               shape: BoxShape.circle,
-//             ),
-//             child: Icon(
-//               Icons.search,
-//               size: 20 * s,
-//               color: Colors.black,
-//             ),
-//           ),
-//           SizedBox(width: 12 * s),
-//           Expanded(
-//             child: Text(
-//               'Search the latest inspection',
-//               style: TextStyle(
-//                 fontFamily: 'ClashGrotesk',
-//                 fontSize: 14 * s,
-//                 color:  Colors.black87,
-//                 fontWeight: FontWeight.w500,
-//               ),
-//             ),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-// }
 
 
 
@@ -383,11 +341,13 @@ class _CarCard extends StatelessWidget {
                 ),
                 SizedBox(height: 22),
                 InkWell(
-                  onTap: () {
+
+
+                  onTap: () {//Testing@123
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => const ScannerFrontTireScreen(),
+                        builder: (_) => const NewScannerScreem() //ScannerFrontTireScreen(),
                       ),
                     );
                   },

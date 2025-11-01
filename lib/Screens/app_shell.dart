@@ -81,66 +81,6 @@ class _TabNavigator extends StatelessWidget {
   }
 }
 
-// ===== Replace these with your real pages =====
-class _HomeRoot extends StatelessWidget {
-  const _HomeRoot();
 
-  @override
-  Widget build(BuildContext context) => _DemoPage(
-        title: 'Home',
-        pushLabel: 'Open details',
-      );
-}
 
-class _ReportsRoot extends StatelessWidget {
-  const _ReportsRoot();
-  @override
-  Widget build(BuildContext context) => const _DemoPage(title: 'Reports');
-}
 
-class _MapRoot extends StatelessWidget {
-  const _MapRoot();
-  @override
-  Widget build(BuildContext context) => const _DemoPage(title: 'Map');
-}
-
-class _AboutRoot extends StatelessWidget {
-  const _AboutRoot();
-  @override
-  Widget build(BuildContext context) => const _DemoPage(title: 'About');
-}
-
-class _ProfileRoot extends StatelessWidget {
-  const _ProfileRoot();
-  @override
-  Widget build(BuildContext context) => const _DemoPage(title: 'Profile');
-}
-
-// Demo page: shows pushing within a tab
-class _DemoPage extends StatelessWidget {
-  const _DemoPage({required this.title, this.pushLabel});
-  final String title;
-  final String? pushLabel;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(title)),
-      body: Center(
-        child: pushLabel == null
-            ? Text('This is $title tab')
-            : ElevatedButton(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => Scaffold(
-                      appBar: AppBar(title: const Text('Details')),
-                      body: Center(child: Text('Details inside $title tab')),
-                    ),
-                  ),
-                ),
-                child: Text(pushLabel!),
-              ),
-      ),
-    );
-  }
-}
