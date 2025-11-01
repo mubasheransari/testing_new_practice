@@ -202,7 +202,6 @@ class _Header extends StatelessWidget {
   }
 }
 
-/* ------------------------ Search ------------------------ */
 class _SearchBar extends StatelessWidget {
   const _SearchBar({required this.s});
   final double s;
@@ -210,26 +209,37 @@ class _SearchBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 44 * s,
+      height: 50 * s,
       decoration: BoxDecoration(
-        color: Color(0xFFF0F2F5),
-        borderRadius: BorderRadius.circular(14 * s),
+        color: Colors.grey[200],
+        borderRadius: BorderRadius.circular(999),
       ),
-      padding: EdgeInsets.symmetric(horizontal: 12 * s),
+      padding: EdgeInsets.only(right: 16 * s),
       child: Row(
         children: [
-          Icon(Icons.search_rounded, size: 22 * s, color: Color(0xFF9CA3AF)),
-          SizedBox(width: 8 * s),
+          const SizedBox(width: 6),
+          Container(
+            width: 38 * s,
+            height: 38 * s,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.search,
+              size: 20 * s,
+              color: Colors.black,
+            ),
+          ),
+          SizedBox(width: 12 * s),
           Expanded(
             child: Text(
               'Search the latest inspection',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontFamily: 'ClashGrotesk',
                 fontSize: 14 * s,
-                color: Color(0xFF9CA3AF),
-                fontWeight: FontWeight.w600,
+                color:  Colors.black87,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ),
@@ -238,6 +248,44 @@ class _SearchBar extends StatelessWidget {
     );
   }
 }
+
+
+/* ------------------------ Search ------------------------ */
+// class _SearchBar extends StatelessWidget {
+//   const _SearchBar({required this.s});
+//   final double s;
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Container(
+//       height: 44 * s,
+//       decoration: BoxDecoration(
+//         color: Color(0xFFF0F2F5),
+//         borderRadius: BorderRadius.circular(14 * s),
+//       ),
+//       padding: EdgeInsets.symmetric(horizontal: 12 * s),
+//       child: Row(
+//         children: [
+//           Icon(Icons.search_rounded, size: 22 * s, color: Color(0xFF9CA3AF)),
+//           SizedBox(width: 8 * s),
+//           Expanded(
+//             child: Text(
+//               'Search the latest inspection',
+//               maxLines: 1,
+//               overflow: TextOverflow.ellipsis,
+//               style: TextStyle(
+//                 fontFamily: 'ClashGrotesk',
+//                 fontSize: 14 * s,
+//                 color: Color(0xFF9CA3AF),
+//                 fontWeight: FontWeight.w600,
+//               ),
+//             ),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+// }
 
 class _CarCard extends StatelessWidget {
   const _CarCard({required this.s});
