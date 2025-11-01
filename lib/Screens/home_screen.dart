@@ -247,7 +247,7 @@ class _CarCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 215 * s,
+      height: 210 * s,
       width: MediaQuery.of(context).size.width*0.90,
       decoration: BoxDecoration(
         gradient: const LinearGradient(
@@ -290,11 +290,11 @@ class _CarCard extends StatelessWidget {
                     fontFamily: 'ClashGrotesk',
                     color: Colors.white,
                     fontSize: 29 * s,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.bold,
                     height: 1.05,
                   ),
                 ),
-                SizedBox(height: 6 * s),
+                SizedBox(height: 9 * s),
                 Text(
                   'Scan your car wheels\nto detect wear & damage',
                   style: TextStyle(
@@ -305,7 +305,7 @@ class _CarCard extends StatelessWidget {
                     height: 1.25,
                   ),
                 ),
-                SizedBox(height: 34,),
+                SizedBox(height: 22,),
                 InkWell(
                   onTap: (){
                     Navigator.push(
@@ -454,7 +454,7 @@ class _ChipButtonWhite extends StatelessWidget {
               fontFamily: 'ClashGrotesk',
               color: Color(0xFF1F2937),
               fontSize: 16 * s,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.bold,
             ),
           ),
         ],
@@ -498,7 +498,7 @@ class _ChipButtonGradient extends StatelessWidget {
               fontFamily: 'ClashGrotesk',
             color: Colors.white,
               fontSize: 16 * s,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.bold,
             ),
           ),
         ],
