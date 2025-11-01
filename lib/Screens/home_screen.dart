@@ -150,7 +150,7 @@ class _Header extends StatelessWidget {
               children: [
                  TextSpan(text: 'Good morning,\n',   style: TextStyle(
                       fontFamily: 'ClashGrotesk',
-                      fontSize: 18 * s,
+                      fontSize: 21 * s,
                       fontWeight: FontWeight.w700,
                       height: 1.2,
                       letterSpacing: 0.1 * s,
@@ -167,9 +167,9 @@ class _Header extends StatelessWidget {
                     ),
                     style: TextStyle(
                       fontFamily: 'ClashGrotesk',
-                      fontSize: 25 * s,
-                      fontWeight: FontWeight.w900,
-                      height: 1.2,
+                      fontSize: 28 * s,
+                      fontWeight: FontWeight.bold,
+                      height: 1,
                       letterSpacing: 0.1 * s,
                     ),
                   ),
@@ -247,7 +247,7 @@ class _CarCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 219 * s,
+      height: 215 * s,
       width: MediaQuery.of(context).size.width*0.90,
       decoration: BoxDecoration(
         gradient: const LinearGradient(
@@ -328,18 +328,17 @@ class _CarCard extends StatelessWidget {
   }
 }
 
-/* ------------------------ Bike Card ------------------------ */
 class _BikeCard extends StatelessWidget {
-  const _BikeCard({required this.s});
+  const _BikeCard({required this.s, this.onTap});
   final double s;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-           height: 245 * s,
-      width: MediaQuery.of(context).size.width*0.90,
+      height: 205 * s,
+      width: MediaQuery.of(context).size.width * 0.90,
       decoration: BoxDecoration(
-        color: Colors.white,
         borderRadius: BorderRadius.circular(9 * s),
         boxShadow: [
           BoxShadow(
@@ -348,20 +347,25 @@ class _BikeCard extends StatelessWidget {
             offset: Offset(0, 10 * s),
           ),
         ],
+        image: const DecorationImage(
+          image: AssetImage('assets/bike_wheel.png'),
+          fit: BoxFit.cover,
+          alignment: Alignment.centerRight,
+        ),
       ),
       clipBehavior: Clip.antiAlias,
       child: Stack(
         children: [
-          Positioned(
-          right: 18 * s,
-            top: -10 * s,
-            child: SizedBox(
-              width: 225 * s,
-              height: 240 * s,
-              child: Image.asset(
-                'assets/bike_wheel.png',
-                fit: BoxFit.contain,
-      
+          // light overlay so text stays readable
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.white.withOpacity(.95),
+                  Colors.white.withOpacity(.2),
+                ],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
               ),
             ),
           ),
@@ -379,10 +383,9 @@ class _BikeCard extends StatelessWidget {
                   ),
                   style: TextStyle(
                     fontFamily: 'ClashGrotesk',
-                          fontSize: 29 * s,
+                    fontSize: 29 * s,
                     fontWeight: FontWeight.w900,
                     height: 1.05,
-                    
                   ),
                 ),
                 SizedBox(height: 6 * s),
@@ -390,17 +393,19 @@ class _BikeCard extends StatelessWidget {
                   'Analyze your motorcycle\ntires and get a report',
                   style: TextStyle(
                     fontFamily: 'ClashGrotesk',
-                    color: Color(0xFF444B59),
-                         fontSize: 16.5 * s,
+                    color: const Color(0xFF444B59),
+                    fontSize: 16.5 * s,
                     fontWeight: FontWeight.w600,
                     height: 1.25,
                   ),
                 ),
                 const Spacer(),
-                _ChipButtonGradient(
-                  s: s,
-
-                  label: 'Scan Bike Tries', // matches the mock text
+                GestureDetector(
+                  onTap: onTap,
+                  child: _ChipButtonGradient(
+                    s: s,
+                    label: 'Scan Bike Tries',
+                  ),
                 ),
               ],
             ),
@@ -410,6 +415,10 @@ class _BikeCard extends StatelessWidget {
     );
   }
 }
+
+
+
+
 
 /* ------------------------ Chip Buttons ------------------------ */
 class _ChipButtonWhite extends StatelessWidget {
