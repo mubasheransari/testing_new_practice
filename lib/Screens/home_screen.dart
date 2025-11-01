@@ -142,7 +142,7 @@ class _Header extends StatelessWidget {
           child: RichText(
             text: TextSpan(
               style: TextStyle(
-                fontFamily: 'ClashGrotesk',
+                fontFamily: 'ClashGrotesk',//Testing@123
                 fontSize: 14 * s,
                 color: Color(0xFF6A6F7B),
                 height: 1.2,
@@ -239,7 +239,6 @@ class _SearchBar extends StatelessWidget {
   }
 }
 
-/* ------------------------ Car Card ------------------------ */
 class _CarCard extends StatelessWidget {
   const _CarCard({required this.s});
   final double s;
@@ -248,12 +247,11 @@ class _CarCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: 210 * s,
-      width: MediaQuery.of(context).size.width*0.90,
+      width: MediaQuery.of(context).size.width * 0.90,
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF1CC8FF), Color(0xFF6B63FF)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+        image: const DecorationImage(
+          image: AssetImage('assets/carcardbg.png'),
+          fit: BoxFit.cover,
         ),
         borderRadius: BorderRadius.circular(9 * s),
         boxShadow: [
@@ -305,18 +303,20 @@ class _CarCard extends StatelessWidget {
                     height: 1.25,
                   ),
                 ),
-                SizedBox(height: 22,),
+                SizedBox(height: 22),
                 InkWell(
-                  onTap: (){
+                  onTap: () {
                     Navigator.push(
-    context,
-    MaterialPageRoute(builder: (_) => const ScannerFrontTireScreen()),
-  );
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const ScannerFrontTireScreen(),
+                      ),
+                    );
                   },
                   child: _ChipButtonWhite(
                     s: s,
                     icon: 'assets/scan_icon.png',
-                    label: 'Scan Car Tries', // matches the mock text
+                    label: 'Scan Car Tries',
                   ),
                 ),
               ],
@@ -327,6 +327,96 @@ class _CarCard extends StatelessWidget {
     );
   }
 }
+
+
+/* ------------------------ Car Card ------------------------ */
+// class _CarCard extends StatelessWidget {
+//   const _CarCard({required this.s});
+//   final double s;
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Container(
+//       height: 210 * s,
+//       width: MediaQuery.of(context).size.width*0.90,
+//       decoration: BoxDecoration(
+//         gradient: const LinearGradient(
+//           colors: [Color(0xFF1CC8FF), Color(0xFF6B63FF)],
+//           begin: Alignment.topLeft,
+//           end: Alignment.bottomRight,
+//         ),
+//         borderRadius: BorderRadius.circular(9 * s),
+//         boxShadow: [
+//           BoxShadow(
+//             color: const Color(0xFF6B63FF).withOpacity(0.25),
+//             blurRadius: 20 * s,
+//             offset: Offset(0, 10 * s),
+//           ),
+//         ],
+//       ),
+//       clipBehavior: Clip.antiAlias,
+//       child: Stack(
+//         children: [
+//           Positioned(
+//             right: -25 * s,
+//             top: -10 * s,
+//             child: SizedBox(
+//               width: 225 * s,
+//               height: 230 * s,
+//               child: Image.asset(
+//                 'assets/car_tyres.png',
+//                 fit: BoxFit.contain,
+//               ),
+//             ),
+//           ),
+//           Padding(
+//             padding: EdgeInsets.all(16 * s),
+//             child: Column(
+//               crossAxisAlignment: CrossAxisAlignment.start,
+//               children: [
+//                 Text(
+//                   'Car Wheel\nInspection',
+//                   style: TextStyle(
+//                     fontFamily: 'ClashGrotesk',
+//                     color: Colors.white,
+//                     fontSize: 29 * s,
+//                     fontWeight: FontWeight.bold,
+//                     height: 1.05,
+//                   ),
+//                 ),
+//                 SizedBox(height: 9 * s),
+//                 Text(
+//                   'Scan your car wheels\nto detect wear & damage',
+//                   style: TextStyle(
+//                     fontFamily: 'ClashGrotesk',
+//                     color: Colors.white.withOpacity(0.95),
+//                     fontSize: 16.5 * s,
+//                     fontWeight: FontWeight.w600,
+//                     height: 1.25,
+//                   ),
+//                 ),
+//                 SizedBox(height: 22,),
+//                 InkWell(
+//                   onTap: (){
+//                     Navigator.push(
+//     context,
+//     MaterialPageRoute(builder: (_) => const ScannerFrontTireScreen()),
+//   );
+//                   },
+//                   child: _ChipButtonWhite(
+//                     s: s,
+//                     icon: 'assets/scan_icon.png',
+//                     label: 'Scan Car Tries', // matches the mock text
+//                   ),
+//                 ),
+//               ],
+//             ),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+// }
 
 class _BikeCard extends StatelessWidget {
   const _BikeCard({required this.s, this.onTap});
