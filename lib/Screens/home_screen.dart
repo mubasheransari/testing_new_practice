@@ -245,6 +245,8 @@ class _CarCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final radius = 9 * s;
+
     return Container(
       height: 210 * s,
       width: MediaQuery.of(context).size.width * 0.90,
@@ -253,27 +255,34 @@ class _CarCard extends StatelessWidget {
           image: AssetImage('assets/carcardbg.png'),
           fit: BoxFit.cover,
         ),
-        borderRadius: BorderRadius.circular(9 * s),
+        borderRadius: BorderRadius.circular(radius),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF6B63FF).withOpacity(0.25),
-            blurRadius: 20 * s,
-            offset: Offset(0, 10 * s),
+            color: const Color(0xFF6B63FF),
+            // blurRadius: 20 * s,
+            // offset: Offset(0, 10 * s),
           ),
         ],
       ),
       clipBehavior: Clip.antiAlias,
       child: Stack(
         children: [
+          // 👇 wrapped in ClipRRect + pulled a bit inside to avoid right-side blur
           Positioned(
-            right: -25 * s,
-            top: -10 * s,
-            child: SizedBox(
-              width: 225 * s,
-              height: 230 * s,
-              child: Image.asset(
-                'assets/car_tyres.png',
-                fit: BoxFit.contain,
+            right: 0, // keep inside the rounded card
+            top: -6 * s,
+            child: ClipRRect(
+              // borderRadius: BorderRadius.only(
+              //   topRight: Radius.circular(radius),
+              //   bottomRight: Radius.circular(radius),
+              // ),
+              child: SizedBox(
+                width: 200 * s,
+                height: 235 * s,
+                child: Image.asset(
+                  'assets/car_tyres.png',
+                  fit: BoxFit.contain,
+                ),
               ),
             ),
           ),
@@ -328,95 +337,6 @@ class _CarCard extends StatelessWidget {
   }
 }
 
-
-/* ------------------------ Car Card ------------------------ */
-// class _CarCard extends StatelessWidget {
-//   const _CarCard({required this.s});
-//   final double s;
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Container(
-//       height: 210 * s,
-//       width: MediaQuery.of(context).size.width*0.90,
-//       decoration: BoxDecoration(
-//         gradient: const LinearGradient(
-//           colors: [Color(0xFF1CC8FF), Color(0xFF6B63FF)],
-//           begin: Alignment.topLeft,
-//           end: Alignment.bottomRight,
-//         ),
-//         borderRadius: BorderRadius.circular(9 * s),
-//         boxShadow: [
-//           BoxShadow(
-//             color: const Color(0xFF6B63FF).withOpacity(0.25),
-//             blurRadius: 20 * s,
-//             offset: Offset(0, 10 * s),
-//           ),
-//         ],
-//       ),
-//       clipBehavior: Clip.antiAlias,
-//       child: Stack(
-//         children: [
-//           Positioned(
-//             right: -25 * s,
-//             top: -10 * s,
-//             child: SizedBox(
-//               width: 225 * s,
-//               height: 230 * s,
-//               child: Image.asset(
-//                 'assets/car_tyres.png',
-//                 fit: BoxFit.contain,
-//               ),
-//             ),
-//           ),
-//           Padding(
-//             padding: EdgeInsets.all(16 * s),
-//             child: Column(
-//               crossAxisAlignment: CrossAxisAlignment.start,
-//               children: [
-//                 Text(
-//                   'Car Wheel\nInspection',
-//                   style: TextStyle(
-//                     fontFamily: 'ClashGrotesk',
-//                     color: Colors.white,
-//                     fontSize: 29 * s,
-//                     fontWeight: FontWeight.bold,
-//                     height: 1.05,
-//                   ),
-//                 ),
-//                 SizedBox(height: 9 * s),
-//                 Text(
-//                   'Scan your car wheels\nto detect wear & damage',
-//                   style: TextStyle(
-//                     fontFamily: 'ClashGrotesk',
-//                     color: Colors.white.withOpacity(0.95),
-//                     fontSize: 16.5 * s,
-//                     fontWeight: FontWeight.w600,
-//                     height: 1.25,
-//                   ),
-//                 ),
-//                 SizedBox(height: 22,),
-//                 InkWell(
-//                   onTap: (){
-//                     Navigator.push(
-//     context,
-//     MaterialPageRoute(builder: (_) => const ScannerFrontTireScreen()),
-//   );
-//                   },
-//                   child: _ChipButtonWhite(
-//                     s: s,
-//                     icon: 'assets/scan_icon.png',
-//                     label: 'Scan Car Tries', // matches the mock text
-//                   ),
-//                 ),
-//               ],
-//             ),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-// }
 
 class _BikeCard extends StatelessWidget {
   const _BikeCard({required this.s, this.onTap});
