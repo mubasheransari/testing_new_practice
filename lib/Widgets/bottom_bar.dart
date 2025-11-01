@@ -31,7 +31,7 @@ class BottomBar extends StatelessWidget {
 
   // Icons
   static const Map<BottomTab, String> _iconPath = {
-    BottomTab.home:    'assets/icons8-home-50.png',
+    BottomTab.home:    'assets/icon_home_icon.png',
     BottomTab.reports: 'assets/history_bottom_icon.png',
     BottomTab.map:     'assets/location_bottom_bar.png',
     BottomTab.about:   'assets/technician_bottom_bar.png',
