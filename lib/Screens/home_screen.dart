@@ -7,6 +7,7 @@ import 'package:ios_tiretest_ai/Bloc/auth_event.dart';
 import 'package:ios_tiretest_ai/Screens/location_google_maos.dart';
 import 'package:ios_tiretest_ai/Screens/report_history_screen.dart';
 import 'package:ios_tiretest_ai/Screens/scanner_screen.dart';
+import 'package:ios_tiretest_ai/Widgets/gradient_text_widget.dart';
 
 const kBg = Color(0xFFF6F7FA);
 const kTxtDim = Color(0xFF6A6F7B);
@@ -157,7 +158,7 @@ class _Header extends StatelessWidget {
                 WidgetSpan(
                   alignment: PlaceholderAlignment.baseline,
                   baseline: TextBaseline.alphabetic,
-                  child: _GradientText(
+                  child: GradientText(
                   "${context.read<AuthBloc>().state.profile!.firstName.toString() + context.read<AuthBloc>().state.profile!.lastName.toString()}", // 'William David',
                     gradient: const LinearGradient(
                       colors: [Color(0xFF00C6FF), Color(0xFF7F53FD)],
@@ -369,7 +370,7 @@ class _BikeCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _GradientText(
+                GradientText(
                   'Bike Wheel\nInspection',
                   gradient: const LinearGradient(
                     colors: [Color(0xFF00C6FF), Color(0xFF7F53FD)],
@@ -499,18 +500,4 @@ class _ChipButtonGradient extends StatelessWidget {
 
 
 
-class _GradientText extends StatelessWidget {
-  const _GradientText(this.text, {required this.gradient, required this.style, super.key});
-  final String text;
-  final Gradient gradient;
-  final TextStyle style;
 
-  @override
-  Widget build(BuildContext context) {
-    return ShaderMask(
-      shaderCallback: (rect) => gradient.createShader(rect),
-      blendMode: BlendMode.srcIn,
-      child: Text(text, style: style.copyWith(fontFamily: 'ClashGrotesk')),
-    );
-  }
-}

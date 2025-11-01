@@ -6,6 +6,7 @@ import 'package:ios_tiretest_ai/Bloc/auth_event.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_state.dart';
 import 'package:ios_tiretest_ai/Screens/home_screen.dart';
 import 'package:ios_tiretest_ai/Screens/splash_screen.dart';
+import 'package:ios_tiretest_ai/Widgets/gradient_text_widget.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -407,10 +408,10 @@ class _AuthToggle extends StatelessWidget {
         children: [
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.all(2),
+              padding:  EdgeInsets.all(2),
               child: AnimatedContainer(
                 height: 48,
-                duration: const Duration(milliseconds: 220),
+                duration:  Duration(milliseconds: 220),
                 decoration: BoxDecoration(
                   gradient: activeIndex == 0 ? _grad : null,
                   borderRadius: BorderRadius.circular(22),
@@ -419,17 +420,31 @@ class _AuthToggle extends StatelessWidget {
                   borderRadius: BorderRadius.circular(22),
                   onTap: () => onChanged(0),
                   child: Center(
-                    child: Text(
+                    child: activeIndex == 0
+                            ?     Text(
                       'Login',
                       style: TextStyle(
                         fontFamily: 'ClashGrotesk',
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: activeIndex == 0
-                            ? Colors.white
-                            : const Color(0xFF0AA2FF),
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        color:  Colors.white,
                       ),
+                    ):  GradientText(
+                  "Login", 
+                    gradient:  LinearGradient(
+                      colors: [Color(0xFF00C6FF), Color(0xFF7F53FD)],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
                     ),
+                    style: TextStyle(
+                      fontFamily: 'ClashGrotesk',
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                      height: 1.2,
+                      letterSpacing: 0.1,
+                    ),
+                  ),
+                 
                   ),
                 ),
               ),
@@ -449,17 +464,31 @@ class _AuthToggle extends StatelessWidget {
                   borderRadius: BorderRadius.circular(22),
                   onTap: () => onChanged(1),
                   child: Center(
-                    child: Text(
+                    child: activeIndex == 1
+                            ?     Text(
                       'SignUp',
                       style: TextStyle(
                         fontFamily: 'ClashGrotesk',
-                        fontSize: 18,
-                        fontWeight: FontWeight.w500,
-                        color: activeIndex == 1
-                            ? Colors.white
-                            : const Color(0xFF0AA2FF),
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        color:  Colors.white,
                       ),
+                    ):  GradientText(
+                  "SignUp", 
+                    gradient:  LinearGradient(
+                      colors: [Color(0xFF00C6FF), Color(0xFF7F53FD)],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
                     ),
+                    style: TextStyle(
+                      fontFamily: 'ClashGrotesk',
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                      height: 1.2,
+                      letterSpacing: 0.1,
+                    ),
+                  ),
+                 
                   ),
                 ),
               ),
