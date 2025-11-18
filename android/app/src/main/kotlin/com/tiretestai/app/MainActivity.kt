@@ -1,4 +1,4 @@
-package com.example.ios_tiretest_ai
+package com.tiretestai.app
 
 import io.flutter.embedding.android.FlutterActivity
 

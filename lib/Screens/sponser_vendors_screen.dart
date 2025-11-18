@@ -39,7 +39,7 @@ class SponsoredVendorsScreen extends StatelessWidget {
       backgroundColor: _bg,
       body: SafeArea(
         child: ListView(
-          padding: EdgeInsets.fromLTRB(16 * s, 10 * s, 16 * s, 24 * s),
+          padding: EdgeInsets.fromLTRB(16 * s, 3 * s, 16 * s, 24 * s),
           children: [
             // ===== Header (back + centered title)
             SizedBox(
@@ -48,15 +48,13 @@ class SponsoredVendorsScreen extends StatelessWidget {
                 alignment: Alignment.center,
                 children: [
                 
-                  Text(
-                    'Sponsored vendors list',
-                    style: TextStyle(
-                      fontFamily: 'ClashGrotesk',
-                      fontSize: 20 * s,
-                      fontWeight: FontWeight.w700,
-                      color: _title,
-                    ),
-                  ),
+                   Text(  'Sponsored Vendors List',
+                     style: TextStyle(
+                       fontFamily: 'ClashGrotesk',
+                       fontSize: 20 * s,
+                       fontWeight: FontWeight.w900,
+                       color: Color(0xFF111111))),
+                 
                 ],
               ),
             ),

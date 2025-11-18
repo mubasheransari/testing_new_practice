@@ -261,11 +261,11 @@ class _LocationVendorsMapScreenState extends State<LocationVendorsMapScreen> {
             ),
 
             // --------------- HEADER (same UI) ---------------
-            Positioned(
-              top: pad.top + 1,
+         /*   Positioned(
+             // top: pad.top + 1,
               left: 6,
               right: 6,
-           //   bottom: 20,
+              //bottom: 200,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.center,
@@ -282,7 +282,7 @@ class _LocationVendorsMapScreenState extends State<LocationVendorsMapScreen> {
                      style: TextStyle(
                        fontFamily: 'ClashGrotesk',
                        fontSize: 20 * s,
-                       fontWeight: FontWeight.w700,
+                       fontWeight: FontWeight.w900,
                        color: Color(0xFF111111),
                      ),
                                        ),
@@ -290,9 +290,8 @@ class _LocationVendorsMapScreenState extends State<LocationVendorsMapScreen> {
                   const SizedBox(width: 46),
                 ],
               ),
-            ),
+            ),*/
 
-            // --------------- SPONSORED LABEL + CARDS (same UI; no Positioned inside Column) ---------------
             Positioned(
               left: 4,
               right: 0,

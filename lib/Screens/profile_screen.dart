@@ -37,16 +37,23 @@ class ProfilePage extends StatelessWidget {
               child: Stack(
                 alignment: Alignment.center,
                 children: [
+                     Text(  'Profile',
+                     style: TextStyle(
+                      letterSpacing: 1.0,
+                       fontFamily: 'ClashGrotesk',
+                       fontSize: 24 * s,
+                       fontWeight: FontWeight.w600,
+                       color: Color(0xFF111111))),
              
-                  Text(
-                    'Profile',
-                    style: TextStyle(
-                      fontFamily: 'ClashGrotesk',
-                      fontSize: 20 * s,
-                      fontWeight: FontWeight.w700,
-                      color: _title,
-                    ),
-                  ),
+                  // Text(
+                  //   'Profile',
+                  //   style: TextStyle(
+                  //     fontFamily: 'ClashGrotesk',
+                  //     fontSize: 20 * s,
+                  //     fontWeight: FontWeight.w700,
+                  //     color: _title,
+                  //   ),
+                  // ),
                 ],
               ),
             ),
