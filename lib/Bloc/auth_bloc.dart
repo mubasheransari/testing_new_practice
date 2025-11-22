@@ -39,16 +39,22 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {//Testing@123
     emit(state.copyWith(loginStatus: AuthStatus.loading, error: null));
     final r = await repo.login(LoginRequest(email: e.email, password: e.password));
 
+
     if (r.isSuccess) {
-      // token is saved inside repo.login() (best-effort)
+      // token is saved inside repo.login() (best-effort)//Testing@123
       emit(state.copyWith(
         loginStatus: AuthStatus.success,
         loginResponse: r.data,
         error: null,
       ));
-      // Immediately fetch profile
+      print("LOGIN ${r.data!.token}");
+      print("LOGIN ${r.data!.message}");
+      print("LOGIN ${r.data!.purpose}");
       add(const FetchProfileRequested());
     } else {
+      print("ELSE ${r.failure?.message}");
+       print("ELSE ${r.failure?.message}");
+        print("ELSE ${r.failure?.message}");
       emit(state.copyWith(
         loginStatus: AuthStatus.failure,
         error: r.failure?.message ?? 'Login failed',

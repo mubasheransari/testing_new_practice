@@ -106,11 +106,17 @@ class _AuthScreenState extends State<AuthScreen> {
     return null;
   }
 
-  // =============== SUBMIT HANDLERS ===============
+  // =============== SUBMIT HANDLERS ===============Testing@123
 
   void _submitLogin() {
     if (!_loginFormKey.currentState!.validate()) return;
     final bloc = context.read<AuthBloc>();
+    print("email ::: ${_loginEmailCtrl.text.trim()}");
+     print("email ::: ${_loginEmailCtrl.text.trim()}");
+      print("email ::: ${_loginEmailCtrl.text.trim()}");
+       print("Password ::: ${_loginPassCtrl.text}"); 
+       print("Password ::: ${_loginPassCtrl.text}"); 
+       print("  pASSWORD ::: ${_loginPassCtrl.text}");
 
     bloc.add(
       LoginRequested(
@@ -239,6 +245,10 @@ class _AuthScreenState extends State<AuthScreen> {
             MaterialPageRoute(builder: (_) => const SplashScreen()),
             (route) => false,
           );//Testing@123
+
+          print("token ${state.loginResponse!.token.toString()}");
+            print("token ${state.loginResponse!.token.toString()}");
+              print("token ${state.loginResponse!.message}");
         }
         if (state.signupStatus == AuthStatus.success) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -552,12 +562,12 @@ class _AuthToggle extends StatelessWidget {
             offset: const Offset(0, 8),
           ),
         ],
-      ),
+      ),//Testing@123
       child: Row(
         children: [
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.all(2),
+              padding: const EdgeInsets.all(0),
               child: AnimatedContainer(
                 height: 48,
                 duration: const Duration(milliseconds: 220),
@@ -574,7 +584,7 @@ class _AuthToggle extends StatelessWidget {
                       style: TextStyle(
                         fontFamily: 'ClashGrotesk',
                         fontSize: 18,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w900,
                         color: activeIndex == 0
                             ? Colors.white
                             : const Color(0xFF0AA2FF),
@@ -604,7 +614,7 @@ class _AuthToggle extends StatelessWidget {
                       style: TextStyle(
                         fontFamily: 'ClashGrotesk',
                         fontSize: 18,
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.w900,
                         color: activeIndex == 1
                             ? Colors.white
                             : const Color(0xFF0AA2FF),
@@ -927,4 +937,4 @@ class CenterLabelDivider extends StatelessWidget {
   }
 }
 
-//shakaib@yopmail.com
+//shakaib@yopmail.com Testing@!23
