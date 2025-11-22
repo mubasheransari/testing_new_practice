@@ -6,6 +6,7 @@ import 'package:ios_tiretest_ai/Bloc/auth_event.dart';
 import 'package:ios_tiretest_ai/Screens/new_scanner_screen.dart';
 import 'package:ios_tiretest_ai/Screens/scanner_front_tire_screen.dart';
 import 'package:ios_tiretest_ai/Screens/scanner_screen.dart';
+import 'package:ios_tiretest_ai/Screens/verhicle_form_preferences_screen.dart';
 import 'package:ios_tiretest_ai/Widgets/gradient_text_widget.dart';
 
 
@@ -305,7 +306,7 @@ class _CarCard extends StatelessWidget {
                   onTap: () {
                     Navigator.of(context, rootNavigator: true).push(
                       MaterialPageRoute(
-                        builder: (_) => const ScannerFrontTireScreen(),
+                        builder: (_) => const VehicleFormPreferencesScreen()//ScannerFrontTireScreen(),
                       ),
                     );
                   },
