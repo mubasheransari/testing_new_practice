@@ -41,9 +41,25 @@ abstract class AuthRepository {
   Future<String?> getSavedToken();
   Future<void> clearToken();
   Future<Result<TyreUploadResponse>> uploadTwoWheeler(TyreUploadRequest req);
-   Future<Result<VehiclePreferencesModel>> addVehiclePreferences(
-    VehiclePreferencesRequest req,
-  );
+   Future<Result<VehiclePreferencesModel>> addVehiclePreferences({
+    required String vehiclePreference,
+    required String brandName,
+    required String modelName,
+    required String licensePlate,
+    required bool? isOwn,
+    required String tireBrand,
+    required String tireDimension,
+  });
+// Future<Result<VehiclePreferencesModel>> addVehiclePreferences({
+//   required String vehiclePreference,
+//   required String brandName,
+//   required String modelName,
+//   required String licensePlate,
+//   required bool? isOwn,
+//   required String tireBrand,
+//   required String tireDimension,
+// });
+
 }
 
 class AuthRepositoryHttp implements AuthRepository {
@@ -185,6 +201,8 @@ class AuthRepositoryHttp implements AuthRepository {
   @override
   Future<Result<UserProfile>> fetchProfile({String? token}) async {
     final tok = token ?? await getSavedToken();
+    print("GET SAVED TOKEN FROM PROFILE $tok");
+      print("GET SAVED TOKEN FROM PROFILE $tok");
     if (tok == null || tok.isEmpty) {
       return Result.fail(const Failure(code: 'validation', message: 'No token available'));
     }
@@ -327,12 +345,20 @@ Future<Result<TyreUploadResponse>> uploadTwoWheeler(TyreUploadRequest req) async
   }
 }
 
+// auth_repository_http.dart
 
 @override
-Future<Result<VehiclePreferencesModel>> addVehiclePreferences(
-    VehiclePreferencesRequest req) async {
+Future<Result<VehiclePreferencesModel>> addVehiclePreferences({
+  required String vehiclePreference,
+  required String brandName,
+  required String modelName,
+  required String licensePlate,
+  required bool? isOwn,
+  required String tireBrand,
+  required String tireDimension,
+}) async {
   final box = GetStorage();
-  final tok = box.read("token");
+  final tok = box.read<String>("token");
   print("JWT TOKEN $tok");
 
   if (tok == null || tok.isEmpty) {
@@ -344,26 +370,38 @@ Future<Result<VehiclePreferencesModel>> addVehiclePreferences(
 
   final uri = Uri.parse(ApiConfig.vehiclePreferences);
 
-  // 🔥 IMPORTANT:
-  // Don't force application/json here.
-  // Use form-encoded, like Postman "x-www-form-urlencoded".
-  final headers = {
+  // EXACTLY like Postman
+  final headers = <String, String>{
     HttpHeaders.acceptHeader: 'application/json',
+    HttpHeaders.contentTypeHeader: 'application/json',
     HttpHeaders.authorizationHeader: 'Bearer $tok',
-    HttpHeaders.contentTypeHeader: 'application/x-www-form-urlencoded',
   };
 
-  try {
-    final formBody = req.toForm();
-    print('== [VEHICLE-PREF] POST $uri');
-    print('Headers: $headers');
-    print('Form body: $formBody');
+  // IMPORTANT: JSON ARRAY with ONE OBJECT
+  final bodyArray = [
+    {
+      "vehiclePreference": vehiclePreference,
+      "brandName": brandName,
+      "modelName": modelName,
+      "licensePlate": licensePlate,
+      "isOwn": isOwn, // true/false or null
+      "tireBrand": tireBrand,
+      "tireDimension": tireDimension,
+    }
+  ];
 
+  final bodyJson = jsonEncode(bodyArray);
+
+  print('== [VEHICLE-PREF] POST $uri');
+  print('Headers: $headers');
+  print('Body JSON: $bodyJson');
+
+  try {
     final res = await http
         .post(
           uri,
           headers: headers,
-          body: formBody, // 👈 Map<String,String> → x-www-form-urlencoded
+          body: bodyJson,
         )
         .timeout(timeout);
 
@@ -380,6 +418,10 @@ Future<Result<VehiclePreferencesModel>> addVehiclePreferences(
           message: 'Invalid response format',
         ));
       }
+
+      // for debugging to prove backend data is present
+      print('PARSED vehicleIds: ${parsed["vehicleIds"]}');
+      print('PARSED storedData length: ${(parsed["storedData"] as List?)?.length}');
 
       final model = VehiclePreferencesModel.fromJson(parsed);
       return Result.ok(model);
@@ -403,6 +445,192 @@ Future<Result<VehiclePreferencesModel>> addVehiclePreferences(
     ));
   }
 }
+
+
+
+// @override
+// Future<Result<VehiclePreferencesModel>> addVehiclePreferences({
+//   required String vehiclePreference,
+//   required String brandName,
+//   required String modelName,
+//   required String licensePlate,
+//   required bool? isOwn,
+//   required String tireBrand,
+//   required String tireDimension,
+// }) async {
+//   final box = GetStorage();
+//   final tok = box.read("token");
+//   print("JWT TOKEN $tok");
+
+//   if (tok == null || tok.isEmpty) {
+//     return  Result.fail(
+//       Failure(
+//         code: 'validation',
+//         message: 'No token available. Please login again.',
+//       ),
+//     );
+//   }
+
+//   final uri = Uri.parse(ApiConfig.vehiclePreferences);
+
+//   // form-encoded request (like Postman x-www-form-urlencoded)
+//   final headers = <String, String>{
+//     HttpHeaders.authorizationHeader: 'Bearer $tok',
+//     HttpHeaders.contentTypeHeader: 'application/x-www-form-urlencoded',
+//     HttpHeaders.acceptHeader: 'application/json',
+//   };
+
+//   try {
+//     // build body directly (no model)
+//     final Map<String, String> formBody = {
+//       'vehiclePreference': vehiclePreference.trim(),
+//       'brandName': brandName.trim(),
+//       'modelName': modelName.trim(),
+//       'licensePlate': licensePlate.trim(),
+//       'tireBrand': tireBrand.trim(),
+//       'tireDimension': tireDimension.trim(),
+//     };
+
+//     if (isOwn != null) {
+//       formBody['isOwn'] = isOwn.toString(); // "true" / "false"
+//     }
+
+//     print('== [VEHICLE-PREF] POST $uri');
+//     print('Headers: $headers');
+//     print('Form body: $formBody');
+
+//     final res = await http
+//         .post(
+//           uri,
+//           headers: headers,
+//           body: formBody,
+//         )
+//         .timeout(timeout);
+
+//     print('<= [VEHICLE-PREF] status: ${res.statusCode}');
+//     print('<= body: ${res.body}');
+
+//     if (res.statusCode >= 200 && res.statusCode < 300) {
+//       late final Map<String, dynamic> parsed;
+//       try {
+//         parsed = jsonDecode(res.body) as Map<String, dynamic>;
+//       } catch (_) {
+//         return  Result.fail(
+//           Failure(
+//             code: 'parse',
+//             message: 'Invalid response format',
+//           ),
+//         );
+//       }
+
+//       final model = VehiclePreferencesModel.fromJson(parsed);
+//       return Result.ok(model);
+//     }
+
+//     return Result.fail(_serverFail(res));
+//   } on SocketException {
+//     return  Result.fail(
+//       Failure(
+//         code: 'network',
+//         message: 'No internet connection',
+//       ),
+//     );
+//   } on TimeoutException {
+//     return  Result.fail(
+//       Failure(
+//         code: 'timeout',
+//         message: 'Request timed out',
+//       ),
+//     );
+//   } catch (e) {
+//     return Result.fail(
+//       Failure(
+//         code: 'unknown',
+//         message: e.toString(),
+//       ),
+//     );
+//   }
+// }
+
+
+
+// @override
+// Future<Result<VehiclePreferencesModel>> addVehiclePreferences(
+//    ) async {
+//   final box = GetStorage();
+//   final tok = box.read("token");
+//   print("JWT TOKEN $tok");
+
+//   if (tok == null || tok.isEmpty) {
+//     return Result.fail(const Failure(
+//       code: 'validation',
+//       message: 'No token available. Please login again.',
+//     ));
+//   }
+
+//   final uri = Uri.parse(ApiConfig.vehiclePreferences);
+
+//   // 🔥 IMPORTANT: form-encoded, not JSON Testing@123
+//   final headers = {
+//    // HttpHeaders.acceptHeader: 'application/json',
+//     HttpHeaders.authorizationHeader: 'Bearer $tok',
+//    // HttpHeaders.contentTypeHeader: 'application/x-www-form-urlencoded',
+//   };
+
+//   try {
+//     final formBody = {
+
+//     };
+//     print('== [VEHICLE-PREF] POST $uri');
+//     print('Headers: $headers');
+//     print('Form body: $formBody');
+
+//     final res = await http
+//         .post(
+//           uri,
+//           headers: headers,
+//           body: formBody, // Map<String, String> → x-www-form-urlencoded
+//         )
+//         .timeout(timeout);
+
+//     print('<= [VEHICLE-PREF] status: ${res.statusCode}');
+//     print('<= body: ${res.body}');
+
+//     if (res.statusCode >= 200 && res.statusCode < 300) {
+//       late final Map<String, dynamic> parsed;
+//       try {
+//         parsed = jsonDecode(res.body) as Map<String, dynamic>;
+//       } catch (_) {
+//         return Result.fail(const Failure(
+//           code: 'parse',
+//           message: 'Invalid response format',
+//         ));
+//       }
+
+//       final model = VehiclePreferencesModel.fromJson(parsed);
+//       return Result.ok(model);
+//     }
+
+//     return Result.fail(_serverFail(res));
+//   } on SocketException {
+//     return Result.fail(const Failure(
+//       code: 'network',
+//       message: 'No internet connection',
+//     ));
+//   } on TimeoutException {
+//     return Result.fail(const Failure(
+//       code: 'timeout',
+//       message: 'Request timed out',
+//     ));
+//   } catch (e) {
+//     return Result.fail(Failure(
+//       code: 'unknown',
+//       message: e.toString(),
+//     ));
+//   }
+// }
+
+
 
 
 

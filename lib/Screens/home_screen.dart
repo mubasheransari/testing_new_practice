@@ -23,7 +23,7 @@ class InspectionHomePixelPerfect extends StatelessWidget {
 
   Future<void> _openTwoWheelerScanner(BuildContext context) async {
     final result = await Navigator.of(context, rootNavigator: true).push(
-      MaterialPageRoute(builder: (_) => const ScannerFrontTireScreen()),
+      MaterialPageRoute(builder: (_) =>  ScannerFrontTireScreen(vehicleID: '',)),
     );
     if (result == null) return;
 

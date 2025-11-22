@@ -10,7 +10,8 @@ import 'package:ios_tiretest_ai/Widgets/scan_overlay.dart';
 
 
 class ScannerFrontTireScreen extends StatefulWidget {
-  const ScannerFrontTireScreen({super.key});
+  String vehicleID;
+   ScannerFrontTireScreen({super.key,required this.vehicleID});
 
   @override
   State<ScannerFrontTireScreen> createState() => _ScannerFrontTireScreenState();
@@ -157,7 +158,7 @@ class _ScannerFrontTireScreenState extends State<ScannerFrontTireScreen>
                   ),
                   Expanded(
                     child: Text(
-                      'Tire inspection Scanner',
+                      widget.vehicleID,//'Tire inspection Scanner',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontFamily: 'ClashGrotesk',

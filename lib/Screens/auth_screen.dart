@@ -121,7 +121,7 @@ class _AuthScreenState extends State<AuthScreen> {
     bloc.add(
       LoginRequested(
         email: _loginEmailCtrl.text.trim(),
-        password: _loginPassCtrl.text,
+        password: "Testing@123"//_loginPassCtrl.text,
       ),
     );
   }

@@ -19,8 +19,6 @@ class AuthState extends Equatable {
   final VehiclePreferencesModel ? vehiclePreferencesModel;
   final String? error;
   final String? errorMessageVehiclePreferences;
-
-  // two-wheeler
   final TwoWheelerStatus twoWheelerStatus;
   final TyreUploadResponse? twoWheelerResponse;
   final ProfileStatus profileStatus;

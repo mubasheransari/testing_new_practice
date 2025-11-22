@@ -45,13 +45,13 @@ class _VehicleFormPreferencesScreenState
 
     context.read<AuthBloc>().add(
           AddVehiclePreferenccesEvent(
-            vehiclePreference:"Car", //_vehiclePreference,
-            brandName:"BMW", //_brandCtrl.text.trim(),
-            modelName:"i9", //_modelCtrl.text.trim(),
-            licensePlate:"988978", //_plateCtrl.text.trim(),
-            isOwn: _isOwn, // ✅ using the switch value
-            tireBrand:"YOKOHAMA", //_tireBrandCtrl.text.trim(),
-            tireDimension:"17" //_tireDimensionCtrl.text.trim(),
+            vehiclePreference:_vehiclePreference,
+            brandName:_brandCtrl.text.trim(),
+            modelName:_modelCtrl.text.trim(),
+            licensePlate:_plateCtrl.text.trim(),
+            isOwn: null, // ✅ using the switch value
+            tireBrand:_tireBrandCtrl.text.trim(),
+            tireDimension:_tireDimensionCtrl.text.trim(),
           ),
         );
 
@@ -74,7 +74,7 @@ class _VehicleFormPreferencesScreenState
             AddVehiclePreferencesStatus.success) {
           Navigator.of(context, rootNavigator: true).push(
             MaterialPageRoute(
-              builder: (_) => const ScannerFrontTireScreen(),
+              builder: (_) =>  ScannerFrontTireScreen(vehicleID: state.vehiclePreferencesModel!.vehicleIds.toString(),),
             ),
           );
         }
