@@ -1,45 +1,15 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-
 import 'package:http/http.dart' as http;
-import 'package:ios_tiretest_ai/Api_config/api_config.dart';
 import 'package:ios_tiretest_ai/Data/token_store.dart';
+import 'package:ios_tiretest_ai/Models/add_verhicle_preferences_model.dart';
 import 'package:ios_tiretest_ai/Models/auth_models.dart';
-
-// auth_repository.dart
-import 'dart:async';
-import 'dart:convert';
-import 'dart:io';
-
-import 'package:flutter/foundation.dart'; // for kDebugMode
-import 'package:http/http.dart' as http;
-// auth_repository.dart
-import 'dart:async';
-import 'dart:convert';
-import 'dart:io';
-
-import 'package:flutter/foundation.dart'; // kDebugMode, debugPrint
-import 'package:http/http.dart' as http;
-
-// auth_repository.dart
-import 'dart:async';
-import 'dart:convert';
-import 'dart:io';
-
-import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
+import 'package:ios_tiretest_ai/Models/vehiclePreferencesRequest.dart';
 import 'package:mime/mime.dart';
 import 'package:ios_tiretest_ai/Models/tyre_upload_request.dart';
 import 'package:ios_tiretest_ai/Models/tyre_upload_response.dart';
-
-import 'dart:async';
-import 'dart:convert';
-import 'dart:io';
-
-import 'package:http/http.dart' as http;
-import 'package:http_parser/http_parser.dart';
-import 'package:mime/mime.dart';
 import 'package:ios_tiretest_ai/Models/user_profile.dart';
 
 
@@ -65,15 +35,14 @@ class Result<T> {
 abstract class AuthRepository {
   Future<Result<LoginResponse>> login(LoginRequest req);
   Future<Result<SignupResponse>> signup(SignupRequest req);
-
-
-
-  // NEW: profile + token helpers
   Future<Result<UserProfile>> fetchProfile({String? token});
   Future<void> saveToken(String token);
   Future<String?> getSavedToken();
   Future<void> clearToken();
   Future<Result<TyreUploadResponse>> uploadTwoWheeler(TyreUploadRequest req);
+   Future<Result<VehiclePreferencesModel>> addVehiclePreferences(
+    VehiclePreferencesRequest req,
+  );
 }
 
 class AuthRepositoryHttp implements AuthRepository {
@@ -357,6 +326,71 @@ Future<Result<TyreUploadResponse>> uploadTwoWheeler(TyreUploadRequest req) async
   }
 }
 
+  // -------------------- ADD VEHICLE PREFERENCES --------------------
+  @override
+  Future<Result<VehiclePreferencesModel>> addVehiclePreferences(
+      VehiclePreferencesRequest req) async {
+    // get token from secure store
+    final tok = await getSavedToken();
+    if (tok == null || tok.isEmpty) {
+      return Result.fail(const Failure(
+        code: 'validation',
+        message: 'No token available. Please login again.',
+      ));
+    }
+
+    final uri = Uri.parse(ApiConfig.vehiclePreferences);
+
+    final headers = {
+      ..._jsonHeaders(),
+      HttpHeaders.authorizationHeader: 'Bearer $tok',
+    };
+
+    try {
+      final res = await http
+          .post(
+            uri,
+            headers: headers,
+            body: jsonEncode(req.toJson()),
+          )
+          .timeout(timeout);
+
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        late final Map<String, dynamic> parsed;
+        try {
+          parsed = jsonDecode(res.body) as Map<String, dynamic>;
+        } catch (_) {
+          return Result.fail(const Failure(
+            code: 'parse',
+            message: 'Invalid response format',
+          ));
+        }
+
+        final model = VehiclePreferencesModel.fromJson(parsed);
+        return Result.ok(model);
+      }
+
+      // non-2xx
+      return Result.fail(_serverFail(res));
+    } on SocketException {
+      return Result.fail(const Failure(
+        code: 'network',
+        message: 'No internet connection',
+      ));
+    } on TimeoutException {
+      return Result.fail(const Failure(
+        code: 'timeout',
+        message: 'Request timed out',
+      ));
+    } catch (e) {
+      return Result.fail(Failure(
+        code: 'unknown',
+        message: e.toString(),
+      ));
+    }
+  }
+
+
 
 //  @override
 // Future<Result<TyreUploadResponse>> uploadTwoWheeler(TyreUploadRequest req) async {//jhvbhj
@@ -424,11 +458,12 @@ Future<Result<TyreUploadResponse>> uploadTwoWheeler(TyreUploadRequest req) async
 // }
 }
 
-/// If you already have this class elsewhere, keep using it.
 class ApiConfig {
   static const login  = 'http://54.162.208.215/backend/api/login';
   static const signup = 'http://54.162.208.215/backend/api/signup';
   static const String _twoWheelerUrl =
     'http://54.162.208.215/app/tyre/twowheeler/upload';
+      static const String vehiclePreferences =
+      'http://54.162.208.215/backend/api/addVehiclePreference';
 }
 

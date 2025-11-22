@@ -1,36 +1,29 @@
 import 'dart:io';
-
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_event.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_state.dart';
 import 'package:ios_tiretest_ai/Models/tyre_upload_request.dart';
-import 'package:ios_tiretest_ai/Models/tyre_upload_response.dart';
+import 'package:ios_tiretest_ai/Models/vehiclePreferencesRequest.dart';
 import 'package:ios_tiretest_ai/Repository/repository.dart';
 import '../Models/auth_models.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {//Testing@123
   final AuthRepository repo;
 
   AuthBloc(this.repo) : super(const AuthState()) {
     on<AppStarted>(_onAppStarted);
-
     on<LoginRequested>(_onLogin);
     on<SignupRequested>(_onSignup);
-
     on<UploadTwoWheelerRequested>(_onTwoWheelerUpload);
-
     on<FetchProfileRequested>(_onFetchProfile);
-
     on<ClearAuthError>((e, emit) => emit(state.copyWith(error: null)));
+    on<AddVehiclePreferenccesEvent>(addVehiclePreferences);
   }
 
-  // Called once when app launches
   Future<void> _onAppStarted(AppStarted e, Emitter<AuthState> emit) async {
     final tok = await repo.getSavedToken();
     if (tok != null && tok.isNotEmpty) {
-      // auto-fetch profile for logged-in users
       add(const FetchProfileRequested());
     }
   }
@@ -41,20 +34,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {//Testing@123
 
 
     if (r.isSuccess) {
-      // token is saved inside repo.login() (best-effort)//Testing@123
       emit(state.copyWith(
         loginStatus: AuthStatus.success,
         loginResponse: r.data,
         error: null,
       ));
-      print("LOGIN ${r.data!.token}");
-      print("LOGIN ${r.data!.message}");
-      print("LOGIN ${r.data!.purpose}");
       add(const FetchProfileRequested());
     } else {
-      print("ELSE ${r.failure?.message}");
-       print("ELSE ${r.failure?.message}");
-        print("ELSE ${r.failure?.message}");
       emit(state.copyWith(
         loginStatus: AuthStatus.failure,
         error: r.failure?.message ?? 'Login failed',
@@ -194,5 +180,40 @@ Future<void> _onTwoWheelerUpload(
       ));
     }
   }
+
+   addVehiclePreferences(
+    AddVehiclePreferenccesEvent event,
+    Emitter<AuthState> emit,
+  ) async{
+  emit(state.copyWith(addVehiclePreferencesStatus: AddVehiclePreferencesStatus.loading));
+
+  final req = VehiclePreferencesRequest(
+    vehiclePreference: event.vehiclePreference,
+    brandName: event.brandName,
+    modelName: event.modelName,
+    licensePlate: event.licensePlate,
+    isOwn: event.isOwn,
+    tireBrand: event.tireBrand,
+    tireDimension: event.tireDimension,
+  );
+
+  final result = await repo.addVehiclePreferences(req);
+
+  if (!result.isSuccess) {
+    emit(state.copyWith(
+    addVehiclePreferencesStatus: AddVehiclePreferencesStatus.failure,//  status: AuthStatus.failure,
+      errorMessageVehiclePreferences: result.failure?.message ?? 'Failed to save vehicle',
+    ));
+    return;
+  }
+
+  emit(state.copyWith(
+ addVehiclePreferencesStatus: AddVehiclePreferencesStatus.failure,
+    vehiclePreferencesModel: result.data, // if you store it in state
+  ));
+}
+
+
+
 }
 
