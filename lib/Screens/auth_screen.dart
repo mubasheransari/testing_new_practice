@@ -244,7 +244,8 @@ class _AuthScreenState extends State<AuthScreen> {
           Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
             MaterialPageRoute(builder: (_) => const SplashScreen()),
             (route) => false,
-          );//Testing@123
+          );
+          box.write("token", state.loginResponse!.token);
 
           print("token ${state.loginResponse!.token.toString()}");
             print("token ${state.loginResponse!.token.toString()}");

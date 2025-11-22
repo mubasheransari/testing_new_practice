@@ -181,18 +181,60 @@ Future<void> _onTwoWheelerUpload(
     }
   }
 
-   addVehiclePreferences(
-    AddVehiclePreferenccesEvent event,
-    Emitter<AuthState> emit,
-  ) async{
-  emit(state.copyWith(addVehiclePreferencesStatus: AddVehiclePreferencesStatus.loading));
+// in AuthBloc constructor
+// on<AddVehiclePreferenccesEvent>(addVehiclePreferences);
+
+// Future<void> addVehiclePreferences(
+//   AddVehiclePreferenccesEvent event,
+//   Emitter<AuthState> emit,
+// ) async {
+//   emit(state.copyWith(
+//     addVehiclePreferencesStatus: AddVehiclePreferencesStatus.loading,
+//     errorMessageVehiclePreferences: null,
+//   ));
+
+//   final req = VehiclePreferencesRequest(
+//     vehiclePreference: event.vehiclePreference,
+//     brandName: event.brandName,
+//     modelName: event.modelName,
+//     licensePlate: event.licensePlate,
+//     isOwn: event.isOwn, // ✅ may be true/false/null
+//     tireBrand: event.tireBrand,
+//     tireDimension: event.tireDimension,
+//   );
+
+//   final result = await repo.addVehiclePreferences(req);
+
+//   if (!result.isSuccess) {
+//     emit(state.copyWith(
+//       addVehiclePreferencesStatus: AddVehiclePreferencesStatus.failure,
+//       errorMessageVehiclePreferences:
+//           result.failure?.message ?? 'Failed to save vehicle',
+//     ));
+//     return;
+//   }
+
+//   emit(state.copyWith(
+//     addVehiclePreferencesStatus: AddVehiclePreferencesStatus.success,
+//     vehiclePreferencesModel: result.data,
+//   ));
+// }
+
+Future<void> addVehiclePreferences(
+  AddVehiclePreferenccesEvent event,
+  Emitter<AuthState> emit,
+) async {
+  emit(state.copyWith(
+    addVehiclePreferencesStatus: AddVehiclePreferencesStatus.loading,
+    errorMessageVehiclePreferences: null,
+  ));
 
   final req = VehiclePreferencesRequest(
     vehiclePreference: event.vehiclePreference,
     brandName: event.brandName,
     modelName: event.modelName,
     licensePlate: event.licensePlate,
-    isOwn: event.isOwn,
+    isOwn: event.isOwn, // we don't send, but OK to keep
     tireBrand: event.tireBrand,
     tireDimension: event.tireDimension,
   );
@@ -201,15 +243,16 @@ Future<void> _onTwoWheelerUpload(
 
   if (!result.isSuccess) {
     emit(state.copyWith(
-    addVehiclePreferencesStatus: AddVehiclePreferencesStatus.failure,//  status: AuthStatus.failure,
-      errorMessageVehiclePreferences: result.failure?.message ?? 'Failed to save vehicle',
+      addVehiclePreferencesStatus: AddVehiclePreferencesStatus.failure,
+      errorMessageVehiclePreferences:
+          result.failure?.message ?? 'Failed to save vehicle',
     ));
     return;
   }
 
   emit(state.copyWith(
- addVehiclePreferencesStatus: AddVehiclePreferencesStatus.failure,
-    vehiclePreferencesModel: result.data, // if you store it in state
+    addVehiclePreferencesStatus: AddVehiclePreferencesStatus.success,
+    vehiclePreferencesModel: result.data,
   ));
 }
 

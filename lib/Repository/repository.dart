@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:get_storage/get_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:ios_tiretest_ai/Data/token_store.dart';
 import 'package:ios_tiretest_ai/Models/add_verhicle_preferences_model.dart';
@@ -326,73 +327,88 @@ Future<Result<TyreUploadResponse>> uploadTwoWheeler(TyreUploadRequest req) async
   }
 }
 
-  // -------------------- ADD VEHICLE PREFERENCES --------------------
-  @override
-  Future<Result<VehiclePreferencesModel>> addVehiclePreferences(
-      VehiclePreferencesRequest req) async {
-    // get token from secure store
-    final tok = await getSavedToken();
-    if (tok == null || tok.isEmpty) {
-      return Result.fail(const Failure(
-        code: 'validation',
-        message: 'No token available. Please login again.',
-      ));
-    }
 
-    final uri = Uri.parse(ApiConfig.vehiclePreferences);
+@override
+Future<Result<VehiclePreferencesModel>> addVehiclePreferences(
+    VehiclePreferencesRequest req) async {
+  final box = GetStorage();
+  final tok = box.read("token");
+  print("JWT TOKEN $tok");
 
-    final headers = {
-      ..._jsonHeaders(),
-      HttpHeaders.authorizationHeader: 'Bearer $tok',
-    };
-
-    try {
-      final res = await http
-          .post(
-            uri,
-            headers: headers,
-            body: jsonEncode(req.toJson()),
-          )
-          .timeout(timeout);
-
-      if (res.statusCode >= 200 && res.statusCode < 300) {
-        late final Map<String, dynamic> parsed;
-        try {
-          parsed = jsonDecode(res.body) as Map<String, dynamic>;
-        } catch (_) {
-          return Result.fail(const Failure(
-            code: 'parse',
-            message: 'Invalid response format',
-          ));
-        }
-
-        final model = VehiclePreferencesModel.fromJson(parsed);
-        return Result.ok(model);
-      }
-
-      // non-2xx
-      return Result.fail(_serverFail(res));
-    } on SocketException {
-      return Result.fail(const Failure(
-        code: 'network',
-        message: 'No internet connection',
-      ));
-    } on TimeoutException {
-      return Result.fail(const Failure(
-        code: 'timeout',
-        message: 'Request timed out',
-      ));
-    } catch (e) {
-      return Result.fail(Failure(
-        code: 'unknown',
-        message: e.toString(),
-      ));
-    }
+  if (tok == null || tok.isEmpty) {
+    return Result.fail(const Failure(
+      code: 'validation',
+      message: 'No token available. Please login again.',
+    ));
   }
 
+  final uri = Uri.parse(ApiConfig.vehiclePreferences);
+
+  // 🔥 IMPORTANT:
+  // Don't force application/json here.
+  // Use form-encoded, like Postman "x-www-form-urlencoded".
+  final headers = {
+    HttpHeaders.acceptHeader: 'application/json',
+    HttpHeaders.authorizationHeader: 'Bearer $tok',
+    HttpHeaders.contentTypeHeader: 'application/x-www-form-urlencoded',
+  };
+
+  try {
+    final formBody = req.toForm();
+    print('== [VEHICLE-PREF] POST $uri');
+    print('Headers: $headers');
+    print('Form body: $formBody');
+
+    final res = await http
+        .post(
+          uri,
+          headers: headers,
+          body: formBody, // 👈 Map<String,String> → x-www-form-urlencoded
+        )
+        .timeout(timeout);
+
+    print('<= [VEHICLE-PREF] status: ${res.statusCode}');
+    print('<= body: ${res.body}');
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      late final Map<String, dynamic> parsed;
+      try {
+        parsed = jsonDecode(res.body) as Map<String, dynamic>;
+      } catch (_) {
+        return Result.fail(const Failure(
+          code: 'parse',
+          message: 'Invalid response format',
+        ));
+      }
+
+      final model = VehiclePreferencesModel.fromJson(parsed);
+      return Result.ok(model);
+    }
+
+    return Result.fail(_serverFail(res));
+  } on SocketException {
+    return Result.fail(const Failure(
+      code: 'network',
+      message: 'No internet connection',
+    ));
+  } on TimeoutException {
+    return Result.fail(const Failure(
+      code: 'timeout',
+      message: 'Request timed out',
+    ));
+  } catch (e) {
+    return Result.fail(Failure(
+      code: 'unknown',
+      message: e.toString(),
+    ));
+  }
+}
 
 
-//  @override
+
+
+
+//  @override Testing@123
 // Future<Result<TyreUploadResponse>> uploadTwoWheeler(TyreUploadRequest req) async {//jhvbhj
 //   final uri = Uri.parse(_twoWheelerUrl);
 
