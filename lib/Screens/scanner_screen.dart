@@ -88,29 +88,29 @@ class _ScannerFrontTireScreenState extends State<ScannerFrontTireScreen>
   //  final userId = ''; // fill from your login model
    // final vehicleId = 'vehicle-001'; // pass real one
 
-    // Navigator.of(context)
-    //     .push(
-    //   MaterialPageRoute(
-    //     builder: (_) => GenerateReportScreen(
-    //       frontPath: _front!.path,
-    //       backPath: _back!.path,
-    //       userId: userId,
-    //       vehicleId: vehicleId,
-    //       token: token,
-    //     ),
-    //   ),
-    // )
-    Navigator.of(context).push(
-  MaterialPageRoute(
-    builder: (_) => InspectionResultScreen(
-      frontPath: _front!.path,
-      backPath: _back!.path,
-       userId: context.read<AuthBloc>().state.profile!.userId,
-      vehicleId: widget.vehicleID,
-       token: token,
-    ),
-  ),
-)
+    Navigator.of(context)
+        .push(
+      MaterialPageRoute(
+        builder: (_) => GenerateReportScreen(
+          frontPath: _front!.path,
+          backPath: _back!.path,
+          userId: context.read<AuthBloc>().state.profile!.userId.toString(),
+          vehicleId: context.read<AuthBloc>().state.vehiclePreferencesModel!.vehicleIds.toString(),
+          token: token,
+        ),
+      ),
+    )
+//     Navigator.of(context).push(
+//   MaterialPageRoute(
+//     builder: (_) => InspectionResultScreen(
+//       frontPath: _front!.path,
+//       backPath: _back!.path,
+//        userId: context.read<AuthBloc>().state.profile!.userId,
+//       vehicleId: widget.vehicleID,
+//        token: token,
+//     ),
+//   ),
+// )
 
         .then((_) {
       // reset for new capture

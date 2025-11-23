@@ -56,6 +56,9 @@ class _VehicleFormPreferencesScreenState
         );
 
     print("VEHICLE PREFERENCES $_vehiclePreference");
+    print("VEHICLE PREFERENCES $_vehiclePreference");
+    print("VEHICLE PREFERENCES $_vehiclePreference");
+    print("VEHICLE PREFERENCES $_vehiclePreference");
   }
 
   @override
@@ -302,13 +305,13 @@ class _VehiclePreferenceToggle extends StatelessWidget {
                 selected: value == 'Car',
                 onTap: () => onChanged('Car'),
               ),
-              _ToggleChip(
-                s: s,
-                label: 'Bike',
-                icon: Icons.pedal_bike_rounded,
-                selected: value == 'Bike',
-                onTap: () => onChanged('Bike'),
-              ),
+              // _ToggleChip(
+              //   s: s,
+              //   label: 'Bike',
+              //   icon: Icons.pedal_bike_rounded,
+              //   selected: value == 'Bike',
+              //   onTap: () => onChanged('Bike'),
+              // ),
             ],
           ),
         ),
@@ -360,17 +363,17 @@ class _ToggleChip extends StatelessWidget {
                 children: [
                   Icon(
                     icon,
-                    size: 18 * s,
+                    size: 24 * s,
                     color: selected
                         ? Colors.white
                         : const Color(0xFF4B5563),
                   ),
-                  SizedBox(width: 6 * s),
+                  SizedBox(width: 4 * s),
                   Text(
                     label,
                     style: TextStyle(
                       fontFamily: 'ClashGrotesk',
-                      fontSize: 14 * s,
+                      fontSize: 19 * s,
                       fontWeight:
                           selected ? FontWeight.w700 : FontWeight.w500,
                       color: selected
