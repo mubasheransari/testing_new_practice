@@ -85,8 +85,8 @@ class _ScannerFrontTireScreenState extends State<ScannerFrontTireScreen>
   void _goCountdownAndUpload() {
     final auth = context.read<AuthBloc>().state;
     final token = auth.loginResponse?.token ?? '';
-    final userId = ''; // fill from your login model
-    final vehicleId = 'vehicle-001'; // pass real one
+  //  final userId = ''; // fill from your login model
+   // final vehicleId = 'vehicle-001'; // pass real one
 
     // Navigator.of(context)
     //     .push(
@@ -105,9 +105,9 @@ class _ScannerFrontTireScreenState extends State<ScannerFrontTireScreen>
     builder: (_) => InspectionResultScreen(
       frontPath: _front!.path,
       backPath: _back!.path,
-      // userId: userId,
-      // vehicleId: vehicleId,
-      // token: token,
+       userId: context.read<AuthBloc>().state.profile!.userId,
+      vehicleId: widget.vehicleID,
+       token: token,
     ),
   ),
 )

@@ -142,9 +142,9 @@ class _ScannerFrontTireScreenNewState extends State<ScannerFrontTireScreenNew>
         builder: (_) => InspectionResultScreen(
           frontPath: _front!.path,
           backPath: _back!.path,
-          // userId: userId,
-          // vehicleId: vehicleId,
-          // token: token,
+           userId: userId,
+          vehicleId:vehicleId,
+           token: token,
         ),
       ),
     )

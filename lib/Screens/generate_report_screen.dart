@@ -1,28 +1,21 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:ios_tiretest_ai/Bloc/auth_bloc.dart';
-import 'package:ios_tiretest_ai/Bloc/auth_event.dart';
-import 'package:ios_tiretest_ai/Bloc/auth_state.dart';
 import 'package:ios_tiretest_ai/Screens/inspection_result_screen.dart';
-
-
-
-
 import 'dart:io';
-import 'package:flutter/material.dart';
-import 'package:ios_tiretest_ai/Models/tyre_upload_response.dart' hide TyreUploadResponse; // ✅ use your real model
+
 
 class InspectionResultScreen extends StatelessWidget {
   const InspectionResultScreen({
     super.key,
     required this.frontPath,
     required this.backPath,
+    required this.vehicleId,
+    required this.userId,
+    required this.token,
     this.response,
   });
 
   final String frontPath;
-  final String backPath;
+  final String backPath,vehicleId,userId,token;
   final TyreUploadResponse? response;
 
   @override

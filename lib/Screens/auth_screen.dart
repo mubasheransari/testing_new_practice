@@ -150,78 +150,159 @@ class _AuthScreenState extends State<AuthScreen> {
     setState(() => tab = 0); // switch back to login after signup
   }
 
-  // =============== GOOGLE SIGN-IN (no Bloc) ===============
+
   Future<void> _handleGoogleTap() async {
-    if (_googleLoading) return;
-    setState(() => _googleLoading = true);
+  if (_googleLoading) return;
+  setState(() => _googleLoading = true);
 
-    try {
-      gsi.GoogleSignInAccount? account = _googleSignIn.currentUser;
-      account ??= await _googleSignIn.signIn();
+  try {
+    gsi.GoogleSignInAccount? account = _googleSignIn.currentUser;
+    account ??= await _googleSignIn.signIn();
 
-      if (account == null) {
-        setState(() => _googleLoading = false); // user cancelled
-        return;
-      }
-
-      final gsi.GoogleSignInAuthentication auth = await account.authentication;
-      final String? idToken = auth.idToken;
-
-      if (idToken == null || idToken.isEmpty) {
-        _snack('Google auth failed: idToken not available.');
-        setState(() => _googleLoading = false);
-        return;
-      }
-
-      final payload = <String, dynamic>{
-        "idToken": idToken,
-        "accessToken": "",
-        "email": account.email,
-        "name": account.displayName ?? '',
-        "googleId": account.id,
-      };
-
-      final res = await http.post(
-        Uri.parse(kGoogleLoginUrl),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode(payload),
-      );
-
-      if (res.statusCode == 200) {
-        final Map<String, dynamic> body = jsonDecode(res.body);
-        final token = body['token'] as String?;
-        final user = body['user'] as Map<String, dynamic>?;
-
-        if (token == null || user == null) {
-          _snack('Invalid server response.');
-        } else {
-          await box.write('token', token);
-          await box.write('userId', user['userId']);
-          await box.write('email', user['email']);
-          await box.write('loginProvider', 'google');
-
-          if (!mounted) return;
-          Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (_) => const SplashScreen()),
-            (route) => false,
-          );
-        }
-      } else {
-        String msg = 'Login failed (${res.statusCode})';
-        try {
-          final d = jsonDecode(res.body);
-          if (d is Map && d['message'] != null) msg = d['message'].toString();
-        } catch (_) {}
-        _snack(msg);
-      }
-    } on PlatformException catch (e) {
-      _snack('Google sign-in error: ${e.message ?? e.code}');
-    } catch (e) {
-      _snack('Unexpected error: $e');
-    } finally {
-      if (mounted) setState(() => _googleLoading = false);
+    if (account == null) {
+      setState(() => _googleLoading = false);
+      return;
     }
+
+    final gsi.GoogleSignInAuthentication auth = await account.authentication;
+
+    final String? idToken = auth.idToken;
+    final String? accessToken = auth.accessToken;
+
+    if (idToken == null || idToken.isEmpty) {
+      _snack('Google auth failed: idToken not available.');
+      setState(() => _googleLoading = false);
+      return;
+    }
+
+    final payload = {
+      "idToken": idToken,
+      "accessToken": accessToken ?? "",
+      "email": account.email,
+      "name": account.displayName ?? '',
+      "googleId": account.id,
+    };
+
+    print("PAYLOAD $payload");
+    print("PAYLOAD $payload");
+    print("PAYLOAD $payload");
+
+    final res = await http.post(
+      Uri.parse(kGoogleLoginUrl),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode(payload),
+    );
+
+    if (res.statusCode == 200) {
+      final body = jsonDecode(res.body);
+      final token = body['token'];
+      final user = body['user'];
+
+      if (token == null || user == null) {
+        _snack('Invalid server response.');
+      } else {
+        await box.write('token', token);
+        await box.write('userId', user['userId']);
+        await box.write('email', user['email']);
+        await box.write('loginProvider', 'google');
+
+        if (!mounted) return;
+        Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const SplashScreen()),
+          (route) => false,
+        );
+      }
+    } else {
+      String msg = 'Login failed (${res.statusCode})';
+      try {
+        final d = jsonDecode(res.body);
+        if (d['message'] != null) msg = d['message'].toString();
+      } catch (_) {}
+      _snack(msg);
+    }
+  } catch (e) {
+    print("EXCEPTION $e");
+    print("EXCEPTION $e");
+    print("EXCEPTION $e");
+    _snack('Unexpected error: $e');
+  } finally {
+    if (mounted) setState(() => _googleLoading = false);
   }
+}
+
+
+  // =============== GOOGLE SIGN-IN (no Bloc) ===============
+  // Future<void> _handleGoogleTap() async {
+  //   if (_googleLoading) return;
+  //   setState(() => _googleLoading = true);
+
+  //   try {
+  //     gsi.GoogleSignInAccount? account = _googleSignIn.currentUser;
+  //     account ??= await _googleSignIn.signIn();
+
+  //     if (account == null) {
+  //       setState(() => _googleLoading = false); // user cancelled
+  //       return;
+  //     }
+
+  //     final gsi.GoogleSignInAuthentication auth = await account.authentication;
+  //     final String? idToken = auth.idToken;
+
+  //     if (idToken == null || idToken.isEmpty) {
+  //       _snack('Google auth failed: idToken not available.');
+  //       setState(() => _googleLoading = false);
+  //       return;
+  //     }
+
+  //     final payload = <String, dynamic>{
+  //       "idToken": idToken,
+  //       "accessToken": "",
+  //       "email": account.email,
+  //       "name": account.displayName ?? '',
+  //       "googleId": account.id,
+  //     };
+
+  //     final res = await http.post(
+  //       Uri.parse(kGoogleLoginUrl),
+  //       headers: {"Content-Type": "application/json"},
+  //       body: jsonEncode(payload),
+  //     );
+
+  //     if (res.statusCode == 200) {
+  //       final Map<String, dynamic> body = jsonDecode(res.body);
+  //       final token = body['token'] as String?;
+  //       final user = body['user'] as Map<String, dynamic>?;
+
+  //       if (token == null || user == null) {
+  //         _snack('Invalid server response.');
+  //       } else {
+  //         await box.write('token', token);
+  //         await box.write('userId', user['userId']);
+  //         await box.write('email', user['email']);
+  //         await box.write('loginProvider', 'google');
+
+  //         if (!mounted) return;
+  //         Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+  //           MaterialPageRoute(builder: (_) => const SplashScreen()),
+  //           (route) => false,
+  //         );
+  //       }
+  //     } else {
+  //       String msg = 'Login failed (${res.statusCode})';
+  //       try {
+  //         final d = jsonDecode(res.body);
+  //         if (d is Map && d['message'] != null) msg = d['message'].toString();
+  //       } catch (_) {}
+  //       _snack(msg);
+  //     }
+  //   } on PlatformException catch (e) {
+  //     _snack('Google sign-in error: ${e.message ?? e.code}');
+  //   } catch (e) {
+  //     _snack('Unexpected error: $e');
+  //   } finally {
+  //     if (mounted) setState(() => _googleLoading = false);
+  //   }
+  // }
 
   void _snack(String msg) =>
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
