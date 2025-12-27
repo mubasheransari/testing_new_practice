@@ -167,6 +167,11 @@ Future<void> _onTwoWheelerUpload(
 
     final r = await repo.fetchProfile(token: e.token);
 
+    print("PROFILE API DATA ${r.data!.userId}");
+     print("PROFILE API DATA ${r.data!.userId}");
+       print("PROFILE API DATA ${r.data!.userId}");
+         print("PROFILE API DATA ${r.data!.userId}");
+
     if (r.isSuccess) {
       emit(state.copyWith(
         profileStatus: ProfileStatus.success,

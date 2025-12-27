@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_bloc.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_event.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_state.dart';
+import 'package:ios_tiretest_ai/Screens/car_tyre_scan_screen.dart';
 import 'package:ios_tiretest_ai/Screens/scanner_screen.dart';
 
 
@@ -29,6 +31,8 @@ class _VehicleFormPreferencesScreenState
   bool _isOwn = true;
   final _tireBrandCtrl = TextEditingController(text: 'YOKOHAMA');
   final _tireDimensionCtrl = TextEditingController(text: '17');
+   final box = GetStorage();
+
 
   @override
   void dispose() {
@@ -63,6 +67,7 @@ class _VehicleFormPreferencesScreenState
 
   @override
   Widget build(BuildContext context) {
+      final tok = box.read<String>("token");
     final size = MediaQuery.sizeOf(context);
     const baseW = 393.0;
     final s = size.width / baseW;
@@ -77,7 +82,8 @@ class _VehicleFormPreferencesScreenState
             AddVehiclePreferencesStatus.success) {
           Navigator.of(context, rootNavigator: true).push(
             MaterialPageRoute(
-              builder: (_) =>  ScannerFrontTireScreen(vehicleID: state.vehiclePreferencesModel!.vehicleIds.toString(),),
+              builder: (_) => FourWheelerScanScreen(userId: state.profile!.userId,vehicleId: state.vehiclePreferencesModel!.vehicleIds.toString(),token: tok!,front_left_tyre_id: state.vehiclePreferencesModel!.storedData.first.frontLeftTyreId.toString(),front_right_tyre_id: state.vehiclePreferencesModel!.storedData.first.frontRightTyreId.toString(),back_left_tyre_id: state.vehiclePreferencesModel!.storedData.first.backLeftTyreId.toString(),back_right_tyre_id: state.vehiclePreferencesModel!.storedData.first.backRightTyreId.toString(),)
+              
             ),
           );
         }
