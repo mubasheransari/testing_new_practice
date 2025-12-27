@@ -3,8 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_bloc.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_event.dart';
-import 'package:ios_tiretest_ai/Screens/new_scanner_screen.dart';
-import 'package:ios_tiretest_ai/Screens/scanner_front_tire_screen.dart';
+
 import 'package:ios_tiretest_ai/Screens/scanner_screen.dart';
 import 'package:ios_tiretest_ai/Screens/verhicle_form_preferences_screen.dart';
 import 'package:ios_tiretest_ai/Widgets/gradient_text_widget.dart';

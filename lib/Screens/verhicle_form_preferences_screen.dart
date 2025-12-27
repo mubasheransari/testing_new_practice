@@ -5,6 +5,7 @@ import 'package:ios_tiretest_ai/Bloc/auth_bloc.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_event.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_state.dart';
 import 'package:ios_tiretest_ai/Screens/car_tyre_scan_screen.dart';
+import 'package:ios_tiretest_ai/Screens/car_tyres_scanner_screen.dart';
 import 'package:ios_tiretest_ai/Screens/scanner_screen.dart';
 
 
@@ -82,7 +83,7 @@ class _VehicleFormPreferencesScreenState
             AddVehiclePreferencesStatus.success) {
           Navigator.of(context, rootNavigator: true).push(
             MaterialPageRoute(
-              builder: (_) => FourWheelerScanScreen(userId: state.profile!.userId,vehicleId: state.vehiclePreferencesModel!.vehicleIds.toString(),token: tok!,front_left_tyre_id: state.vehiclePreferencesModel!.storedData.first.frontLeftTyreId.toString(),front_right_tyre_id: state.vehiclePreferencesModel!.storedData.first.frontRightTyreId.toString(),back_left_tyre_id: state.vehiclePreferencesModel!.storedData.first.backLeftTyreId.toString(),back_right_tyre_id: state.vehiclePreferencesModel!.storedData.first.backRightTyreId.toString(),)
+              builder: (_) => CarTyresScannerScreen(userId: state.profile!.userId,vehicleId: state.vehiclePreferencesModel!.vehicleIds.toString(),token: tok!,frontLeftTyreId: state.vehiclePreferencesModel!.storedData.first.frontLeftTyreId.toString(),frontRightTyreId: state.vehiclePreferencesModel!.storedData.first.frontRightTyreId.toString(),backLeftTyreId: state.vehiclePreferencesModel!.storedData.first.backLeftTyreId.toString(),backRightTyreId: state.vehiclePreferencesModel!.storedData.first.backRightTyreId.toString(),vin: '',)
               
             ),
           );

@@ -11,7 +11,7 @@ import 'package:mime/mime.dart';
 
 
 
-class ScannerFourTyreScreen extends StatefulWidget {
+class CarTyresScannerScreen extends StatefulWidget {
   final String title;
 
   // ✅ required for auto API call
@@ -34,7 +34,7 @@ class ScannerFourTyreScreen extends StatefulWidget {
   // ✅ navigate after success
   final VoidCallback? onUploadSuccessNavigate;
 
-  const ScannerFourTyreScreen({
+  const CarTyresScannerScreen({
     super.key,
     this.title = "Car Tyre Scanner",
     required this.userId,
@@ -50,10 +50,10 @@ class ScannerFourTyreScreen extends StatefulWidget {
   });
 
   @override
-  State<ScannerFourTyreScreen> createState() => _ScannerFourTyreScreenState();
+  State<CarTyresScannerScreen> createState() => _CarTyresScannerScreenState();
 }
 
-class _ScannerFourTyreScreenState extends State<ScannerFourTyreScreen> {
+class _CarTyresScannerScreenState extends State<CarTyresScannerScreen> {
   CameraController? _controller;
   bool _ready = false;
 

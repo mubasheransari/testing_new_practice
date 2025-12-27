@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
-import 'package:ios_tiretest_ai/Screens/new_scanners.dart';
+import 'package:ios_tiretest_ai/Screens/car_tyres_scanner_screen.dart';
 import 'package:ios_tiretest_ai/Screens/tyre_scanner_camera.dart';
 import 'package:mime/mime.dart';
 
@@ -99,7 +99,7 @@ class _FourWheelerScanScreenState extends State<FourWheelerScanScreen> {
     // - on success -> pop(result)
     final result = await Navigator.of(context, rootNavigator: true).push(
       MaterialPageRoute(
-        builder: (_) => ScannerFourTyreScreen(
+        builder: (_) => CarTyresScannerScreen(
           title: "Car Tyre Scanner",
           userId: widget.userId,
           vehicleId: widget.vehicleId,
