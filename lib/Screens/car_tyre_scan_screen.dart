@@ -9,6 +9,385 @@ import 'package:mime/mime.dart';
 
 import 'dart:convert';
 
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:http/http.dart' as http;
+import 'package:mime/mime.dart';
+import 'package:http_parser/http_parser.dart';
+
+class FourWheelerScanScreen extends StatefulWidget {
+  final String userId;
+  final String vehicleId;
+  final String token; // optional if backend needs it
+
+  final String? vin;
+
+  final String? front_left_tyre_id;
+  final String? front_right_tyre_id;
+  final String? back_left_tyre_id;
+  final String? back_right_tyre_id;
+
+  const FourWheelerScanScreen({
+    super.key,
+    required this.userId,
+    required this.vehicleId,
+    required this.token,
+    this.vin,
+    required this.front_left_tyre_id,
+    required this.front_right_tyre_id,
+    required this.back_left_tyre_id,
+    required this.back_right_tyre_id,
+  });
+
+  @override
+  State<FourWheelerScanScreen> createState() => _FourWheelerScanScreenState();
+}
+
+class _FourWheelerScanScreenState extends State<FourWheelerScanScreen> {
+  final ImagePicker _picker = ImagePicker();
+
+  XFile? _frontLeft;
+  XFile? _frontRight;
+  XFile? _backLeft;
+  XFile? _backRight;
+
+  bool _uploading = false;
+  String? _error;
+
+  // ✅ allow user to type vin (optional)
+  late final TextEditingController _vinController;
+
+  bool get _allCaptured =>
+      _frontLeft != null &&
+      _frontRight != null &&
+      _backLeft != null &&
+      _backRight != null;
+
+  static const String _baseUrl = "http://54.162.208.215";
+  static const String _endpoint = "/app/tyre/four_wheeler_upload/";
+
+  @override
+  void initState() {
+    super.initState();
+    _vinController = TextEditingController(text: widget.vin ?? "");
+  }
+
+  @override
+  void dispose() {
+    _vinController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickTyre(String position) async {
+    try {
+      final XFile? file = await _picker.pickImage(
+        source: ImageSource.camera,
+        preferredCameraDevice: CameraDevice.rear,
+        imageQuality: 90,
+      );
+      if (file == null) return;
+
+      setState(() {
+        switch (position) {
+          case 'front_left':
+            _frontLeft = file;
+            break;
+          case 'front_right':
+            _frontRight = file;
+            break;
+          case 'back_left':
+            _backLeft = file;
+            break;
+          case 'back_right':
+            _backRight = file;
+            break;
+        }
+      });
+    } catch (e) {
+      setState(() => _error = 'Failed to open camera: $e');
+    }
+  }
+
+  Future<http.MultipartFile> _filePart(String field, XFile x) async {
+    final path = x.path;
+    final mime = lookupMimeType(path) ?? 'image/jpeg';
+    final media = MediaType.parse(mime);
+    return http.MultipartFile.fromPath(field, path, contentType: media);
+  }
+
+  bool _validateRequiredIds() {
+    final missing = <String>[];
+
+    if ((widget.front_left_tyre_id ?? '').trim().isEmpty) missing.add("front_left_tyre_id");
+    if ((widget.front_right_tyre_id ?? '').trim().isEmpty) missing.add("front_right_tyre_id");
+    if ((widget.back_left_tyre_id ?? '').trim().isEmpty) missing.add("back_left_tyre_id");
+    if ((widget.back_right_tyre_id ?? '').trim().isEmpty) missing.add("back_right_tyre_id");
+
+    if (missing.isNotEmpty) {
+      setState(() => _error = "Missing required tyre ids: ${missing.join(", ")}");
+      return false;
+    }
+    return true;
+  }
+
+  Future<void> _upload() async {
+    if (!_allCaptured) {
+      setState(() => _error = 'Please capture all 4 tyres first.');
+      return;
+    }
+    if (!_validateRequiredIds()) return;
+
+    setState(() {
+      _uploading = true;
+      _error = null;
+    });
+
+    final uri = Uri.parse("$_baseUrl$_endpoint");
+    final request = http.MultipartRequest('POST', uri);
+
+    // headers
+    request.headers[HttpHeaders.acceptHeader] = 'application/json';
+
+    // if backend requires Bearer token, keep it
+    if (widget.token.trim().isNotEmpty) {
+      request.headers[HttpHeaders.authorizationHeader] = 'Bearer ${widget.token}';
+    }
+
+    // ✅ IMPORTANT FIX:
+    // Backend is doing request.data['vin'] so we MUST send vin always.
+    final vinToSend = _vinController.text.trim(); // will be "" if empty
+
+    request.fields.addAll({
+      'user_id': widget.userId,
+      'vehicle_id': widget.vehicleId,
+      'front_left_tyre_id': widget.front_left_tyre_id!.trim(),
+      'front_right_tyre_id': widget.front_right_tyre_id!.trim(),
+      'back_left_tyre_id': widget.back_left_tyre_id!.trim(),
+      'back_right_tyre_id': widget.back_right_tyre_id!.trim(),
+      'vehicle_type': 'Car',
+
+      // ✅ always present (even if empty)
+      'vin': vinToSend,
+    });
+
+    request.files.addAll([
+      await _filePart('front_left', _frontLeft!),
+      await _filePart('front_right', _frontRight!),
+      await _filePart('back_left', _backLeft!),
+      await _filePart('back_right', _backRight!),
+    ]);
+
+    debugPrint('==[4W-UPLOAD]==> POST $uri');
+    debugPrint('Fields: ${request.fields}');
+    debugPrint('Files: FL=${_frontLeft!.path}, FR=${_frontRight!.path}, BL=${_backLeft!.path}, BR=${_backRight!.path}');
+
+    try {
+      final streamed = await request.send();
+      final res = await http.Response.fromStream(streamed);
+
+      debugPrint('<==[4W-UPLOAD]== status: ${res.statusCode}');
+      debugPrint('<== body: ${res.body}');
+
+      if (!mounted) return;
+
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        String msg = "Upload successful";
+        try {
+          final decoded = jsonDecode(res.body);
+          if (decoded is Map && decoded['message'] != null) {
+            msg = decoded['message'].toString();
+          }
+        } catch (_) {}
+
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+        setState(() => _uploading = false);
+      } else {
+        String msg = 'Upload failed (${res.statusCode})';
+        try {
+          final j = jsonDecode(res.body);
+          if (j is Map) {
+            if (j['message'] != null) msg = j['message'].toString();
+            if (j['error'] != null) msg = j['error'].toString();
+            if (j['detail'] != null) msg = j['detail'].toString();
+          }
+        } catch (_) {}
+
+        setState(() {
+          _uploading = false;
+          _error = msg;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _uploading = false;
+        _error = 'Upload error: $e';
+      });
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Upload error: $e')));
+    }
+  }
+
+  Widget _tyreTile(String label, XFile? file, VoidCallback onTap) {
+    return Expanded(
+      child: InkWell(
+        onTap: _uploading ? null : onTap,
+        child: Container(
+          height: 120,
+          margin: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF3F4F6),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: file == null ? Colors.grey.shade300 : Colors.green,
+              width: 1.2,
+            ),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (file != null)
+                const Icon(Icons.check_circle, color: Colors.green, size: 32)
+              else
+                const Icon(Icons.camera_alt_rounded, color: Colors.black54, size: 28),
+              const SizedBox(height: 8),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF111827),
+                ),
+              ),
+              if (file != null)
+                const Padding(
+                  padding: EdgeInsets.only(top: 4.0),
+                  child: Text('Captured', style: TextStyle(fontSize: 12, color: Colors.green)),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const bg = Color(0xFFF6F7FA);
+
+    return Scaffold(
+      backgroundColor: bg,
+      appBar: AppBar(
+        title: const Text('Car Tyre Scan'),
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black87,
+        elevation: 0.3,
+      ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            if (_error != null)
+              Container(
+                width: double.infinity,
+                color: Colors.red.shade50,
+                padding: const EdgeInsets.all(8),
+                child: Text(_error!, style: const TextStyle(color: Colors.red)),
+              ),
+
+            const SizedBox(height: 10),
+
+            // ✅ Optional VIN input (so you can send vin always)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: TextField(
+                controller: _vinController,
+                enabled: !_uploading,
+                decoration: InputDecoration(
+                  hintText: "VIN (optional)",
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 10),
+
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16.0),
+              child: Text(
+                'Capture all four tyres of the car.\nTap each card to open the camera.',
+                style: TextStyle(fontSize: 14, color: Color(0xFF4B5563)),
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        _tyreTile('Front Left', _frontLeft, () => _pickTyre('front_left')),
+                        _tyreTile('Front Right', _frontRight, () => _pickTyre('front_right')),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        _tyreTile('Back Left', _backLeft, () => _pickTyre('back_left')),
+                        _tyreTile('Back Right', _backRight, () => _pickTyre('back_right')),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16),
+              child: SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: _uploading ? null : _upload,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _allCaptured ? const Color(0xFF7F53FD) : Colors.grey.shade400,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: _uploading
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.4,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : Text(
+                          _allCaptured ? 'Upload Tyre Images' : 'Capture all 4 tyres',
+                          style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.white),
+                        ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+/*
 
 class FourWheelerScanScreen extends StatefulWidget {
   final String userId;
@@ -430,7 +809,7 @@ class _FourWheelerScanScreenState extends State<FourWheelerScanScreen> {
     );
   }
 }
-
+*/
 
 
 
