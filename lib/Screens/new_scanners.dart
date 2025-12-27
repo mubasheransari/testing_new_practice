@@ -9,27 +9,7 @@ import 'package:http_parser/http_parser.dart';
 import 'package:mime/mime.dart';
 
 
-import 'package:camera/camera.dart';
-import 'package:flutter/material.dart';
-import 'package:ios_tiretest_ai/Widgets/bottom_action_bar.dart';
-import 'dart:convert';
-import 'dart:io';
-import 'package:http/http.dart' as http;
-import 'package:http_parser/http_parser.dart';
-import 'package:mime/mime.dart';
 
-
-import 'package:camera/camera.dart';
-import 'package:flutter/material.dart';
-import 'dart:convert';
-import 'dart:io';
-
-import 'package:http/http.dart' as http;
-import 'package:http_parser/http_parser.dart';
-import 'package:mime/mime.dart';
-
-import 'package:ios_tiretest_ai/Widgets/bottom_action_bar.dart';
-import 'package:ios_tiretest_ai/Screens/scanner_front_tire_screen.dart'; // for ScanOverlay (as you had)
 
 class ScannerFourTyreScreen extends StatefulWidget {
   final String title;
