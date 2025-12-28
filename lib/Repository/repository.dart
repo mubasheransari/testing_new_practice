@@ -7,7 +7,6 @@ import 'package:ios_tiretest_ai/Data/token_store.dart';
 import 'package:ios_tiretest_ai/Models/add_verhicle_preferences_model.dart';
 import 'package:ios_tiretest_ai/Models/auth_models.dart';
 import 'package:http_parser/http_parser.dart';
-import 'package:ios_tiretest_ai/Models/vehiclePreferencesRequest.dart';
 import 'package:mime/mime.dart';
 import 'package:ios_tiretest_ai/Models/tyre_upload_request.dart';
 import 'package:ios_tiretest_ai/Models/tyre_upload_response.dart';
@@ -16,7 +15,7 @@ import 'package:ios_tiretest_ai/Models/user_profile.dart';
 
 
 class Failure {
-  final String code;        // network | timeout | server | parse | validation | unknown
+  final String code;       
   final String message;
   final int? statusCode;
   const Failure({required this.code, required this.message, this.statusCode});
@@ -32,7 +31,6 @@ class Result<T> {
   factory Result.fail(Failure f) => Result._(null, f);
 }
 
-/// ===================== Repository contract =====================
 abstract class AuthRepository {
   Future<Result<LoginResponse>> login(LoginRequest req);
   Future<Result<SignupResponse>> signup(SignupRequest req);
@@ -50,15 +48,7 @@ abstract class AuthRepository {
     required String tireBrand,
     required String tireDimension,
   });
-// Future<Result<VehiclePreferencesModel>> addVehiclePreferences({
-//   required String vehiclePreference,
-//   required String brandName,
-//   required String modelName,
-//   required String licensePlate,
-//   required bool? isOwn,
-//   required String tireBrand,
-//   required String tireDimension,
-// });
+
 
 }
 
@@ -93,7 +83,6 @@ class AuthRepositoryHttp implements AuthRepository {
     return Failure(code: 'server', message: msg, statusCode: res.statusCode);
   }
 
-  //Future<Result<TyreUploadResponse>> uploadTwoWheeler(TyreUploadRequest req);
 
   @override
   Future<void> saveToken(String token) => _tokenStore.save(token);
@@ -104,7 +93,6 @@ class AuthRepositoryHttp implements AuthRepository {
   @override
   Future<void> clearToken() => _tokenStore.clear();
 
-  // -------------------- LOGIN --------------------
   @override
   Future<Result<LoginResponse>> login(LoginRequest req) async {
     final uri = Uri.parse(ApiConfig.login);
@@ -447,259 +435,6 @@ Future<Result<VehiclePreferencesModel>> addVehiclePreferences({
 }
 
 
-
-// @override
-// Future<Result<VehiclePreferencesModel>> addVehiclePreferences({
-//   required String vehiclePreference,
-//   required String brandName,
-//   required String modelName,
-//   required String licensePlate,
-//   required bool? isOwn,
-//   required String tireBrand,
-//   required String tireDimension,
-// }) async {
-//   final box = GetStorage();
-//   final tok = box.read("token");
-//   print("JWT TOKEN $tok");
-
-//   if (tok == null || tok.isEmpty) {
-//     return  Result.fail(
-//       Failure(
-//         code: 'validation',
-//         message: 'No token available. Please login again.',
-//       ),
-//     );
-//   }
-
-//   final uri = Uri.parse(ApiConfig.vehiclePreferences);
-
-//   // form-encoded request (like Postman x-www-form-urlencoded)
-//   final headers = <String, String>{
-//     HttpHeaders.authorizationHeader: 'Bearer $tok',
-//     HttpHeaders.contentTypeHeader: 'application/x-www-form-urlencoded',
-//     HttpHeaders.acceptHeader: 'application/json',
-//   };
-
-//   try {
-//     // build body directly (no model)
-//     final Map<String, String> formBody = {
-//       'vehiclePreference': vehiclePreference.trim(),
-//       'brandName': brandName.trim(),
-//       'modelName': modelName.trim(),
-//       'licensePlate': licensePlate.trim(),
-//       'tireBrand': tireBrand.trim(),
-//       'tireDimension': tireDimension.trim(),
-//     };
-
-//     if (isOwn != null) {
-//       formBody['isOwn'] = isOwn.toString(); // "true" / "false"
-//     }
-
-//     print('== [VEHICLE-PREF] POST $uri');
-//     print('Headers: $headers');
-//     print('Form body: $formBody');
-
-//     final res = await http
-//         .post(
-//           uri,
-//           headers: headers,
-//           body: formBody,
-//         )
-//         .timeout(timeout);
-
-//     print('<= [VEHICLE-PREF] status: ${res.statusCode}');
-//     print('<= body: ${res.body}');
-
-//     if (res.statusCode >= 200 && res.statusCode < 300) {
-//       late final Map<String, dynamic> parsed;
-//       try {
-//         parsed = jsonDecode(res.body) as Map<String, dynamic>;
-//       } catch (_) {
-//         return  Result.fail(
-//           Failure(
-//             code: 'parse',
-//             message: 'Invalid response format',
-//           ),
-//         );
-//       }
-
-//       final model = VehiclePreferencesModel.fromJson(parsed);
-//       return Result.ok(model);
-//     }
-
-//     return Result.fail(_serverFail(res));
-//   } on SocketException {
-//     return  Result.fail(
-//       Failure(
-//         code: 'network',
-//         message: 'No internet connection',
-//       ),
-//     );
-//   } on TimeoutException {
-//     return  Result.fail(
-//       Failure(
-//         code: 'timeout',
-//         message: 'Request timed out',
-//       ),
-//     );
-//   } catch (e) {
-//     return Result.fail(
-//       Failure(
-//         code: 'unknown',
-//         message: e.toString(),
-//       ),
-//     );
-//   }
-// }
-
-
-
-// @override
-// Future<Result<VehiclePreferencesModel>> addVehiclePreferences(
-//    ) async {
-//   final box = GetStorage();
-//   final tok = box.read("token");
-//   print("JWT TOKEN $tok");
-
-//   if (tok == null || tok.isEmpty) {
-//     return Result.fail(const Failure(
-//       code: 'validation',
-//       message: 'No token available. Please login again.',
-//     ));
-//   }
-
-//   final uri = Uri.parse(ApiConfig.vehiclePreferences);
-
-//   // 🔥 IMPORTANT: form-encoded, not JSON Testing@123
-//   final headers = {
-//    // HttpHeaders.acceptHeader: 'application/json',
-//     HttpHeaders.authorizationHeader: 'Bearer $tok',
-//    // HttpHeaders.contentTypeHeader: 'application/x-www-form-urlencoded',
-//   };
-
-//   try {
-//     final formBody = {
-
-//     };
-//     print('== [VEHICLE-PREF] POST $uri');
-//     print('Headers: $headers');
-//     print('Form body: $formBody');
-
-//     final res = await http
-//         .post(
-//           uri,
-//           headers: headers,
-//           body: formBody, // Map<String, String> → x-www-form-urlencoded
-//         )
-//         .timeout(timeout);
-
-//     print('<= [VEHICLE-PREF] status: ${res.statusCode}');
-//     print('<= body: ${res.body}');
-
-//     if (res.statusCode >= 200 && res.statusCode < 300) {
-//       late final Map<String, dynamic> parsed;
-//       try {
-//         parsed = jsonDecode(res.body) as Map<String, dynamic>;
-//       } catch (_) {
-//         return Result.fail(const Failure(
-//           code: 'parse',
-//           message: 'Invalid response format',
-//         ));
-//       }
-
-//       final model = VehiclePreferencesModel.fromJson(parsed);
-//       return Result.ok(model);
-//     }
-
-//     return Result.fail(_serverFail(res));
-//   } on SocketException {
-//     return Result.fail(const Failure(
-//       code: 'network',
-//       message: 'No internet connection',
-//     ));
-//   } on TimeoutException {
-//     return Result.fail(const Failure(
-//       code: 'timeout',
-//       message: 'Request timed out',
-//     ));
-//   } catch (e) {
-//     return Result.fail(Failure(
-//       code: 'unknown',
-//       message: e.toString(),
-//     ));
-//   }
-// }
-
-
-
-
-
-
-
-//  @override Testing@123
-// Future<Result<TyreUploadResponse>> uploadTwoWheeler(TyreUploadRequest req) async {//jhvbhj
-//   final uri = Uri.parse(_twoWheelerUrl);
-
-//   final request = http.MultipartRequest('POST', uri);
-//   request.headers.addAll({
-//     HttpHeaders.authorizationHeader: 'Bearer ${req.token}',
-//     HttpHeaders.acceptHeader: 'application/json',
-//     // Do not set content-type manually for MultipartRequest
-//   });
-
-//   // exact form fields per API spec
-//   request.fields.addAll({
-//     'user_id': req.userId,
-//     'vehicle_type': req.vehicleType, // "bike"
-//     'vehicle_id': req.vehicleId,
-//     if (req.vin != null && req.vin!.trim().isNotEmpty) 'vin': req.vin!.trim(),
-//   });
-
-//   Future<http.MultipartFile> _file(String field, String path) async {
-//     final mime = lookupMimeType(path) ?? 'image/jpeg';
-//     final media = MediaType.parse(mime);
-//     return http.MultipartFile.fromPath(field, path, contentType: media);
-//   }
-
-//   try {
-//     request.files.addAll([
-//       await _file('front', req.frontPath),
-//       await _file('back',  req.backPath),
-//     ]);
-
-//     final streamed = await request.send().timeout(timeout);
-//     final res = await http.Response.fromStream(streamed);
-
-//     if (res.statusCode == 200) {
-//       final Map<String, dynamic> parsed = jsonDecode(res.body);
-//       final resp = TyreUploadResponse.fromJson(parsed);
-//       return Result.ok(resp);
-//     }
-
-//     if (res.statusCode == 500) {
-//       String msg = 'Internal Server Error';
-//       try {
-//         final j = jsonDecode(res.body);
-//         if (j is Map && j['message'] != null) msg = j['message'].toString();
-//       } catch (_) {}
-//       return Result.fail(Failure(code: 'server', message: msg, statusCode: 500));
-//     }
-
-//     String msg = 'Server error (${res.statusCode})';
-//     try {
-//       final j = jsonDecode(res.body);
-//       if (j is Map && j['message'] != null) msg = j['message'].toString();
-//     } catch (_) {}
-//     return Result.fail(Failure(code: 'server', message: msg, statusCode: res.statusCode));
-
-//   } on SocketException {
-//     return Result.fail(const Failure(code: 'network', message: 'No internet connection'));
-//   } on TimeoutException {
-//     return Result.fail(const Failure(code: 'timeout', message: 'Request timed out'));
-//   } catch (e) {
-//     return Result.fail(Failure(code: 'unknown', message: e.toString()));
-//   }
-// }
 }
 
 class ApiConfig {

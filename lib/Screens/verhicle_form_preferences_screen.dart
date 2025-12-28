@@ -8,9 +8,6 @@ import 'package:ios_tiretest_ai/Screens/car_tyre_scan_screen.dart';
 import 'package:ios_tiretest_ai/Screens/car_tyres_scanner_screen.dart';
 import 'package:ios_tiretest_ai/Screens/scanner_screen.dart';
 
-
-
-
 const kBg = Color(0xFFF6F7FA);
 
 class VehicleFormPreferencesScreen extends StatefulWidget {
@@ -32,8 +29,7 @@ class _VehicleFormPreferencesScreenState
   bool _isOwn = true;
   final _tireBrandCtrl = TextEditingController(text: 'YOKOHAMA');
   final _tireDimensionCtrl = TextEditingController(text: '17');
-   final box = GetStorage();
-
+  final box = GetStorage();
 
   @override
   void dispose() {
@@ -49,16 +45,16 @@ class _VehicleFormPreferencesScreenState
     if (!_formKey.currentState!.validate()) return;
 
     context.read<AuthBloc>().add(
-          AddVehiclePreferenccesEvent(
-            vehiclePreference:_vehiclePreference,
-            brandName:_brandCtrl.text.trim(),
-            modelName:_modelCtrl.text.trim(),
-            licensePlate:_plateCtrl.text.trim(),
-            isOwn: null, // ✅ using the switch value
-            tireBrand:_tireBrandCtrl.text.trim(),
-            tireDimension:_tireDimensionCtrl.text.trim(),
-          ),
-        );
+      AddVehiclePreferenccesEvent(
+        vehiclePreference: _vehiclePreference,
+        brandName: _brandCtrl.text.trim(),
+        modelName: _modelCtrl.text.trim(),
+        licensePlate: _plateCtrl.text.trim(),
+        isOwn: null, // ✅ using the switch value
+        tireBrand: _tireBrandCtrl.text.trim(),
+        tireDimension: _tireDimensionCtrl.text.trim(),
+      ),
+    );
 
     print("VEHICLE PREFERENCES $_vehiclePreference");
     print("VEHICLE PREFERENCES $_vehiclePreference");
@@ -68,23 +64,53 @@ class _VehicleFormPreferencesScreenState
 
   @override
   Widget build(BuildContext context) {
-      final tok = box.read<String>("token");
+    final tok = box.read<String>("token");
     final size = MediaQuery.sizeOf(context);
     const baseW = 393.0;
     final s = size.width / baseW;
 
     return BlocListener<AuthBloc, AuthState>(
       listenWhen: (prev, curr) =>
-          prev.addVehiclePreferencesStatus !=
-          curr.addVehiclePreferencesStatus,
+          prev.addVehiclePreferencesStatus != curr.addVehiclePreferencesStatus,
       listener: (context, state) {
         // ✅ On success → navigate to ScannerFrontTireScreen
         if (state.addVehiclePreferencesStatus ==
             AddVehiclePreferencesStatus.success) {
+          print("STATE ${state.vehiclePreferencesModel!.storedData.first.id}");
+          print("STATE ${state.vehiclePreferencesModel!.storedData.first.id}");
+          print("STATE ${state.vehiclePreferencesModel!.storedData.first.id}");
           Navigator.of(context, rootNavigator: true).push(
             MaterialPageRoute(
-              builder: (_) => CarTyresScannerScreen(userId: state.profile!.userId,vehicleId: state.vehiclePreferencesModel!.vehicleIds.toString(),token: tok!,frontLeftTyreId: state.vehiclePreferencesModel!.storedData.first.frontLeftTyreId.toString(),frontRightTyreId: state.vehiclePreferencesModel!.storedData.first.frontRightTyreId.toString(),backLeftTyreId: state.vehiclePreferencesModel!.storedData.first.backLeftTyreId.toString(),backRightTyreId: state.vehiclePreferencesModel!.storedData.first.backRightTyreId.toString(),vin: '',)
-              
+              builder: (_) => CarTyresScannerScreen(
+                userId: state.profile!.userId,
+                vehicleId: state.vehiclePreferencesModel!.vehicleIds.toString(),
+                token: tok!,
+                frontLeftTyreId: state
+                    .vehiclePreferencesModel!
+                    .storedData
+                    .first
+                    .frontLeftTyreId
+                    .toString(),
+                frontRightTyreId: state
+                    .vehiclePreferencesModel!
+                    .storedData
+                    .first
+                    .frontRightTyreId
+                    .toString(),
+                backLeftTyreId: state
+                    .vehiclePreferencesModel!
+                    .storedData
+                    .first
+                    .backLeftTyreId
+                    .toString(),
+                backRightTyreId: state
+                    .vehiclePreferencesModel!
+                    .storedData
+                    .first
+                    .backRightTyreId
+                    .toString(),
+                vin: '',
+              ),
             ),
           );
         }
@@ -92,11 +118,11 @@ class _VehicleFormPreferencesScreenState
         // ❌ On failure → show error
         if (state.addVehiclePreferencesStatus ==
             AddVehiclePreferencesStatus.failure) {
-          final msg = state.errorMessageVehiclePreferences ??
-              'Failed to save vehicle';
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(msg)),
-          );
+          final msg =
+              state.errorMessageVehiclePreferences ?? 'Failed to save vehicle';
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(msg)));
         }
       },
       child: Scaffold(
@@ -174,7 +200,7 @@ class _VehicleFormPreferencesScreenState
                           builder: (context, state) {
                             final loading =
                                 state.addVehiclePreferencesStatus ==
-                                    AddVehiclePreferencesStatus.loading;
+                                AddVehiclePreferencesStatus.loading;
                             return _PrimaryButton(
                               s: s,
                               label: loading ? 'Saving…' : 'Save vehicle',
@@ -371,9 +397,7 @@ class _ToggleChip extends StatelessWidget {
                   Icon(
                     icon,
                     size: 24 * s,
-                    color: selected
-                        ? Colors.white
-                        : const Color(0xFF4B5563),
+                    color: selected ? Colors.white : const Color(0xFF4B5563),
                   ),
                   SizedBox(width: 4 * s),
                   Text(
@@ -381,11 +405,8 @@ class _ToggleChip extends StatelessWidget {
                     style: TextStyle(
                       fontFamily: 'ClashGrotesk',
                       fontSize: 19 * s,
-                      fontWeight:
-                          selected ? FontWeight.w700 : FontWeight.w500,
-                      color: selected
-                          ? Colors.white
-                          : const Color(0xFF4B5563),
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                      color: selected ? Colors.white : const Color(0xFF4B5563),
                     ),
                   ),
                 ],
