@@ -4,7 +4,6 @@ import 'package:get_storage/get_storage.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_event.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_state.dart';
 import 'package:ios_tiretest_ai/Models/tyre_upload_request.dart';
-import 'package:ios_tiretest_ai/Models/vehiclePreferencesRequest.dart';
 import 'package:ios_tiretest_ai/Repository/repository.dart';
 import '../Models/auth_models.dart';
 
@@ -186,78 +185,6 @@ Future<void> _onTwoWheelerUpload(
     }
   }
 
-// in AuthBloc constructor
-// on<AddVehiclePreferenccesEvent>(addVehiclePreferences);
-
-// Future<void> addVehiclePreferences(
-//   AddVehiclePreferenccesEvent event,
-//   Emitter<AuthState> emit,
-// ) async {
-//   emit(state.copyWith(
-//     addVehiclePreferencesStatus: AddVehiclePreferencesStatus.loading,
-//     errorMessageVehiclePreferences: null,
-//   ));
-
-//   final req = VehiclePreferencesRequest(
-//     vehiclePreference: event.vehiclePreference,
-//     brandName: event.brandName,
-//     modelName: event.modelName,
-//     licensePlate: event.licensePlate,
-//     isOwn: event.isOwn, // ✅ may be true/false/null
-//     tireBrand: event.tireBrand,
-//     tireDimension: event.tireDimension,
-//   );
-
-//   final result = await repo.addVehiclePreferences(req);
-
-//   if (!result.isSuccess) {
-//     emit(state.copyWith(
-//       addVehiclePreferencesStatus: AddVehiclePreferencesStatus.failure,
-//       errorMessageVehiclePreferences:
-//           result.failure?.message ?? 'Failed to save vehicle',
-//     ));
-//     return;
-//   }
-
-//   emit(state.copyWith(
-//     addVehiclePreferencesStatus: AddVehiclePreferencesStatus.success,
-//     vehiclePreferencesModel: result.data,
-//   ));
-// }
-
-//  addVehiclePreferences(
-//   AddVehiclePreferenccesEvent event,
-//   Emitter<AuthState> emit,
-// ) async {
-//   emit(state.copyWith(
-//     addVehiclePreferencesStatus: AddVehiclePreferencesStatus.loading,
-//     errorMessageVehiclePreferences: null,
-//   ));
-
-//   final result = await repo.addVehiclePreferences(
-//     vehiclePreference: event.vehiclePreference,
-//     brandName: event.brandName,
-//     modelName: event.modelName,
-//     licensePlate: event.licensePlate,
-//     isOwn: event.isOwn,
-//     tireBrand: event.tireBrand,
-//     tireDimension: event.tireDimension,
-//   );
-
-//   if (!result.isSuccess) {
-//     emit(state.copyWith(
-//       addVehiclePreferencesStatus: AddVehiclePreferencesStatus.failure,
-//       errorMessageVehiclePreferences:
-//           result.failure?.message ?? 'Failed to save vehicle',
-//     ));
-//     return;
-//   }
-
-//   emit(state.copyWith(
-//     addVehiclePreferencesStatus: AddVehiclePreferencesStatus.success,
-//     vehiclePreferencesModel: result.data,
-//   ));
-// }
 
 Future<void> addVehiclePreferences(
   AddVehiclePreferenccesEvent event,

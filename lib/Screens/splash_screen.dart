@@ -2,17 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:ios_tiretest_ai/Screens/app_shell.dart';
-import 'package:ios_tiretest_ai/Screens/home_screen.dart';
+import 'auth_screen.dart';         
 
-// Replace these with your actual screens:
-import 'auth_screen.dart';                  // <- your auth/login screen
-
-import 'dart:async';
-import 'package:flutter/material.dart';
-import 'package:get_storage/get_storage.dart';
-
-// TODO: replace with your actual screens
-import 'auth_screen.dart';
 
 
 class SplashScreen extends StatefulWidget {
@@ -121,7 +112,7 @@ class _BottomDecor extends StatelessWidget {
       left: 0, right: 0, bottom: 0,
       child: Image.asset(
         imagePath,
-        fit: BoxFit.fitWidth,          // match device width, keep aspect ratio
+        fit: BoxFit.fitWidth,        
         width: MediaQuery.of(context).size.width,
         filterQuality: FilterQuality.high,
       ),
@@ -129,61 +120,3 @@ class _BottomDecor extends StatelessWidget {
   }
 }
 
-
-
-// class SplashScreen extends StatefulWidget {
-//   const SplashScreen({super.key});
-
-//   @override
-//   State<SplashScreen> createState() => _SplashScreenState();
-// }
-
-// class _SplashScreenState extends State<SplashScreen> {
-//   @override
-//   void initState() {
-//     super.initState();
-
-//     // Decide where to go (token in default GetStorage box)
-//     final token = (GetStorage().read<String>('auth_token') ?? '').trim();
-//     final hasToken = token.isNotEmpty;
-
-//     // Brief delay so the splash is visible (tweak if you like)
-//     WidgetsBinding.instance.addPostFrameCallback((_) async {
-//       await Future.delayed(const Duration(milliseconds: 1200));
-//       if (!mounted) return;
-//       Navigator.of(context).pushAndRemoveUntil(
-//         MaterialPageRoute(
-//           builder: (_) =>
-//               hasToken ? const InspectionHomePixelPerfect() : const AuthScreen(),
-//         ),
-//         (route) => false,
-//       );
-//     });
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       body: Stack(
-//         fit: StackFit.expand,
-//         children: const [
-//           // EXACT IMAGE: will look exactly like your provided design
-//           _ExactSplashBackground(),
-//         ],
-//       ),
-//     );
-//   }
-// }
-
-// class _ExactSplashBackground extends StatelessWidget {
-//   const _ExactSplashBackground();
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Image.asset(
-//       'assets/splash/tiretest_splash.png',  // <-- your exact design PNG
-//       fit: BoxFit.cover,                    // full bleed
-//       filterQuality: FilterQuality.high,
-//     );
-//   }
-// }
