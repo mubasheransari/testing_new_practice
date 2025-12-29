@@ -45,7 +45,7 @@ class CarTyresScannerScreen extends StatefulWidget {
     required this.frontRightTyreId,
     required this.backLeftTyreId,
     required this.backRightTyreId,
-    this.vehicleType = "Car",
+    this.vehicleType = "car",
     this.onUploadSuccessNavigate,
   });
 
@@ -192,7 +192,7 @@ class _CarTyresScannerScreenState extends State<CarTyresScannerScreen> {
         // if backend expects "car", change widget.vehicleType to "car" when calling screen
         'vehicle_type': vehicleTypeValue,
 
-        'vin': vinValue,
+        'vin': "",
 
         'front_left_tyre_id': widget.frontLeftTyreId.trim(),
         'front_right_tyre_id': widget.frontRightTyreId.trim(),

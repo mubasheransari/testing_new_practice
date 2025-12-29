@@ -4,6 +4,7 @@ import 'package:get_storage/get_storage.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_bloc.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_event.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_state.dart';
+import 'package:ios_tiretest_ai/Screens/car_tyre_scan_screen.dart';
 import 'package:ios_tiretest_ai/Screens/car_tyres_scanner_screen.dart';
 
 const kBg = Color(0xFFF6F7FA);
