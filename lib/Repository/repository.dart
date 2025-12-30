@@ -7,6 +7,7 @@ import 'package:ios_tiretest_ai/Data/token_store.dart';
 import 'package:ios_tiretest_ai/Models/add_verhicle_preferences_model.dart';
 import 'package:ios_tiretest_ai/Models/auth_models.dart';
 import 'package:http_parser/http_parser.dart';
+import 'package:ios_tiretest_ai/Models/four_wheeler_uploads_request.dart';
 import 'package:mime/mime.dart';
 import 'package:ios_tiretest_ai/Models/tyre_upload_request.dart';
 import 'package:ios_tiretest_ai/Models/tyre_upload_response.dart';
@@ -49,7 +50,7 @@ abstract class AuthRepository {
     required String tireDimension,
   });
 
-
+  Future<Result<TyreUploadResponse>> uploadFourWheeler(FourWheelerUploadRequest req);
 }
 
 class AuthRepositoryHttp implements AuthRepository {
@@ -92,6 +93,121 @@ class AuthRepositoryHttp implements AuthRepository {
 
   @override
   Future<void> clearToken() => _tokenStore.clear();
+
+
+  @override
+Future<Result<TyreUploadResponse>> uploadFourWheeler(FourWheelerUploadRequest req) async {
+  final uri = Uri.parse(ApiConfig.fourWheelerUrl);
+  final request = http.MultipartRequest('POST', uri);
+
+  // Headers (same style)
+  final masked = req.token.length > 9
+      ? '${req.token.substring(0, 4)}…${req.token.substring(req.token.length - 4)}'
+      : '***';
+
+  request.headers.addAll({
+    HttpHeaders.authorizationHeader: 'Bearer ${req.token}',
+    HttpHeaders.acceptHeader: 'application/json',
+    // DO NOT set content-type manually for MultipartRequest
+  });
+
+  // Fields (match your UI code / backend keys)
+  final vinValue = req.vin.trim().isEmpty ? "UNKNOWN" : req.vin.trim();
+  final vehicleTypeValue = req.vehicleType.trim().isEmpty ? "Car" : req.vehicleType.trim();
+
+  request.fields.addAll({
+    'user_id': req.userId,
+    'vehicle_id': req.vehicleId,
+    'vehicle_type': vehicleTypeValue,
+
+    // IMPORTANT:
+    // In your OLD UI you were sending 'vin': "" (blank).
+    // Backend said it requires VIN, so we send vinValue.
+    'vin': vinValue,
+
+    'front_left_tyre_id': req.frontLeftTyreId.trim(),
+    'front_right_tyre_id': req.frontRightTyreId.trim(),
+    'back_left_tyre_id': req.backLeftTyreId.trim(),
+    'back_right_tyre_id': req.backRightTyreId.trim(),
+  });
+
+  // Files helper
+  Future<http.MultipartFile> _file(String field, String path) async {
+    final mime = lookupMimeType(path) ?? 'image/jpeg';
+    final media = MediaType.parse(mime);
+    return http.MultipartFile.fromPath(field, path, contentType: media);
+  }
+
+  request.files.addAll([
+    await _file('front_left', req.frontLeftPath),
+    await _file('front_right', req.frontRightPath),
+    await _file('back_left', req.backLeftPath),
+    await _file('back_right', req.backRightPath),
+  ]);
+
+  try {
+    // Logs (same style)
+    // ignore: avoid_print
+    print('==[UPLOAD-4W]=> POST ${ApiConfig.fourWheelerUrl}');
+    // ignore: avoid_print
+    print('Headers: {Authorization: Bearer $masked, Accept: application/json}');
+    // ignore: avoid_print
+    print('Fields: ${request.fields}');
+    // ignore: avoid_print
+    print('Files: FL=${req.frontLeftPath} | FR=${req.frontRightPath} | BL=${req.backLeftPath} | BR=${req.backRightPath}');
+
+    final streamed = await request.send().timeout(timeout);
+    final res = await http.Response.fromStream(streamed);
+
+    // ignore: avoid_print
+    print('<= [UPLOAD-4W] ${res.statusCode}');
+    // ignore: avoid_print
+    print('<= Body: ${res.body}');
+
+    // Success: 200 or 201 (your UI accepted both)
+    if (res.statusCode == 200 || res.statusCode == 201) {
+      final Map<String, dynamic> parsed = jsonDecode(res.body);
+      final resp = TyreUploadResponse.fromJson(parsed);
+      return Result.ok(resp);
+    }
+
+    // Common backend error parsing (message/error/detail)
+    String msg = 'Server error (${res.statusCode})';
+    try {
+      final j = jsonDecode(res.body);
+      if (j is Map) {
+        if (j['message'] != null) msg = j['message'].toString();
+        else if (j['error'] != null) msg = j['error'].toString();
+        else if (j['detail'] != null) msg = j['detail'].toString();
+      }
+    } catch (_) {
+      // fallback plain/html text
+      if (res.body.trim().isNotEmpty) {
+        msg = res.body.length > 200 ? res.body.substring(0, 200) : res.body;
+      }
+    }
+
+    // Explicit 404
+    if (res.statusCode == 404) {
+      return Result.fail(Failure(code: '404', message: msg, statusCode: 404));
+    }
+
+    // Explicit 500
+    if (res.statusCode == 500) {
+      return Result.fail(Failure(code: 'server', message: msg, statusCode: 500));
+    }
+
+    // Other non-200
+    return Result.fail(Failure(code: 'server', message: msg, statusCode: res.statusCode));
+  } on SocketException {
+    return Result.fail(const Failure(code: 'network', message: 'No internet connection'));
+  } on TimeoutException {
+    return Result.fail(const Failure(code: 'timeout', message: 'Request timed out'));
+  } catch (e) {
+    return Result.fail(Failure(code: 'unknown', message: e.toString()));
+  }
+}
+
 
   @override
   Future<Result<LoginResponse>> login(LoginRequest req) async {
@@ -444,5 +560,7 @@ class ApiConfig {
     'http://54.162.208.215/app/tyre/twowheeler/upload';
       static const String vehiclePreferences =
       'http://54.162.208.215/backend/api/addVehiclePreference';
+        static const String fourWheelerUrl =
+      'http://54.162.208.215/app/tyre/four_wheeler_upload/';
 }
 

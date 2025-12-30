@@ -4,25 +4,44 @@ import 'package:ios_tiretest_ai/Models/auth_models.dart';
 import 'package:ios_tiretest_ai/Models/tyre_upload_response.dart';
 import 'package:ios_tiretest_ai/Models/user_profile.dart';
 
+import 'package:equatable/equatable.dart';
+
+// keep your imports/models:
+/// LoginResponse, SignupResponse, VehiclePreferencesModel, TyreUploadResponse, UserProfile
 
 enum AuthStatus { initial, loading, success, failure }
 enum TwoWheelerStatus { initial, uploading, success, failure }
+
+/// ✅ NEW status
+enum FourWheelerStatus { initial, uploading, success, failure }
+
 enum ProfileStatus { initial, loading, success, failure }
 enum AddVehiclePreferencesStatus { initial, loading, success, failure }
 
 class AuthState extends Equatable {
-
   final AuthStatus loginStatus;
   final AuthStatus signupStatus;
+
   final LoginResponse? loginResponse;
   final SignupResponse? signupResponse;
-  final VehiclePreferencesModel ? vehiclePreferencesModel;
+
+  final VehiclePreferencesModel? vehiclePreferencesModel;
+
   final String? error;
+
   final String? errorMessageVehiclePreferences;
+
   final TwoWheelerStatus twoWheelerStatus;
   final TyreUploadResponse? twoWheelerResponse;
+
+  /// ✅ NEW: 4-wheeler
+  final FourWheelerStatus fourWheelerStatus;
+  final TyreUploadResponse? fourWheelerResponse;
+  final String? fourWheelerError;
+
   final ProfileStatus profileStatus;
   final UserProfile? profile;
+
   final AddVehiclePreferencesStatus addVehiclePreferencesStatus;
 
   const AuthState({
@@ -35,13 +54,19 @@ class AuthState extends Equatable {
     this.error,
     this.twoWheelerStatus = TwoWheelerStatus.initial,
     this.twoWheelerResponse,
+
+    /// ✅ NEW defaults
+    this.fourWheelerStatus = FourWheelerStatus.initial,
+    this.fourWheelerResponse,
+    this.fourWheelerError,
+
     this.profileStatus = ProfileStatus.initial,
     this.profile,
-    this.errorMessageVehiclePreferences
+    this.errorMessageVehiclePreferences,
   });
 
   AuthState copyWith({
-    AddVehiclePreferencesStatus ? addVehiclePreferencesStatus,
+    AddVehiclePreferencesStatus? addVehiclePreferencesStatus,
     AuthStatus? loginStatus,
     AuthStatus? signupStatus,
     LoginResponse? loginResponse,
@@ -51,11 +76,17 @@ class AuthState extends Equatable {
     TyreUploadResponse? twoWheelerResponse,
     ProfileStatus? profileStatus,
     UserProfile? profile,
-    VehiclePreferencesModel ? vehiclePreferencesModel,
-    String? errorMessageVehiclePreferences
+    VehiclePreferencesModel? vehiclePreferencesModel,
+    String? errorMessageVehiclePreferences,
+
+    /// ✅ NEW
+    FourWheelerStatus? fourWheelerStatus,
+    TyreUploadResponse? fourWheelerResponse,
+    String? fourWheelerError,
   }) {
     return AuthState(
-      addVehiclePreferencesStatus:  addVehiclePreferencesStatus ?? this.addVehiclePreferencesStatus,
+      addVehiclePreferencesStatus:
+          addVehiclePreferencesStatus ?? this.addVehiclePreferencesStatus,
       loginStatus: loginStatus ?? this.loginStatus,
       signupStatus: signupStatus ?? this.signupStatus,
       loginResponse: loginResponse ?? this.loginResponse,
@@ -65,14 +96,21 @@ class AuthState extends Equatable {
       twoWheelerResponse: twoWheelerResponse ?? this.twoWheelerResponse,
       profileStatus: profileStatus ?? this.profileStatus,
       profile: profile ?? this.profile,
-      vehiclePreferencesModel: vehiclePreferencesModel ?? this.vehiclePreferencesModel,
-      errorMessageVehiclePreferences:  errorMessageVehiclePreferences ?? this.errorMessageVehiclePreferences
+      vehiclePreferencesModel:
+          vehiclePreferencesModel ?? this.vehiclePreferencesModel,
+      errorMessageVehiclePreferences:
+          errorMessageVehiclePreferences ?? this.errorMessageVehiclePreferences,
+
+      /// ✅ NEW
+      fourWheelerStatus: fourWheelerStatus ?? this.fourWheelerStatus,
+      fourWheelerResponse: fourWheelerResponse ?? this.fourWheelerResponse,
+      fourWheelerError: fourWheelerError,
     );
   }
 
   @override
   List<Object?> get props => [
-    addVehiclePreferencesStatus,
+        addVehiclePreferencesStatus,
         loginStatus,
         signupStatus,
         loginResponse,
@@ -83,6 +121,11 @@ class AuthState extends Equatable {
         profileStatus,
         profile,
         vehiclePreferencesModel,
-        errorMessageVehiclePreferences
+        errorMessageVehiclePreferences,
+
+        /// ✅ NEW
+        fourWheelerStatus,
+        fourWheelerResponse,
+        fourWheelerError,
       ];
 }

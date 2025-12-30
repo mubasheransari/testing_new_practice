@@ -25,12 +25,14 @@ class SignupRequested extends AuthEvent {
   final String lastName;
   final String email;
   final String password;
+
   const SignupRequested({
     required this.firstName,
     required this.lastName,
     required this.email,
     required this.password,
   });
+
   @override
   List<Object?> get props => [firstName, lastName, email, password];
 }
@@ -59,6 +61,53 @@ class UploadTwoWheelerRequested extends AuthEvent {
       [userId, vehicleId, token, frontPath, backPath, vehicleType, vin];
 }
 
+/// ✅ NEW: Upload 4-wheeler (car) tyres
+class UploadFourWheelerRequested extends AuthEvent {
+  final String vehicleId;
+  final String vehicleType; // "Car" or "car" (backend strict sometimes)
+  final String vin;
+
+  final String frontLeftTyreId;
+  final String frontRightTyreId;
+  final String backLeftTyreId;
+  final String backRightTyreId;
+
+  /// paths of captured images
+  final String frontLeftPath;
+  final String frontRightPath;
+  final String backLeftPath;
+  final String backRightPath;
+
+  const UploadFourWheelerRequested({
+    required this.vehicleId,
+    this.vehicleType = 'car',
+    required this.vin,
+    required this.frontLeftTyreId,
+    required this.frontRightTyreId,
+    required this.backLeftTyreId,
+    required this.backRightTyreId,
+    required this.frontLeftPath,
+    required this.frontRightPath,
+    required this.backLeftPath,
+    required this.backRightPath,
+  });
+
+  @override
+  List<Object?> get props => [
+        vehicleId,
+        vehicleType,
+        vin,
+        frontLeftTyreId,
+        frontRightTyreId,
+        backLeftTyreId,
+        backRightTyreId,
+        frontLeftPath,
+        frontRightPath,
+        backLeftPath,
+        backRightPath,
+      ];
+}
+
 class ClearAuthError extends AuthEvent {
   const ClearAuthError();
 }
@@ -71,13 +120,13 @@ class FetchProfileRequested extends AuthEvent {
 }
 
 class AddVehiclePreferenccesEvent extends AuthEvent {
-  final String vehiclePreference; // "Car" / "Bike"
-  final String brandName;         // e.g. "BMW"
-  final String modelName;         // e.g. "i7"
-  final String licensePlate;      // e.g. "8383092"
-  final bool? isOwn;              // nullable, can be true/false/null
-  final String tireBrand;         // e.g. "YOKOHAMA"
-  final String tireDimension;     // e.g. "17"
+  final String vehiclePreference;
+  final String brandName;
+  final String modelName;
+  final String licensePlate;
+  final bool? isOwn;
+  final String tireBrand;
+  final String tireDimension;
 
   const AddVehiclePreferenccesEvent({
     required this.vehiclePreference,
@@ -100,5 +149,4 @@ class AddVehiclePreferenccesEvent extends AuthEvent {
         tireDimension,
       ];
 }
-
 

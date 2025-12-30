@@ -1,9 +1,10 @@
 class FourWheelerUploadRequest {
   final String userId;
-  final String vehicleId;
   final String token;
+
+  final String vehicleId;
+  final String vehicleType; // "Car" / "car" based on backend
   final String vin;
-  final String vehicleType;
 
   final String frontLeftTyreId;
   final String frontRightTyreId;
@@ -15,12 +16,12 @@ class FourWheelerUploadRequest {
   final String backLeftPath;
   final String backRightPath;
 
-  FourWheelerUploadRequest({
+  const FourWheelerUploadRequest({
     required this.userId,
-    required this.vehicleId,
     required this.token,
-    required this.vin,
+    required this.vehicleId,
     required this.vehicleType,
+    required this.vin,
     required this.frontLeftTyreId,
     required this.frontRightTyreId,
     required this.backLeftTyreId,
