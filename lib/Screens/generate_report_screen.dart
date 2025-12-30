@@ -1,19 +1,11 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_bloc.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_event.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_state.dart';
-import 'package:ios_tiretest_ai/Screens/inspection_result_screen.dart';
 import 'dart:io';
-
-// lib/ui/inspection_result_screen.dart
 import 'dart:convert';
-import 'dart:io';
-
-import 'package:flutter/material.dart';
-
 import 'package:ios_tiretest_ai/Models/tyre_upload_response.dart' as m;
 
 class InspectionResultScreen extends StatelessWidget {
