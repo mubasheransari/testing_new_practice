@@ -136,24 +136,24 @@ class _ScannerFrontTireScreenNewState extends State<ScannerFrontTireScreenNew>
     final userId = ''; // fill from your model
     final vehicleId = 'vehicle-001';
 
-    Navigator.of(context)
-        .push(
-      MaterialPageRoute(
-        builder: (_) => InspectionResultScreen(
-          frontPath: _front!.path,
-          backPath: _back!.path,
-           userId: userId,
-          vehicleId:vehicleId,
-           token: token,
-        ),
-      ),
-    )
-        .then((_) {
-      setState(() {
-        _front = null;
-        _back = null;
-      });
-    });
+    // Navigator.of(context)
+    //     .push(
+    //   MaterialPageRoute(
+    //     builder: (_) => InspectionResultScreen(
+    //       frontPath: _front!.path,
+    //       backPath: _back!.path,
+    //        userId: userId,
+    //       vehicleId:vehicleId,
+    //        token: token,
+    //     ),
+    //   ),
+    // )
+    //     .then((_) {
+    //   setState(() {
+    //     _front = null;
+    //     _back = null;
+    //   });
+    // });
   }
 
   @override

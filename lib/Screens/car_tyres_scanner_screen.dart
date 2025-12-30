@@ -17,6 +17,424 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
+// lib/ui/car_tyres_scanner_screen.dart
+import 'dart:async';
+
+import 'package:camera/camera.dart';
+import 'package:flutter/material.dart';
+
+import 'generate_report_screen.dart';
+
+
+enum TyrePos { frontLeft, frontRight, backLeft, backRight }
+
+class CarTyresScannerScreen extends StatefulWidget {
+  final String title;
+
+  // required
+  final String userId;
+  final String vehicleId;
+  final String token;
+
+  // backend requires vin
+  final String vin;
+
+  // tyre ids required by API
+  final String frontLeftTyreId;
+  final String frontRightTyreId;
+  final String backLeftTyreId;
+  final String backRightTyreId;
+
+  // "Car" or "car"
+  final String vehicleType;
+
+  const CarTyresScannerScreen({
+    super.key,
+    this.title = "Car Tyre Scanner",
+    required this.userId,
+    required this.vehicleId,
+    required this.token,
+    required this.vin,
+    required this.frontLeftTyreId,
+    required this.frontRightTyreId,
+    required this.backLeftTyreId,
+    required this.backRightTyreId,
+    this.vehicleType = "car",
+  });
+
+  @override
+  State<CarTyresScannerScreen> createState() => _CarTyresScannerScreenState();
+}
+
+class _CarTyresScannerScreenState extends State<CarTyresScannerScreen> {
+  CameraController? _controller;
+  bool _ready = false;
+
+  XFile? _frontLeft;
+  XFile? _frontRight;
+  XFile? _backLeft;
+  XFile? _backRight;
+
+  TyrePos _active = TyrePos.frontLeft;
+
+  String? _error;
+
+  bool _navigated = false;
+
+  bool get _allCaptured =>
+      _frontLeft != null &&
+      _frontRight != null &&
+      _backLeft != null &&
+      _backRight != null;
+
+  @override
+  void initState() {
+    super.initState();
+    _initCam();
+  }
+
+  Future<void> _initCam() async {
+    try {
+      final cams = await availableCameras();
+      final back = cams.firstWhere(
+        (c) => c.lensDirection == CameraLensDirection.back,
+        orElse: () => cams.first,
+      );
+
+      final c = CameraController(
+        back,
+        ResolutionPreset.high,
+        enableAudio: false,
+      );
+
+      await c.initialize();
+      if (!mounted) return;
+
+      setState(() {
+        _controller = c;
+        _ready = true;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _error = 'Camera not available: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Camera not available: $e')),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  Future<void> _capture() async {
+    if (!_ready || _controller == null) return;
+
+    try {
+      final shot = await _controller!.takePicture();
+      if (!mounted) return;
+
+      setState(() {
+        _error = null;
+        switch (_active) {
+          case TyrePos.frontLeft:
+            _frontLeft = shot;
+            _active = TyrePos.frontRight;
+            break;
+          case TyrePos.frontRight:
+            _frontRight = shot;
+            _active = TyrePos.backLeft;
+            break;
+          case TyrePos.backLeft:
+            _backLeft = shot;
+            _active = TyrePos.backRight;
+            break;
+          case TyrePos.backRight:
+            _backRight = shot;
+            break;
+        }
+      });
+
+      // ✅ After 4th pic -> navigate to GenerateReportScreen
+      if (_allCaptured) {
+        _goGenerateReport();
+      }
+    } catch (e) {
+      // ignore camera error, but store message
+      if (!mounted) return;
+      setState(() => _error = 'Capture failed: $e');
+    }
+  }
+
+  void _goGenerateReport() {
+    if (_navigated) return;
+    _navigated = true;
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => GenerateReportScreen(
+          frontLeftPath: _frontLeft!.path,
+          frontRightPath: _frontRight!.path,
+          backLeftPath: _backLeft!.path,
+          backRightPath: _backRight!.path,
+          userId: widget.userId,
+          vehicleId: widget.vehicleId,
+          token: widget.token,
+          vin: widget.vin,
+          vehicleType: widget.vehicleType,
+          frontLeftTyreId: widget.frontLeftTyreId,
+          frontRightTyreId: widget.frontRightTyreId,
+          backLeftTyreId: widget.backLeftTyreId,
+          backRightTyreId: widget.backRightTyreId,
+        ),
+      ),
+    ).then((_) {
+      // allow re-entry if they come back
+      _navigated = false;
+    });
+  }
+
+  void _retake(TyrePos pos) {
+    setState(() {
+      switch (pos) {
+        case TyrePos.frontLeft:
+          _frontLeft = null;
+          break;
+        case TyrePos.frontRight:
+          _frontRight = null;
+          break;
+        case TyrePos.backLeft:
+          _backLeft = null;
+          break;
+        case TyrePos.backRight:
+          _backRight = null;
+          break;
+      }
+      _active = pos;
+      _error = null;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = MediaQuery.sizeOf(context).width / 390.0;
+
+    return Scaffold(
+      body: Stack(
+        children: [
+          // camera preview (OLD UI)
+          if (_ready && _controller != null)
+            Positioned.fill(child: CameraPreview(_controller!))
+          else
+            Positioned.fill(
+              child: Container(
+                color: Colors.black,
+                alignment: Alignment.center,
+                child: const CircularProgressIndicator(color: Colors.white),
+              ),
+            ),
+
+          // header (OLD UI)
+          SafeArea(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(12 * s, 4 * s, 12 * s, 0),
+              child: Row(
+                children: [
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(
+                      Icons.chevron_left_rounded,
+                      color: Colors.white,
+                      size: 32,
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      widget.title,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontFamily: 'ClashGrotesk',
+                        fontWeight: FontWeight.w800,
+                        fontSize: 20 * s,
+                        color: Colors.white,
+                        shadows: const [
+                          Shadow(color: Colors.black54, blurRadius: 8),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 46),
+                ],
+              ),
+            ),
+          ),
+
+          // overlay (OLD UI)
+          const ScanOverlay(),
+
+          // error banner (OLD UI)
+          if (_error != null)
+            Positioned(
+              top: 92,
+              left: 16 * s,
+              right: 16 * s,
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(.85),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  _error!,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontFamily: 'ClashGrotesk',
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+
+          // tyre selector bar (OLD UI)
+          Positioned(
+            top: 115,
+            left: 16 * s,
+            right: 16 * s,
+            child: _TyreSelectorBar(
+              s: s,
+              active: _active,
+              frontLeft: _frontLeft != null,
+              frontRight: _frontRight != null,
+              backLeft: _backLeft != null,
+              backRight: _backRight != null,
+              disabled: false,
+              onSelect: (pos) => setState(() => _active = pos),
+              onRetake: _retake,
+            ),
+          ),
+
+          // bottom action bar (OLD UI)
+          Positioned(
+            left: 16 * s,
+            right: 16 * s,
+            bottom: 14 * s,
+            child: BottomActionBar(
+              enabled: _ready,
+              onPickGallery: () {},
+              onPickDocs: () {},
+              onCapture: _capture,
+              galleryIconAsset: 'assets/gallery_icon.png',
+              captureIconAsset: 'assets/image_capture_icon.png',
+              docsIconAsset: 'assets/document_icon.png',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TyreSelectorBar extends StatelessWidget {
+  const _TyreSelectorBar({
+    required this.s,
+    required this.active,
+    required this.frontLeft,
+    required this.frontRight,
+    required this.backLeft,
+    required this.backRight,
+    required this.onSelect,
+    required this.onRetake,
+    required this.disabled,
+  });
+
+  final double s;
+  final TyrePos active;
+  final bool frontLeft;
+  final bool frontRight;
+  final bool backLeft;
+  final bool backRight;
+  final ValueChanged<TyrePos> onSelect;
+  final ValueChanged<TyrePos> onRetake;
+  final bool disabled;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.all(10 * s),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(.35),
+        borderRadius: BorderRadius.circular(14 * s),
+        border: Border.all(color: Colors.white.withOpacity(.10)),
+      ),
+      child: Row(
+        children: [
+          Expanded(child: _chip("Front Left", TyrePos.frontLeft, frontLeft)),
+          SizedBox(width: 8 * s),
+          Expanded(child: _chip("Front Right", TyrePos.frontRight, frontRight)),
+          SizedBox(width: 8 * s),
+          Expanded(child: _chip("Back Left", TyrePos.backLeft, backLeft)),
+          SizedBox(width: 8 * s),
+          Expanded(child: _chip("Back Right", TyrePos.backRight, backRight)),
+        ],
+      ),
+    );
+  }
+
+  Widget _chip(String label, TyrePos pos, bool done) {
+    final selected = active == pos;
+
+    final bg = done
+        ? Colors.green.withOpacity(.85)
+        : selected
+            ? Colors.white.withOpacity(.20)
+            : Colors.white.withOpacity(.10);
+
+    final brd = selected ? Colors.white.withOpacity(.28) : Colors.transparent;
+
+    return InkWell(
+      onTap: disabled ? null : () => onSelect(pos),
+      onLongPress: disabled || !done ? null : () => onRetake(pos),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: brd),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              done ? Icons.check_circle : Icons.radio_button_unchecked,
+              color: Colors.white,
+              size: 16,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontFamily: 'ClashGrotesk',
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
+                fontSize: 11.5,
+                height: 1.05,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+/*
 
 
 enum TyrePos { frontLeft, frontRight, backLeft, backRight }
@@ -461,7 +879,7 @@ class _TyreSelectorBar extends StatelessWidget {
   }
 }
 
-
+*/
 
 // class CarTyresScannerScreen extends StatefulWidget {
 //   final String title;

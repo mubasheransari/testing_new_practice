@@ -8,48 +8,137 @@ import 'package:ios_tiretest_ai/Bloc/auth_state.dart';
 import 'package:ios_tiretest_ai/Screens/inspection_result_screen.dart';
 import 'dart:io';
 
+// lib/ui/inspection_result_screen.dart
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:flutter/material.dart';
+
+import 'package:ios_tiretest_ai/Models/tyre_upload_response.dart' as m;
 
 class InspectionResultScreen extends StatelessWidget {
   const InspectionResultScreen({
     super.key,
-    required this.frontPath,
-    required this.backPath,
+
+    // ✅ 4-wheeler local paths
+    required this.frontLeftPath,
+    required this.frontRightPath,
+    required this.backLeftPath,
+    required this.backRightPath,
+
     required this.vehicleId,
     required this.userId,
     required this.token,
+
+    // ✅ API response
     this.response,
   });
 
-  final String frontPath;
-  final String backPath,vehicleId,userId,token;
-  final TyreUploadResponse? response;
+  final String frontLeftPath;
+  final String frontRightPath;
+  final String backLeftPath;
+  final String backRightPath;
+
+  final String vehicleId;
+  final String userId;
+  final String token;
+
+  final m.TyreUploadResponse? response;
 
   @override
   Widget build(BuildContext context) {
     final s = MediaQuery.sizeOf(context).width / 393;
+
+    // ✅ response data
     final data = response?.data;
 
-    // 👇 adjust field names here if your model is slightly different
-    final frontImg = (data?.frontWheelUrl != null && data!.frontWheelUrl!.isNotEmpty)
-        ? NetworkImage(data.frontWheelUrl!)
-        : FileImage(File(frontPath)) as ImageProvider;
+    // ✅ Try to find URL fields even if backend uses different keys
+    final flUrl = _pickStringFromData(data, [
+      'frontLeftWheelUrl',
+      'front_left_wheel_url',
+      'front_left_url',
+      'front_left',
+      'frontLeftUrl',
+      'front_left_image',
+      'front_left_image_url',
+    ]);
 
-    final backImg = (data?.backWheelUrl != null && data!.backWheelUrl!.isNotEmpty)
-        ? NetworkImage(data.backWheelUrl!)
-        : FileImage(File(backPath)) as ImageProvider;
+    final frUrl = _pickStringFromData(data, [
+      'frontRightWheelUrl',
+      'front_right_wheel_url',
+      'front_right_url',
+      'front_right',
+      'frontRightUrl',
+      'front_right_image',
+      'front_right_image_url',
+    ]);
 
-    final extraImg = const AssetImage('assets/bike_wheel.png');
+    final blUrl = _pickStringFromData(data, [
+      'backLeftWheelUrl',
+      'back_left_wheel_url',
+      'back_left_url',
+      'back_left',
+      'backLeftUrl',
+      'back_left_image',
+      'back_left_image_url',
+    ]);
 
-    final treadDepth = data?.treadDepth ?? '7.2 mm';
-    final treadStatus = data?.treadStatus ?? 'Good';
-    final tyrePressure = (data?.tyrePressure ?? '32').toString();
-    final tyrePressureStatus = data?.tyrePressureStatus ?? 'Optimal';
-    final damageCheck = data?.damageCheck ?? 'No cracks';
-    final damageStatus = data?.damageStatus ?? 'Safe';
+    final brUrl = _pickStringFromData(data, [
+      'backRightWheelUrl',
+      'back_right_wheel_url',
+      'back_right_url',
+      'back_right',
+      'backRightUrl',
+      'back_right_image',
+      'back_right_image_url',
+    ]);
 
-    final summary = response?.message ??
-        'Your wheel is in good condition with optimal tread depth and balanced pressure. '
-            'No major wear or cracks detected.';
+    // ✅ build image providers (URL if available else local file)
+    final flImg = _imgProvider(localPath: frontLeftPath, url: flUrl);
+    final frImg = _imgProvider(localPath: frontRightPath, url: frUrl);
+    final blImg = _imgProvider(localPath: backLeftPath, url: blUrl);
+    final brImg = _imgProvider(localPath: backRightPath, url: brUrl);
+
+    // ✅ Metrics (generic/fallback). If your backend returns per-tyre metrics,
+    // you can enhance these using _pickStringFromData(...) similarly.
+    final treadDepth =
+        _pickStringFromData(data, ['treadDepth', 'tread_depth']) ?? '—';
+    final treadStatus =
+        _pickStringFromData(data, ['treadStatus', 'tread_status']) ?? '—';
+
+    final tyrePressure =
+        _pickStringFromData(data, [
+          'tyrePressure',
+          'tirePressure',
+          'pressure',
+        ]) ??
+        '—';
+    final tyrePressureStatus =
+        _pickStringFromData(data, [
+          'tyrePressureStatus',
+          'tirePressureStatus',
+          'pressure_status',
+        ]) ??
+        '—';
+
+    final damageCheck =
+        _pickStringFromData(data, ['damageCheck', 'damage_check', 'damage']) ??
+        '—';
+    final damageStatus =
+        _pickStringFromData(data, ['damageStatus', 'damage_status']) ?? '—';
+
+    final summary =
+        response?.message ??
+        _pickStringFromData(data, [
+          'summary',
+          'reportSummary',
+          'report_summary',
+        ]) ??
+        'Report generated.';
+
+    // ✅ Pretty JSON block (best way to “show API response”)
+    // Works if your TyreUploadResponse has toJson().
+    final prettyJson = _prettyResponseJson(response);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF3F2F8),
@@ -58,12 +147,16 @@ class InspectionResultScreen extends StatelessWidget {
         backgroundColor: Colors.white,
         scrolledUnderElevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 22, color: Colors.black),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            size: 22,
+            color: Colors.black,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         centerTitle: true,
         title: Text(
-          'inspection Report',
+          'Inspection Report',
           style: TextStyle(
             fontFamily: 'ClashGrotesk',
             fontSize: 20 * s,
@@ -75,45 +168,8 @@ class InspectionResultScreen extends StatelessWidget {
       body: ListView(
         padding: EdgeInsets.fromLTRB(16 * s, 10 * s, 16 * s, 28 * s),
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _PhotoCard(
-                s: s,
-                image: frontImg,
-                label: 'left',
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF30C5FF), Color(0xFF4676FF)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-              SizedBox(width: 12 * s),
-              _PhotoCard(
-                s: s,
-                image: backImg,
-                label: 'Front',
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFFF7E6D), Color(0xFFFF57B5)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-              // SizedBox(width: 12 * s),
-              // Expanded(
-              //   child: _PhotoCard(
-              //     s: s,
-              //     image: extraImg,
-              //     label: 'middle',
-              //     gradient: const LinearGradient(
-              //       colors: [Color(0xFF39D2C0), Color(0xFF7993FF)],
-              //       begin: Alignment.topLeft,
-              //       end: Alignment.bottomRight,
-              //     ),
-              //   ),
-              // ),
-            ],
-          ),
+          // ✅ 4 images grid
+          _PhotosGrid4(s: s, fl: flImg, fr: frImg, bl: blImg, br: brImg),
           SizedBox(height: 18 * s),
 
           Row(
@@ -141,7 +197,7 @@ class InspectionResultScreen extends StatelessWidget {
                   children: [
                     _SmallMetricCard(
                       s: s,
-                      title: 'Tire Pressure',
+                      title: 'Tyre Pressure',
                       value: 'Value: $tyrePressure',
                       status: 'Status: $tyrePressureStatus',
                       gradient: const LinearGradient(
@@ -169,10 +225,14 @@ class InspectionResultScreen extends StatelessWidget {
           ),
           SizedBox(height: 18 * s),
 
-          _ReportSummaryCard(
+          _ReportSummaryCard(s: s, title: 'Report Summary:', summary: summary),
+          SizedBox(height: 18 * s),
+
+          // ✅ SHOW API RESPONSE (requested)
+          _ApiResponseCard(
             s: s,
-            title: 'Report Summary:',
-            summary: summary,
+            title: 'Four-wheeler API Response (Debug)',
+            jsonText: prettyJson,
           ),
           SizedBox(height: 18 * s),
 
@@ -188,7 +248,10 @@ class InspectionResultScreen extends StatelessWidget {
                     padding: EdgeInsets.symmetric(vertical: 14 * s),
                     backgroundColor: Colors.white,
                   ),
-                  icon: const Icon(Icons.share_rounded, color: Color(0xFF4F7BFF)),
+                  icon: const Icon(
+                    Icons.share_rounded,
+                    color: Color(0xFF4F7BFF),
+                  ),
                   label: Text(
                     'Share Report',
                     style: TextStyle(
@@ -231,11 +294,205 @@ class InspectionResultScreen extends StatelessWidget {
     );
   }
 
+  // ---------------- Helpers ----------------
+
+  ImageProvider _imgProvider({required String localPath, String? url}) {
+    final u = (url ?? '').trim();
+    if (u.isNotEmpty && (u.startsWith('http://') || u.startsWith('https://'))) {
+      return NetworkImage(u);
+    }
+    return FileImage(File(localPath));
+  }
+
+  /// ✅ Reads data fields safely even if your `data` type changes.
+  /// Works if:
+  /// - data is a Map
+  /// - OR data has toJson()
+  String? _pickStringFromData(dynamic data, List<String> keys) {
+    if (data == null) return null;
+
+    Map<String, dynamic>? map;
+
+    if (data is Map) {
+      map = Map<String, dynamic>.from(data as Map);
+    } else {
+      try {
+        final dynamic j = (data as dynamic).toJson();
+        if (j is Map) map = Map<String, dynamic>.from(j as Map);
+      } catch (_) {
+        map = null;
+      }
+    }
+
+    if (map == null) return null;
+
+    for (final k in keys) {
+      final v = map[k];
+      if (v == null) continue;
+      final s = v.toString().trim();
+      if (s.isNotEmpty && s != 'null') return s;
+    }
+    return null;
+  }
+
+  String _prettyResponseJson(m.TyreUploadResponse? response) {
+    if (response == null) return 'No response (null)';
+    try {
+      final dynamic j = (response as dynamic).toJson();
+      return const JsonEncoder.withIndent('  ').convert(j);
+    } catch (_) {
+      // fallback: show minimal info
+      return 'message: ${response.message}\n'
+          'data: ${response.data}\n'
+          '(Tip: add toJson() in TyreUploadResponse for full JSON)';
+    }
+  }
+
   void _toast(BuildContext ctx, String msg) =>
       ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(msg)));
 }
 
-/* === widgets from previous answer (unchanged) === */
+// ================== UI widgets (simple + reusable) ==================
+
+class _PhotosGrid4 extends StatelessWidget {
+  const _PhotosGrid4({
+    required this.s,
+    required this.fl,
+    required this.fr,
+    required this.bl,
+    required this.br,
+  });
+
+  final double s;
+  final ImageProvider fl, fr, bl, br;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _PhotoCard(
+                s: s,
+                image: fl,
+                label: 'Front Left',
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF30C5FF), Color(0xFF4676FF)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+            ),
+            SizedBox(width: 12 * s),
+            Expanded(
+              child: _PhotoCard(
+                s: s,
+                image: fr,
+                label: 'Front Right',
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFFF7E6D), Color(0xFFFF57B5)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 12 * s),
+        Row(
+          children: [
+            Expanded(
+              child: _PhotoCard(
+                s: s,
+                image: bl,
+                label: 'Back Left',
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF39D2C0), Color(0xFF7993FF)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+            ),
+            SizedBox(width: 12 * s),
+            Expanded(
+              child: _PhotoCard(
+                s: s,
+                image: br,
+                label: 'Back Right',
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF7C3AED), Color(0xFF60A5FA)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _ApiResponseCard extends StatelessWidget {
+  const _ApiResponseCard({
+    required this.s,
+    required this.title,
+    required this.jsonText,
+  });
+
+  final double s;
+  final String title;
+  final String jsonText;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.all(14 * s),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16 * s),
+        border: Border.all(color: const Color(0xFFE3E7F3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              fontFamily: 'ClashGrotesk',
+              fontSize: 15 * s,
+              fontWeight: FontWeight.w800,
+              color: Colors.black,
+            ),
+          ),
+          SizedBox(height: 10 * s),
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.all(12 * s),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF6F7FB),
+              borderRadius: BorderRadius.circular(12 * s),
+              border: Border.all(color: const Color(0xFFE6EAF6)),
+            ),
+            child: SelectableText(
+              jsonText,
+              style: TextStyle(
+                fontFamily: 'ClashGrotesk',
+                fontSize: 12.5 * s,
+                height: 1.25,
+                color: const Color(0xFF111827),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------- Below are placeholders of your existing widgets ----------
+// If you already have these widgets in your file/project, REMOVE these duplicates.
 
 class _PhotoCard extends StatelessWidget {
   const _PhotoCard({
@@ -253,43 +510,50 @@ class _PhotoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-       width: MediaQuery.of(context).size.width *0.40,
-      // height: 252,
+      height: 140 * s,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(18 * s),
+        gradient: gradient,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(.04),
-            blurRadius: 8 * s,
-            offset: Offset(0, 3 * s),
+            color: Colors.black.withOpacity(.08),
+            blurRadius: 14,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
-      child: Column(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12 * s),
-            child: Image(image: image, fit: BoxFit.cover,height: 252),
-          ),
-          SizedBox(height: 8 * s),
-          Container(
-            height: 28 * s,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              gradient: gradient,
-              borderRadius: BorderRadius.circular(999),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(18 * s),
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: Image(image: image, fit: BoxFit.cover),
             ),
-            child: Text(
-              label,
-              style: TextStyle(
-                fontFamily: 'ClashGrotesk',
-                color: Colors.white,
-                fontWeight: FontWeight.w700,
-                fontSize: 13 * s,
+            Positioned(
+              left: 10 * s,
+              bottom: 10 * s,
+              child: Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: 10 * s,
+                  vertical: 6 * s,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(.45),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontFamily: 'ClashGrotesk',
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 12.5 * s,
+                  ),
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -315,63 +579,56 @@ class _BigMetricCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 165 * s,
-      padding: EdgeInsets.all(16 * s),
+      padding: EdgeInsets.all(14 * s),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18 * s),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(.05),
-            blurRadius: 14 * s,
-            offset: Offset(0, 8 * s),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 50 * s,
-            height: 50 * s,
-            decoration: BoxDecoration(
-              gradient: iconBg,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF7B9BFF).withOpacity(.35),
-                  blurRadius: 12 * s,
-                  offset: Offset(0, 5 * s),
+          Row(
+            children: [
+              Container(
+                width: 40 * s,
+                height: 40 * s,
+                decoration: BoxDecoration(
+                  gradient: iconBg,
+                  borderRadius: BorderRadius.circular(12 * s),
                 ),
-              ],
-            ),
-            child: Icon(icon, color: Colors.white, size: 26 * s),
+                child: Icon(icon, color: Colors.white, size: 22 * s),
+              ),
+              SizedBox(width: 10 * s),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontFamily: 'ClashGrotesk',
+                    fontSize: 14.5 * s,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
           ),
           SizedBox(height: 12 * s),
-          Text(
-            title,
-            style: TextStyle(
-              fontFamily: 'ClashGrotesk',
-              fontSize: 20 * s,
-              fontWeight: FontWeight.w800,
-              color: const Color(0xFF4F7BFF),
-            ),
-          ),
-          SizedBox(height: 6 * s),
           Text(
             value,
             style: TextStyle(
               fontFamily: 'ClashGrotesk',
+              fontSize: 13 * s,
               fontWeight: FontWeight.w700,
-              fontSize: 15 * s,
+              color: const Color(0xFF111827),
             ),
           ),
-          SizedBox(height: 4 * s),
+          SizedBox(height: 6 * s),
           Text(
             status,
             style: TextStyle(
-              color: Colors.black.withOpacity(.8),
-              fontSize: 14 * s,
+              fontFamily: 'ClashGrotesk',
+              fontSize: 13 * s,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF6B7280),
             ),
           ),
         ],
@@ -398,50 +655,41 @@ class _SmallMetricCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.all(13 * s),
+      padding: EdgeInsets.all(14 * s),
       decoration: BoxDecoration(
-        color: Colors.white,
+        gradient: gradient,
         borderRadius: BorderRadius.circular(18 * s),
-        border: Border.all(color: const Color(0xFFE8E9F1)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(.03),
-            blurRadius: 9 * s,
-            offset: Offset(0, 5 * s),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ShaderMask(
-            shaderCallback: (r) => gradient.createShader(r),
-            blendMode: BlendMode.srcIn,
-            child: Text(
-              title,
-              style: TextStyle(
-                fontFamily: 'ClashGrotesk',
-                fontWeight: FontWeight.w800,
-                fontSize: 17 * s,
-              ),
+          Text(
+            title,
+            style: TextStyle(
+              fontFamily: 'ClashGrotesk',
+              color: Colors.white,
+              fontWeight: FontWeight.w800,
+              fontSize: 13.5 * s,
             ),
           ),
-          SizedBox(height: 6 * s),
+          SizedBox(height: 10 * s),
           Text(
             value,
             style: TextStyle(
               fontFamily: 'ClashGrotesk',
-              fontWeight: FontWeight.w600,
-              fontSize: 14.5 * s,
-              color: const Color(0xFF111826),
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+              fontSize: 12.5 * s,
             ),
           ),
-          SizedBox(height: 4 * s),
+          SizedBox(height: 6 * s),
           Text(
             status,
             style: TextStyle(
-              color: Colors.black.withOpacity(.5),
-              fontSize: 13 * s,
+              fontFamily: 'ClashGrotesk',
+              color: Colors.white.withOpacity(.9),
+              fontWeight: FontWeight.w700,
+              fontSize: 12.5 * s,
             ),
           ),
         ],
@@ -468,67 +716,28 @@ class _ReportSummaryCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18 * s),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(.04),
-            blurRadius: 12 * s,
-            offset: Offset(0, 6 * s),
-          ),
-        ],
       ),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 54 * s,
-            height: 54 * s,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF4F7BFF), Color(0xFF5FD1FF)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF4F7BFF).withOpacity(.35),
-                  blurRadius: 14 * s,
-                  offset: Offset(0, 6 * s),
-                ),
-              ],
+          Text(
+            title,
+            style: TextStyle(
+              fontFamily: 'ClashGrotesk',
+              fontWeight: FontWeight.w800,
+              fontSize: 15 * s,
+              color: Colors.black,
             ),
-            child: Icon(Icons.receipt_long_rounded, color: Colors.white, size: 26 * s),
           ),
-          SizedBox(width: 14 * s),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      title,
-                      style: TextStyle(
-                        fontFamily: 'ClashGrotesk',
-                        fontWeight: FontWeight.w800,
-                        fontSize: 18 * s,
-                      ),
-                    ),
-                    const Spacer(),
-                    Icon(Icons.chevron_right_rounded, color: Colors.black, size: 24 * s),
-                  ],
-                ),
-                SizedBox(height: 6 * s),
-                Text(
-                  summary,
-                  style: TextStyle(
-                    fontFamily: 'ClashGrotesk',
-                    fontSize: 14.5 * s,
-                    color: Colors.black.withOpacity(.75),
-                    height: 1.3,
-                  ),
-                ),
-              ],
+          SizedBox(height: 10 * s),
+          Text(
+            summary,
+            style: TextStyle(
+              fontFamily: 'ClashGrotesk',
+              fontWeight: FontWeight.w600,
+              fontSize: 13.5 * s,
+              height: 1.35,
+              color: const Color(0xFF374151),
             ),
           ),
         ],
@@ -537,22 +746,50 @@ class _ReportSummaryCard extends StatelessWidget {
   }
 }
 
-
 class GenerateReportScreen extends StatefulWidget {
   const GenerateReportScreen({
     super.key,
-    required this.frontPath,
-    required this.backPath,
+
+    // ✅ 4 images
+    required this.frontLeftPath,
+    required this.frontRightPath,
+    required this.backLeftPath,
+    required this.backRightPath,
+
     required this.userId,
     required this.vehicleId,
     required this.token,
+
+    // ✅ required by backend / event
+    required this.vin,
+
+    // ✅ ids required by api
+    required this.frontLeftTyreId,
+    required this.frontRightTyreId,
+    required this.backLeftTyreId,
+    required this.backRightTyreId,
+
+    // ✅ "Car" or "car"
+    this.vehicleType = 'car',
   });
 
-  final String frontPath;
-  final String backPath;
+  final String frontLeftPath;
+  final String frontRightPath;
+  final String backLeftPath;
+  final String backRightPath;
+
   final String userId;
   final String vehicleId;
   final String token;
+
+  final String vin;
+
+  final String frontLeftTyreId;
+  final String frontRightTyreId;
+  final String backLeftTyreId;
+  final String backRightTyreId;
+
+  final String vehicleType;
 
   @override
   State<GenerateReportScreen> createState() => _GenerateReportScreenState();
@@ -563,8 +800,18 @@ class _GenerateReportScreenState extends State<GenerateReportScreen>
   int _counter = 5;
   Timer? _timer;
 
-  late final AnimationController _progressCtrl; // 0 → 1 in 5s
+  late final AnimationController _progressCtrl;
   late final Animation<double> _progress;
+
+  bool _fired = false;
+
+  // ✅ NEW: gates
+  bool _countdownDone = false;
+  bool _apiDone = false;
+  bool _navigated = false;
+
+  // ✅ store response to pass to result screen
+  m.TyreUploadResponse? _apiResponse;
 
   @override
   void initState() {
@@ -574,31 +821,79 @@ class _GenerateReportScreenState extends State<GenerateReportScreen>
       vsync: this,
       duration: const Duration(seconds: 5),
     );
+
     _progress = CurvedAnimation(
       parent: _progressCtrl,
       curve: Curves.easeInOutCubic,
     );
-    _progressCtrl.forward(); // start bar fill immediately
+
+    _progressCtrl.forward();
 
     _startCountdownAndUpload();
   }
 
   void _startCountdownAndUpload() {
-    // Fire upload immediately
-    context.read<AuthBloc>().add(UploadTwoWheelerRequested(
-          userId: widget.userId,
-          vehicleId: widget.vehicleId,
-          token: widget.token,
-          frontPath: widget.frontPath,
-          backPath: widget.backPath,
-          vehicleType: 'bike',
-        ));
+    if (_fired) return;
+    _fired = true;
 
-    // Visible countdown 5 → 0
+    // ✅ fire upload immediately
+    context.read<AuthBloc>().add(
+      UploadFourWheelerRequested(
+        vehicleId: widget.vehicleId,
+        vehicleType: widget.vehicleType,
+        vin: widget.vin,
+
+        frontLeftTyreId: widget.frontLeftTyreId,
+        frontRightTyreId: widget.frontRightTyreId,
+        backLeftTyreId: widget.backLeftTyreId,
+        backRightTyreId: widget.backRightTyreId,
+
+        frontLeftPath: widget.frontLeftPath,
+        frontRightPath: widget.frontRightPath,
+        backLeftPath: widget.backLeftPath,
+        backRightPath: widget.backRightPath,
+      ),
+    );
+
+    // ✅ countdown 5 → 0
     _timer = Timer.periodic(const Duration(seconds: 1), (t) {
-      setState(() => _counter--);
-      if (_counter <= 0) t.cancel();
+      if (!mounted) return;
+
+      setState(() {
+        _counter--;
+      });
+
+      if (_counter <= 0) {
+        t.cancel();
+        _countdownDone = true;
+        _tryNavigate();
+      }
     });
+  }
+
+  void _tryNavigate() {
+    if (!mounted) return;
+    if (_navigated) return;
+
+    // ✅ navigate ONLY when BOTH conditions are met
+    if (_countdownDone && _apiDone) {
+      _navigated = true;
+
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => InspectionResultScreen(
+            frontLeftPath: widget.frontLeftPath,
+            frontRightPath: widget.frontRightPath,
+            backLeftPath: widget.backLeftPath,
+            backRightPath: widget.backRightPath,
+            vehicleId: widget.vehicleId,
+            userId: widget.userId,
+            token: widget.token,
+            response: _apiResponse, // ✅ api response
+          ),
+        ),
+      );
+    }
   }
 
   @override
@@ -615,57 +910,49 @@ class _GenerateReportScreenState extends State<GenerateReportScreen>
 
     return Scaffold(
       body: BlocConsumer<AuthBloc, AuthState>(
-        listenWhen: (p, c) => p.twoWheelerStatus != c.twoWheelerStatus,
+        listenWhen: (p, c) => p.fourWheelerStatus != c.fourWheelerStatus,
         listener: (context, state) {
-          if (state.twoWheelerStatus == TwoWheelerStatus.failure) {
+          if (state.fourWheelerStatus == FourWheelerStatus.failure) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.error ?? 'Upload failed')),
+              SnackBar(
+                content: Text(state.fourWheelerError ?? 'Upload failed'),
+              ),
             );
           }
-          if (state.twoWheelerStatus == TwoWheelerStatus.success) {
 
-            print("SUCCESS PRINT");
-            print("SUCCESS PRINT");
-            print("SUCCESS PRINT");
-            print("SUCCESS PRINT");
-            // Navigator.of(context).pushReplacement(
-            //   MaterialPageRoute(
-            //     builder: (_) => InspectionResultScreen(
-            //       frontPath: widget.frontPath,
-            //       backPath: widget.backPath,
-            //       response: state.twoWheelerResponse,
-            //     ),
-            //   ),
-            // );
+          if (state.fourWheelerStatus == FourWheelerStatus.success) {
+            // ✅ mark API done, store response, then try navigate (waits for counter=0 too)
+            _apiDone = true;
+            _apiResponse = state.fourWheelerResponse;
+            _tryNavigate();
           }
         },
         builder: (context, state) {
           return Stack(
             fit: StackFit.expand,
             children: [
-              // Background photo
               Image.asset(
-                'assets/generating_report_bg.png', // your image
+                'assets/generating_report_bg.png',
                 fit: BoxFit.cover,
                 errorBuilder: (_, __, ___) => Container(color: Colors.black),
               ),
 
-              // Dim overlay for readability
               Container(color: Colors.black.withOpacity(.40)),
 
-              // Top bar
               SafeArea(
                 child: Align(
                   alignment: Alignment.topLeft,
                   child: IconButton(
-                    icon: const Icon(Icons.chevron_left_rounded,
-                        color: Colors.white, size: 32),
+                    icon: const Icon(
+                      Icons.chevron_left_rounded,
+                      color: Colors.white,
+                      size: 32,
+                    ),
                     onPressed: () => Navigator.pop(context),
                   ),
                 ),
               ),
 
-              // Center: title + concentric counter
               SafeArea(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -692,15 +979,34 @@ class _GenerateReportScreenState extends State<GenerateReportScreen>
                 ),
               ),
 
-              // Bottom-left: 5s animated progress pill
               Positioned(
                 left: 16 * s,
                 bottom: 16 * s + bottom,
-                child: _BottomLeftProgressPill(
-                  scale: s,
-                  progress: _progress, // animated 0 → 1 in 5s
-                ),
+                child: _BottomLeftProgressPill(scale: s, progress: _progress),
               ),
+
+              if (state.fourWheelerStatus == FourWheelerStatus.failure &&
+                  (state.fourWheelerError?.isNotEmpty ?? false))
+                Positioned(
+                  left: 16 * s,
+                  right: 16 * s,
+                  top: 110 * s,
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(.85),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      state.fourWheelerError!,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontFamily: 'ClashGrotesk',
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
             ],
           );
         },
@@ -708,10 +1014,9 @@ class _GenerateReportScreenState extends State<GenerateReportScreen>
     );
   }
 
-  // Concentric translucent circles + big number like the mock
   Widget _concentricCounter({required double s, required String valueText}) {
-    final base = 260.0 * s; // outermost diameter
-    final rings = <double>[1.0, .76, .55]; // relative sizes
+    final base = 260.0 * s;
+    final rings = <double>[1.0, .76, .55];
 
     return SizedBox(
       width: base,
@@ -719,7 +1024,6 @@ class _GenerateReportScreenState extends State<GenerateReportScreen>
       child: Stack(
         alignment: Alignment.center,
         children: [
-          // Soft blue layered circles
           for (final r in rings)
             Container(
               width: base * r,
@@ -729,7 +1033,6 @@ class _GenerateReportScreenState extends State<GenerateReportScreen>
                 color: const Color(0xFF3B82F6).withOpacity(0.20 * r + .05),
               ),
             ),
-          // Inner solid circle
           Container(
             width: base * .42,
             height: base * .42,
@@ -738,7 +1041,6 @@ class _GenerateReportScreenState extends State<GenerateReportScreen>
               color: Color(0xFF2563EB),
             ),
           ),
-          // Big white number
           Text(
             valueText,
             style: TextStyle(
@@ -755,46 +1057,44 @@ class _GenerateReportScreenState extends State<GenerateReportScreen>
   }
 }
 
-/// Animated 5s fill pill used at the bottom-left
 class _BottomLeftProgressPill extends StatelessWidget {
-  const _BottomLeftProgressPill({
-    required this.scale,
-    required this.progress,
-  });
+  const _BottomLeftProgressPill({required this.scale, required this.progress});
 
   final double scale;
   final Animation<double> progress;
 
   @override
   Widget build(BuildContext context) {
-    final totalW = MediaQuery.of(context).size.width *0.95;
-    final h = 10 * scale;
-
-    return Container(
-      width: totalW,
-      height: h,
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(.25), // track
-        borderRadius: BorderRadius.circular(12 * scale),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: AnimatedBuilder(
-        animation: progress,
-        builder: (_, __) {
-          final w = (totalW * progress.value).clamp(0.0, totalW);
-          return Align(
-            alignment: Alignment.centerLeft,
-            child: Container(
-              width: w,
-              height: h,
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFF4F7BFF), Color(0xFFA270FF)],
+    return SizedBox(
+      width: 160 * scale,
+      height: 46 * scale,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(999),
+        child: Stack(
+          children: [
+            Container(color: Colors.white.withOpacity(.22)),
+            AnimatedBuilder(
+              animation: progress,
+              builder: (_, __) {
+                return FractionallySizedBox(
+                  widthFactor: progress.value.clamp(0, 1),
+                  child: Container(color: Colors.white.withOpacity(.35)),
+                );
+              },
+            ),
+            Center(
+              child: Text(
+                'Generating…',
+                style: TextStyle(
+                  fontFamily: 'ClashGrotesk',
+                  color: Colors.white,
+                  fontSize: 14 * scale,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
             ),
-          );
-        },
+          ],
+        ),
       ),
     );
   }
