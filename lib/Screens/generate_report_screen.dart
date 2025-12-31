@@ -10,7 +10,421 @@ import 'package:ios_tiretest_ai/Models/tyre_upload_response.dart' as m;
 
 
 
+class InspectionResultScreen extends StatelessWidget {
+  const InspectionResultScreen({
+    super.key,
+    required this.frontLeftPath,
+    required this.frontRightPath,
+    required this.backLeftPath,
+    required this.backRightPath,
+    required this.vehicleId,
+    required this.userId,
+    required this.token,
+    this.response,
 
+    // ✅ NEW: pass raw 4-wheeler API json here (from Dio response)
+    this.fourWheelerRaw,
+  });
+
+  final String frontLeftPath;
+  final String frontRightPath;
+  final String backLeftPath;
+  final String backRightPath;
+
+  final String vehicleId;
+  final String userId;
+  final String token;
+
+  final dynamic response; // keep your type if you want: m.TyreUploadResponse?
+  final Map<String, dynamic>? fourWheelerRaw;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = MediaQuery.sizeOf(context).width / 393;
+
+    // ✅ 1) prefer raw api json, fallback to response?.toJson(), fallback to response?.data
+    final raw = fourWheelerRaw ?? _safeToJson(response) ?? {};
+    final data = _tryReadMap(raw, ['data', 'result', 'payload']) ??
+        _safeToJson((response as dynamic?)?.data) ??
+        {};
+
+    // ✅ URL extraction stays same
+    final flUrl = _pickStringFromData(data, [
+      'frontLeftWheelUrl',
+      'front_left_wheel_url',
+      'front_left_url',
+      'front_left',
+      'frontLeftUrl',
+      'front_left_image',
+      'front_left_image_url',
+    ]);
+
+    final frUrl = _pickStringFromData(data, [
+      'frontRightWheelUrl',
+      'front_right_wheel_url',
+      'front_right_url',
+      'front_right',
+      'frontRightUrl',
+      'front_right_image',
+      'front_right_image_url',
+    ]);
+
+    final blUrl = _pickStringFromData(data, [
+      'backLeftWheelUrl',
+      'back_left_wheel_url',
+      'back_left_url',
+      'back_left',
+      'backLeftUrl',
+      'back_left_image',
+      'back_left_image_url',
+    ]);
+
+    final brUrl = _pickStringFromData(data, [
+      'backRightWheelUrl',
+      'back_right_wheel_url',
+      'back_right_url',
+      'back_right',
+      'backRightUrl',
+      'back_right_image',
+      'back_right_image_url',
+    ]);
+
+    final flImg = _imgProvider(localPath: frontLeftPath, url: flUrl);
+    final frImg = _imgProvider(localPath: frontRightPath, url: frUrl);
+    final blImg = _imgProvider(localPath: backLeftPath, url: blUrl);
+    final brImg = _imgProvider(localPath: backRightPath, url: brUrl);
+
+    // ✅ 2) Extract TEXT from raw/data using deep search
+    // You can add more keys here if backend uses different names
+    final treadDepth = _deepPickString(raw, [
+          'treadDepth',
+          'tread_depth',
+          'tread.depth',
+          'data.treadDepth',
+          'data.tread_depth',
+        ]) ??
+        '—';
+
+    final treadStatus = _deepPickString(raw, [
+          'treadStatus',
+          'tread_status',
+          'tread.status',
+          'data.treadStatus',
+          'data.tread_status',
+        ]) ??
+        '—';
+
+    final tyrePressure = _deepPickString(raw, [
+          'tyrePressure',
+          'tirePressure',
+          'pressure',
+          'data.tyrePressure',
+          'data.pressure',
+        ]) ??
+        '—';
+
+    final tyrePressureStatus = _deepPickString(raw, [
+          'tyrePressureStatus',
+          'tirePressureStatus',
+          'pressure_status',
+          'data.tyrePressureStatus',
+          'data.pressure_status',
+        ]) ??
+        '—';
+
+    final damageCheck = _deepPickString(raw, [
+          'damageCheck',
+          'damage_check',
+          'damage',
+          'data.damageCheck',
+        ]) ??
+        '—';
+
+    final damageStatus = _deepPickString(raw, [
+          'damageStatus',
+          'damage_status',
+          'data.damageStatus',
+        ]) ??
+        '—';
+
+    final summary =
+        _deepPickString(raw, ['message', 'summary', 'reportSummary', 'report_summary']) ??
+            'Report generated.';
+
+    // ✅ 3) Show FULL json string (not only response.toJson)
+    final prettyJson = const JsonEncoder.withIndent('  ').convert(raw.isEmpty ? data : raw);
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF3F2F8),
+      appBar: AppBar(
+        elevation: 0,
+        backgroundColor: Colors.white,
+        scrolledUnderElevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded,
+              size: 22, color: Colors.black),
+          onPressed: () => Navigator.pop(context),
+        ),
+        centerTitle: true,
+        title: Text(
+          'Inspection Report',
+          style: TextStyle(
+            fontFamily: 'ClashGrotesk',
+            fontSize: 20 * s,
+            fontWeight: FontWeight.w800,
+            color: Colors.black,
+          ),
+        ),
+      ),
+      body: ListView(
+        padding: EdgeInsets.fromLTRB(16 * s, 10 * s, 16 * s, 28 * s),
+        children: [
+          _PhotosGrid4(s: s, fl: flImg, fr: frImg, bl: blImg, br: brImg),
+          SizedBox(height: 18 * s),
+
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 11,
+                child: _BigMetricCard(
+                  s: s,
+                  iconBg: const LinearGradient(
+                    colors: [Color(0xFF4F7BFF), Color(0xFFA6C8FF)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  icon: Icons.sync,
+                  title: 'Tread Depth',
+                  value: 'Value: $treadDepth',
+                  status: 'Status: $treadStatus',
+                ),
+              ),
+              SizedBox(width: 14 * s),
+              Expanded(
+                flex: 10,
+                child: Column(
+                  children: [
+                    _SmallMetricCard(
+                      s: s,
+                      title: 'Tyre Pressure',
+                      value: 'Value: $tyrePressure',
+                      status: 'Status: $tyrePressureStatus',
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF4F7BFF), Color(0xFF80B3FF)],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                      ),
+                    ),
+                    SizedBox(height: 12 * s),
+                    _SmallMetricCard(
+                      s: s,
+                      title: 'Damage Check',
+                      value: 'Value: $damageCheck',
+                      status: 'Status: $damageStatus',
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF69A3FF), Color(0xFF9C7FFF)],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 18 * s),
+
+          _ReportSummaryCard(s: s, title: 'Report Summary:', summary: summary),
+          SizedBox(height: 18 * s),
+
+          _ApiResponseCard(
+            s: s,
+            title: 'Four-wheeler API Response (Full)',
+            jsonText: prettyJson,
+          ),
+          SizedBox(height: 18 * s),
+
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Color(0xFFB8C1D9)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16 * s),
+                    ),
+                    padding: EdgeInsets.symmetric(vertical: 14 * s),
+                    backgroundColor: Colors.white,
+                  ),
+                  icon: const Icon(Icons.share_rounded, color: Color(0xFF4F7BFF)),
+                  label: Text(
+                    'Share Report',
+                    style: TextStyle(
+                      fontFamily: 'ClashGrotesk',
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF4F7BFF),
+                    ),
+                  ),
+                  onPressed: () => _toast(context, 'Share pressed'),
+                ),
+              ),
+              SizedBox(width: 12 * s),
+              Expanded(
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF4F7BFF),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16 * s),
+                    ),
+                    padding: EdgeInsets.symmetric(vertical: 15 * s),
+                    elevation: 4,
+                  ),
+                  icon: const Icon(Icons.download_rounded),
+                  label: Text(
+                    'Download PDF',
+                    style: TextStyle(
+                      fontFamily: 'ClashGrotesk',
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14 * s,
+                    ),
+                  ),
+                  onPressed: () => _toast(context, 'Download pressed'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ==========================
+  // ✅ helpers
+  // ==========================
+
+  ImageProvider _imgProvider({required String localPath, String? url}) {
+    final u = (url ?? '').trim();
+    if (u.isNotEmpty && (u.startsWith('http://') || u.startsWith('https://'))) {
+      return NetworkImage(u);
+    }
+    return FileImage(File(localPath));
+  }
+
+  Map<String, dynamic>? _safeToJson(dynamic obj) {
+    if (obj == null) return null;
+    if (obj is Map<String, dynamic>) return obj;
+    if (obj is Map) return Map<String, dynamic>.from(obj);
+
+    try {
+      final j = (obj as dynamic).toJson();
+      if (j is Map<String, dynamic>) return j;
+      if (j is Map) return Map<String, dynamic>.from(j);
+    } catch (_) {}
+
+    try {
+      final encoded = jsonEncode(obj);
+      final decoded = jsonDecode(encoded);
+      if (decoded is Map<String, dynamic>) return decoded;
+      if (decoded is Map) return Map<String, dynamic>.from(decoded);
+    } catch (_) {}
+
+    return null;
+  }
+
+  Map<String, dynamic>? _tryReadMap(Map<String, dynamic> root, List<String> keys) {
+    for (final k in keys) {
+      final v = root[k];
+      if (v is Map<String, dynamic>) return v;
+      if (v is Map) return Map<String, dynamic>.from(v);
+    }
+    return null;
+  }
+
+  String? _pickStringFromData(dynamic data, List<String> keys) {
+    if (data == null) return null;
+
+    Map<String, dynamic>? map;
+    if (data is Map) {
+      map = Map<String, dynamic>.from(data as Map);
+    } else {
+      map = _safeToJson(data);
+    }
+    if (map == null) return null;
+
+    for (final k in keys) {
+      final v = map[k];
+      if (v == null) continue;
+      final s = v.toString().trim();
+      if (s.isNotEmpty && s != 'null') return s;
+    }
+    return null;
+  }
+
+  // ✅ Deep search: supports keys like "data.treadDepth" and will also search any nested maps/lists
+  String? _deepPickString(Map<String, dynamic> root, List<String> keys) {
+    // 1) dot-path exact
+    for (final k in keys) {
+      final v = _readByPath(root, k);
+      final s = _asNonEmptyString(v);
+      if (s != null) return s;
+    }
+
+    // 2) fallback: search anywhere (by key name)
+    for (final k in keys) {
+      final keyName = k.contains('.') ? k.split('.').last : k;
+      final v = _findKeyAnywhere(root, keyName);
+      final s = _asNonEmptyString(v);
+      if (s != null) return s;
+    }
+
+    return null;
+  }
+
+  dynamic _readByPath(Map<String, dynamic> root, String path) {
+    if (!path.contains('.')) return root[path];
+
+    dynamic cur = root;
+    for (final part in path.split('.')) {
+      if (cur is Map) {
+        cur = cur[part];
+      } else {
+        return null;
+      }
+    }
+    return cur;
+  }
+
+  dynamic _findKeyAnywhere(dynamic node, String key) {
+    if (node is Map) {
+      if (node.containsKey(key)) return node[key];
+      for (final v in node.values) {
+        final found = _findKeyAnywhere(v, key);
+        if (found != null) return found;
+      }
+    } else if (node is List) {
+      for (final v in node) {
+        final found = _findKeyAnywhere(v, key);
+        if (found != null) return found;
+      }
+    }
+    return null;
+  }
+
+  String? _asNonEmptyString(dynamic v) {
+    if (v == null) return null;
+    final s = v.toString().trim();
+    if (s.isEmpty || s == 'null') return null;
+    return s;
+  }
+
+  void _toast(BuildContext ctx, String msg) =>
+      ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(msg)));
+}
+
+
+/*
 class InspectionResultScreen extends StatelessWidget {
   const InspectionResultScreen({
     super.key,
@@ -251,7 +665,7 @@ class InspectionResultScreen extends StatelessWidget {
         ],
       ),
     );
-  }
+  }*/
 
   ImageProvider _imgProvider({required String localPath, String? url}) {
     final u = (url ?? '').trim();
@@ -302,7 +716,7 @@ class InspectionResultScreen extends StatelessWidget {
 
   void _toast(BuildContext ctx, String msg) =>
       ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(msg)));
-}
+
 
 class _PhotosGrid4 extends StatelessWidget {
   const _PhotosGrid4({

@@ -6,13 +6,6 @@ import 'dart:async';
 import 'generate_report_screen.dart';
 
 
-
-import 'package:flutter/material.dart';
-import 'package:camera/camera.dart';
-
-import 'generate_report_screen.dart'; // adjust path
-
-
 enum TyrePos { frontLeft, frontRight, backLeft, backRight }
 
 class CarTyresScannerScreen extends StatefulWidget {
