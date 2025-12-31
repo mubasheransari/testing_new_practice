@@ -38,7 +38,7 @@
 
     <application
         android:name="${applicationName}"
-        android:label="ios_tiretest_ai"
+        android:label="Tiretest.ai"
         android:icon="@mipmap/launcher_icon"
         android:enableOnBackInvokedCallback="true">
 
@@ -61,6 +61,9 @@
             <meta-data
                 android:name="io.flutter.embedding.android.NormalTheme"
                 android:resource="@style/NormalTheme" />
+            <meta-data
+                android:name="io.flutter.embedding.android.EnableImpeller"
+                android:value="false" />    
 
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

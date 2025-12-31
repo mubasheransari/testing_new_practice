@@ -12,11 +12,13 @@ import 'package:mime/mime.dart';
 import 'package:ios_tiretest_ai/Models/tyre_upload_request.dart';
 import 'package:ios_tiretest_ai/Models/tyre_upload_response.dart';
 import 'package:ios_tiretest_ai/Models/user_profile.dart';
-
+import 'package:dio/dio.dart';
+import 'package:path/path.dart' as p;
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 
 
 class Failure {
-  final String code;       
+  final String code;
   final String message;
   final int? statusCode;
   const Failure({required this.code, required this.message, this.statusCode});
@@ -40,7 +42,7 @@ abstract class AuthRepository {
   Future<String?> getSavedToken();
   Future<void> clearToken();
   Future<Result<TyreUploadResponse>> uploadTwoWheeler(TyreUploadRequest req);
-   Future<Result<VehiclePreferencesModel>> addVehiclePreferences({
+  Future<Result<VehiclePreferencesModel>> addVehiclePreferences({
     required String vehiclePreference,
     required String brandName,
     required String modelName,
@@ -55,7 +57,7 @@ abstract class AuthRepository {
 
 class AuthRepositoryHttp implements AuthRepository {
   AuthRepositoryHttp({
-    this.timeout = const Duration(seconds: 60),
+    this.timeout = const Duration(seconds: 200),
     TokenStore? tokenStore,
   }) : _tokenStore = tokenStore ?? TokenStore();
 
@@ -84,7 +86,6 @@ class AuthRepositoryHttp implements AuthRepository {
     return Failure(code: 'server', message: msg, statusCode: res.statusCode);
   }
 
-
   @override
   Future<void> saveToken(String token) => _tokenStore.save(token);
 
@@ -94,119 +95,243 @@ class AuthRepositoryHttp implements AuthRepository {
   @override
   Future<void> clearToken() => _tokenStore.clear();
 
+  // ✅ FIXED: client.send + timeout + always close
 
   @override
-Future<Result<TyreUploadResponse>> uploadFourWheeler(FourWheelerUploadRequest req) async {
-  final uri = Uri.parse(ApiConfig.fourWheelerUrl);
-  final request = http.MultipartRequest('POST', uri);
-
-  // Headers (same style)
+Future<Result<TyreUploadResponse>> uploadFourWheeler(
+  FourWheelerUploadRequest req,
+) async {
+  final url = ApiConfig.fourWheelerUrl; // 'http://54.162.208.215/app/tyre/four_wheeler_upload/'
   final masked = req.token.length > 9
       ? '${req.token.substring(0, 4)}…${req.token.substring(req.token.length - 4)}'
       : '***';
 
-  request.headers.addAll({
-    HttpHeaders.authorizationHeader: 'Bearer ${req.token}',
-    HttpHeaders.acceptHeader: 'application/json',
-    // DO NOT set content-type manually for MultipartRequest
-  });
-
-  // Fields (match your UI code / backend keys)
+  // ✅ sanitize fields
   final vinValue = req.vin.trim().isEmpty ? "UNKNOWN" : req.vin.trim();
-  final vehicleTypeValue = req.vehicleType.trim().isEmpty ? "Car" : req.vehicleType.trim();
+  final vehicleTypeValue =
+      req.vehicleType.trim().isEmpty ? "car" : req.vehicleType.trim();
 
-  request.fields.addAll({
-    'user_id': req.userId,
-    'vehicle_id': req.vehicleId,
-    'vehicle_type': vehicleTypeValue,
+  // ✅ log sizes (before compression)
+  try {
+    final paths = [
+      req.frontLeftPath,
+      req.frontRightPath,
+      req.backLeftPath,
+      req.backRightPath,
+    ];
 
-    // IMPORTANT:
-    // In your OLD UI you were sending 'vin': "" (blank).
-    // Backend said it requires VIN, so we send vinValue.
-    'vin': vinValue,
-
-    'front_left_tyre_id': req.frontLeftTyreId.trim(),
-    'front_right_tyre_id': req.frontRightTyreId.trim(),
-    'back_left_tyre_id': req.backLeftTyreId.trim(),
-    'back_right_tyre_id': req.backRightTyreId.trim(),
-  });
-
-  // Files helper
-  Future<http.MultipartFile> _file(String field, String path) async {
-    final mime = lookupMimeType(path) ?? 'image/jpeg';
-    final media = MediaType.parse(mime);
-    return http.MultipartFile.fromPath(field, path, contentType: media);
+    int total = 0;
+    for (final path in paths) {
+      final f = File(path);
+      if (!await f.exists()) {
+        return Result.fail(Failure(
+          code: 'file',
+          message: 'File not found: $path',
+        ));
+      }
+      final bytes = await f.length();
+      total += bytes;
+      // ignore: avoid_print
+      print('FILE ${p.basename(path)}: ${(bytes / 1024 / 1024).toStringAsFixed(2)} MB');
+    }
+    // ignore: avoid_print
+    print('TOTAL UPLOAD (RAW): ${(total / 1024 / 1024).toStringAsFixed(2)} MB');
+  } catch (_) {
+    // ignore logging failures
   }
 
-  request.files.addAll([
-    await _file('front_left', req.frontLeftPath),
-    await _file('front_right', req.frontRightPath),
-    await _file('back_left', req.backLeftPath),
-    await _file('back_right', req.backRightPath),
-  ]);
+  // ✅ compress images (recommended)
+  // Set enabled=false if you want to test without compression
+  const bool enableCompression = true;
+  Future<File> _maybeCompress(String inputPath) async {
+  if (!enableCompression) return File(inputPath);
+
+  final inFile = File(inputPath);
+
+  final outPath = p.join(
+    inFile.parent.path,
+    'cmp_${DateTime.now().millisecondsSinceEpoch}_${p.basename(inputPath)}',
+  );
+
+  final XFile? outXFile = await FlutterImageCompress.compressAndGetFile(
+    inputPath,
+    outPath,
+    quality: 75,
+    minWidth: 1080,
+    keepExif: false,
+  );
+
+  // ✅ If compression worked, return as File
+  if (outXFile != null && outXFile.path.isNotEmpty) {
+    return File(outXFile.path);
+  }
+
+  return inFile;
+}
 
   try {
-    // Logs (same style)
+    final fl = await _maybeCompress(req.frontLeftPath);
+    final fr = await _maybeCompress(req.frontRightPath);
+    final bl = await _maybeCompress(req.backLeftPath);
+    final br = await _maybeCompress(req.backRightPath);
+
+    // ✅ log sizes after compression
+    try {
+      final files = [fl, fr, bl, br];
+      int total = 0;
+      for (final f in files) {
+        final bytes = await f.length();
+        total += bytes;
+        // ignore: avoid_print
+        print('CMP FILE ${p.basename(f.path)}: ${(bytes / 1024 / 1024).toStringAsFixed(2)} MB');
+      }
+      // ignore: avoid_print
+      print('TOTAL UPLOAD (COMPRESSED): ${(total / 1024 / 1024).toStringAsFixed(2)} MB');
+    } catch (_) {}
+
+    // ✅ Dio setup with separate timeouts
+    final dio = Dio(
+      BaseOptions(
+        // IMPORTANT: your URL already has full path, keep baseUrl empty
+        headers: {
+          HttpHeaders.authorizationHeader: 'Bearer ${req.token}',
+          HttpHeaders.acceptHeader: 'application/json',
+        },
+
+        validateStatus: (_) => true,
+
+        // ✅ Backend sometimes returns HTML on errors; keep response as plain text.
+        responseType: ResponseType.plain,
+
+        connectTimeout: const Duration(seconds: 20),
+        sendTimeout: const Duration(seconds: 200),
+        receiveTimeout: const Duration(seconds: 200),
+
+        // keep follow redirects default
+      ),
+    );
+
+    // ✅ build multipart form
+    final form = FormData.fromMap({
+      'user_id': req.userId.trim(),
+      'vehicle_id': req.vehicleId.trim(),
+      'vehicle_type': vehicleTypeValue,
+      'vin': vinValue,
+      'front_left_tyre_id': req.frontLeftTyreId.trim(),
+      'front_right_tyre_id': req.frontRightTyreId.trim(),
+      'back_left_tyre_id': req.backLeftTyreId.trim(),
+      'back_right_tyre_id': req.backRightTyreId.trim(),
+
+      // file fields must match backend
+      'front_left': await MultipartFile.fromFile(fl.path, filename: p.basename(fl.path)),
+      'front_right': await MultipartFile.fromFile(fr.path, filename: p.basename(fr.path)),
+      'back_left': await MultipartFile.fromFile(bl.path, filename: p.basename(bl.path)),
+      'back_right': await MultipartFile.fromFile(br.path, filename: p.basename(br.path)),
+    });
+
     // ignore: avoid_print
-    print('==[UPLOAD-4W]=> POST ${ApiConfig.fourWheelerUrl}');
+    print('==[UPLOAD-4W]=> POST $url');
     // ignore: avoid_print
     print('Headers: {Authorization: Bearer $masked, Accept: application/json}');
     // ignore: avoid_print
-    print('Fields: ${request.fields}');
+    print('Fields: {user_id:${req.userId}, vehicle_id:${req.vehicleId}, vehicle_type:$vehicleTypeValue, vin:$vinValue, '
+        'front_left_tyre_id:${req.frontLeftTyreId}, front_right_tyre_id:${req.frontRightTyreId}, '
+        'back_left_tyre_id:${req.backLeftTyreId}, back_right_tyre_id:${req.backRightTyreId}}');
     // ignore: avoid_print
-    print('Files: FL=${req.frontLeftPath} | FR=${req.frontRightPath} | BL=${req.backLeftPath} | BR=${req.backRightPath}');
+    print('Files: FL=${fl.path} | FR=${fr.path} | BL=${bl.path} | BR=${br.path}');
+    // ignore: avoid_print
+    print('⏳ Sending... sendTimeout=200s receiveTimeout=200s');
 
-    final streamed = await request.send().timeout(timeout);
-    final res = await http.Response.fromStream(streamed);
+    final res = await dio.post(
+      url,
+      data: form,
+      onSendProgress: (sent, total) {
+        if (total <= 0) return;
+        final pct = (sent / total) * 100;
+        // ignore: avoid_print
+        print('⬆️ Upload: ${pct.toStringAsFixed(1)}% ($sent/$total bytes)');
+      },
+    );
 
     // ignore: avoid_print
     print('<= [UPLOAD-4W] ${res.statusCode}');
     // ignore: avoid_print
-    print('<= Body: ${res.body}');
+    print('<= Body: ${res.data}');
 
-    // Success: 200 or 201 (your UI accepted both)
-    if (res.statusCode == 200 || res.statusCode == 201) {
-      final Map<String, dynamic> parsed = jsonDecode(res.body);
+    final status = res.statusCode ?? 0;
+
+    if (status == 200 || status == 201) {
+      final data = res.data;
+
+      // Dio may return Map already, or string
+      Map<String, dynamic> parsed;
+      if (data is Map<String, dynamic>) {
+        parsed = data;
+      } else if (data is String) {
+        parsed = jsonDecode(data) as Map<String, dynamic>;
+      } else {
+        return Result.fail(const Failure(code: 'parse', message: 'Invalid response format'));
+      }
+
       final resp = TyreUploadResponse.fromJson(parsed);
       return Result.ok(resp);
     }
 
-    // Common backend error parsing (message/error/detail)
-    String msg = 'Server error (${res.statusCode})';
+    // handle non-200
+    String msg = 'Server error ($status)';
     try {
-      final j = jsonDecode(res.body);
-      if (j is Map) {
-        if (j['message'] != null) msg = j['message'].toString();
-        else if (j['error'] != null) msg = j['error'].toString();
-        else if (j['detail'] != null) msg = j['detail'].toString();
+      final data = res.data;
+      if (data is Map) {
+        if (data['message'] != null) msg = data['message'].toString();
+        else if (data['error'] != null) msg = data['error'].toString();
+        else if (data['detail'] != null) msg = data['detail'].toString();
+      } else if (data is String && data.trim().isNotEmpty) {
+        msg = data.length > 200 ? data.substring(0, 200) : data;
+      }
+    } catch (_) {}
+
+    return Result.fail(Failure(code: 'server', message: msg, statusCode: status));
+  } on DioException catch (e) {
+    // ✅ best error reporting
+    if (e.type == DioExceptionType.connectionTimeout ||
+        e.type == DioExceptionType.sendTimeout ||
+        e.type == DioExceptionType.receiveTimeout) {
+      // ignore: avoid_print
+      print('⏱️ [UPLOAD-4W] TIMEOUT: ${e.type}  message=${e.message}');
+      return Result.fail(const Failure(code: 'timeout', message: 'Request timed out'));
+    }
+
+    if (e.type == DioExceptionType.connectionError) {
+      return Result.fail(const Failure(code: 'network', message: 'Network error / server unreachable'));
+    }
+
+    // server returned error response
+    final status = e.response?.statusCode;
+    final data = e.response?.data;
+
+    String msg = 'Request failed';
+    try {
+      if (data is Map) {
+        if (data['message'] != null) msg = data['message'].toString();
+        else if (data['error'] != null) msg = data['error'].toString();
+        else if (data['detail'] != null) msg = data['detail'].toString();
+        else msg = data.toString();
+      } else if (data is String && data.trim().isNotEmpty) {
+        msg = data.length > 200 ? data.substring(0, 200) : data;
+      } else if (e.message != null) {
+        msg = e.message!;
       }
     } catch (_) {
-      // fallback plain/html text
-      if (res.body.trim().isNotEmpty) {
-        msg = res.body.length > 200 ? res.body.substring(0, 200) : res.body;
-      }
+      msg = e.message ?? msg;
     }
 
-    // Explicit 404
-    if (res.statusCode == 404) {
-      return Result.fail(Failure(code: '404', message: msg, statusCode: 404));
-    }
-
-    // Explicit 500
-    if (res.statusCode == 500) {
-      return Result.fail(Failure(code: 'server', message: msg, statusCode: 500));
-    }
-
-    // Other non-200
-    return Result.fail(Failure(code: 'server', message: msg, statusCode: res.statusCode));
-  } on SocketException {
-    return Result.fail(const Failure(code: 'network', message: 'No internet connection'));
-  } on TimeoutException {
-    return Result.fail(const Failure(code: 'timeout', message: 'Request timed out'));
+    print('❌ [UPLOAD-4W] DioException status=$status data=$data message=${e.message}');
+    return Result.fail(Failure(code: 'server', message: msg, statusCode: status));
   } catch (e) {
     return Result.fail(Failure(code: 'unknown', message: e.toString()));
   }
 }
+
 
 
   @override
@@ -219,14 +344,12 @@ Future<Result<TyreUploadResponse>> uploadFourWheeler(FourWheelerUploadRequest re
           .timeout(timeout);
 
       if (res.statusCode >= 200 && res.statusCode < 300) {
-        // Parse typed response
         final parsed = jsonDecode(res.body);
         if (parsed is! Map<String, dynamic>) {
           return Result.fail(const Failure(code: 'parse', message: 'Invalid response format'));
         }
         final resp = LoginResponse.fromJson(parsed);
 
-        // Try to extract token directly from raw JSON (covers various backend shapes)
         final tok = _extractTokenFromRaw(parsed);
         if (tok != null && tok.isNotEmpty) {
           await saveToken(tok);
@@ -251,7 +374,6 @@ Future<Result<TyreUploadResponse>> uploadFourWheeler(FourWheelerUploadRequest re
     }
   }
 
-  /// Best-effort extraction for access token; adjust keys to your real payload.
   String? _extractTokenFromRaw(Map<String, dynamic> raw) {
     if (raw['token'] is String) return raw['token'] as String;
     if (raw['access_token'] is String) return raw['access_token'] as String;
@@ -266,7 +388,6 @@ Future<Result<TyreUploadResponse>> uploadFourWheeler(FourWheelerUploadRequest re
     return null;
   }
 
-  // -------------------- SIGNUP --------------------
   @override
   Future<Result<SignupResponse>> signup(SignupRequest req) async {
     final uri = Uri.parse(ApiConfig.signup);
@@ -301,12 +422,9 @@ Future<Result<TyreUploadResponse>> uploadFourWheeler(FourWheelerUploadRequest re
     }
   }
 
-  // -------------------- PROFILE (GET with Bearer) --------------------
   @override
   Future<Result<UserProfile>> fetchProfile({String? token}) async {
     final tok = token ?? await getSavedToken();
-    print("GET SAVED TOKEN FROM PROFILE $tok");
-      print("GET SAVED TOKEN FROM PROFILE $tok");
     if (tok == null || tok.isEmpty) {
       return Result.fail(const Failure(code: 'validation', message: 'No token available'));
     }
@@ -346,221 +464,144 @@ Future<Result<TyreUploadResponse>> uploadFourWheeler(FourWheelerUploadRequest re
     }
   }
 
- // AuthRepositoryHttp.dart (top of file or near other endpoints)
+  @override
+  Future<Result<TyreUploadResponse>> uploadTwoWheeler(TyreUploadRequest req) async {
+    final uri = Uri.parse(_twoWheelerUrl);
+    final request = http.MultipartRequest('POST', uri);
 
+    final masked = req.token.length > 9
+        ? '${req.token.substring(0, 4)}…${req.token.substring(req.token.length - 4)}'
+        : '***';
 
-@override
-Future<Result<TyreUploadResponse>> uploadTwoWheeler(TyreUploadRequest req) async {
-  final uri = Uri.parse(_twoWheelerUrl);
-  final request = http.MultipartRequest('POST', uri);
+    request.headers.addAll({
+      HttpHeaders.authorizationHeader: 'Bearer ${req.token}',
+      HttpHeaders.acceptHeader: 'application/json',
+    });
 
-  // Headers
-  final masked = req.token.length > 9
-      ? '${req.token.substring(0, 4)}…${req.token.substring(req.token.length - 4)}'
-      : '***';
-  request.headers.addAll({
-    HttpHeaders.authorizationHeader: 'Bearer ${req.token}',
-    HttpHeaders.acceptHeader: 'application/json',
-    // DO NOT set content-type manually for MultipartRequest
-  });
+    request.fields.addAll({
+      'user_id': req.userId,
+      'vehicle_type': req.vehicleType,
+      'vehicle_id': req.vehicleId,
+      if (req.vin != null && req.vin!.trim().isNotEmpty) 'vin': req.vin!.trim(),
+    });
 
-  // Fields (exactly per API)
-  request.fields.addAll({
-    'user_id': req.userId,
-    'vehicle_type': req.vehicleType, // "bike"
-    'vehicle_id': req.vehicleId,
-    if (req.vin != null && req.vin!.trim().isNotEmpty) 'vin': req.vin!.trim(),
-  });
-
-  // Files
-  Future<http.MultipartFile> _file(String field, String path) async {
-    final mime = lookupMimeType(path) ?? 'image/jpeg';
-    final media = MediaType.parse(mime);
-    return http.MultipartFile.fromPath(field, path, contentType: media);
-  }
-  request.files.addAll([
-    await _file('front', req.frontPath),
-    await _file('back',  req.backPath),
-  ]);
-
-  try {
-    // Helpful logs
-    // ignore: avoid_print
-    print('==[UPLOAD-2W]=> POST $_twoWheelerUrl');
-    // ignore: avoid_print
-    print('Headers: {Authorization: Bearer $masked, Accept: application/json}');
-    // ignore: avoid_print
-    print('Fields: ${request.fields}');
-    // ignore: avoid_print
-    print('Files: front=${req.frontPath} | back=${req.backPath}');
-
-    final streamed = await request.send().timeout(timeout);
-    final res = await http.Response.fromStream(streamed);
-
-    // ignore: avoid_print
-    print('<= [UPLOAD-2W] ${res.statusCode}');
-    // ignore: avoid_print
-    print('<= Body: ${res.body}');
-
-    if (res.statusCode == 200) {
-      final Map<String, dynamic> parsed = jsonDecode(res.body);
-      final resp = TyreUploadResponse.fromJson(parsed);
-      return Result.ok(resp);
+    Future<http.MultipartFile> _file(String field, String path) async {
+      final mime = lookupMimeType(path) ?? 'image/jpeg';
+      final media = MediaType.parse(mime);
+      return http.MultipartFile.fromPath(field, path, contentType: media);
     }
 
-    // 404: show the real backend message
-    if (res.statusCode == 404) {
-      String msg = 'Not Found (404)';
-      try {
-        final j = jsonDecode(res.body);
-        if (j is Map) {
-          if (j['message'] != null) msg = j['message'].toString();
-          else if (j['error'] != null) msg = j['error'].toString();
-          else if (j['detail'] != null) msg = j['detail'].toString();
-        }
-      } catch (_) {}
-      return Result.fail(Failure(code: '404', message: msg, statusCode: 404));
-    }
+    request.files.addAll([
+      await _file('front', req.frontPath),
+      await _file('back', req.backPath),
+    ]);
 
-    // Explicit 500 handling (your spec)
-    if (res.statusCode == 500) {
-      String msg = 'Internal Server Error';
-      try {
-        final j = jsonDecode(res.body);
-        if (j is Map && j['message'] != null) msg = j['message'].toString();
-      } catch (_) {}
-      return Result.fail(Failure(code: 'server', message: msg, statusCode: 500));
-    }
-
-    // Other non-200s
-    String msg = 'Server error (${res.statusCode})';
     try {
-      final j = jsonDecode(res.body);
-      if (j is Map && j['message'] != null) msg = j['message'].toString();
-    } catch (_) {}
-    return Result.fail(Failure(code: 'server', message: msg, statusCode: res.statusCode));
+      // ignore: avoid_print
+      print('==[UPLOAD-2W]=> POST $_twoWheelerUrl');
+      // ignore: avoid_print
+      print('Headers: {Authorization: Bearer $masked, Accept: application/json}');
+      // ignore: avoid_print
+      print('Fields: ${request.fields}');
+      // ignore: avoid_print
+      print('Files: front=${req.frontPath} | back=${req.backPath}');
 
-  } on SocketException {
-    return Result.fail(const Failure(code: 'network', message: 'No internet connection'));
-  } on TimeoutException {
-    return Result.fail(const Failure(code: 'timeout', message: 'Request timed out'));
-  } catch (e) {
-    return Result.fail(Failure(code: 'unknown', message: e.toString()));
-  }
-}
+      final streamed = await request.send().timeout(timeout);
+      final res = await http.Response.fromStream(streamed);
 
-// auth_repository_http.dart
+      // ignore: avoid_print
+      print('<= [UPLOAD-2W] ${res.statusCode}');
+      // ignore: avoid_print
+      print('<= Body: ${res.body}');
 
-@override
-Future<Result<VehiclePreferencesModel>> addVehiclePreferences({
-  required String vehiclePreference,
-  required String brandName,
-  required String modelName,
-  required String licensePlate,
-  required bool? isOwn,
-  required String tireBrand,
-  required String tireDimension,
-}) async {
-  final box = GetStorage();
-  final tok = box.read<String>("token");
-  print("JWT TOKEN $tok");
-
-  if (tok == null || tok.isEmpty) {
-    return Result.fail(const Failure(
-      code: 'validation',
-      message: 'No token available. Please login again.',
-    ));
-  }
-
-  final uri = Uri.parse(ApiConfig.vehiclePreferences);
-
-  // EXACTLY like Postman
-  final headers = <String, String>{
-    HttpHeaders.acceptHeader: 'application/json',
-    HttpHeaders.contentTypeHeader: 'application/json',
-    HttpHeaders.authorizationHeader: 'Bearer $tok',
-  };
-
-  // IMPORTANT: JSON ARRAY with ONE OBJECT
-  final bodyArray = [
-    {
-      "vehiclePreference": vehiclePreference,
-      "brandName": brandName,
-      "modelName": modelName,
-      "licensePlate": licensePlate,
-      "isOwn": isOwn, // true/false or null
-      "tireBrand": tireBrand,
-      "tireDimension": tireDimension,
-    }
-  ];
-
-  final bodyJson = jsonEncode(bodyArray);
-
-  print('== [VEHICLE-PREF] POST $uri');
-  print('Headers: $headers');
-  print('Body JSON: $bodyJson');
-
-  try {
-    final res = await http
-        .post(
-          uri,
-          headers: headers,
-          body: bodyJson,
-        )
-        .timeout(timeout);
-
-    print('<= [VEHICLE-PREF] status: ${res.statusCode}');
-    print('<= body: ${res.body}');
-
-    if (res.statusCode >= 200 && res.statusCode < 300) {
-      late final Map<String, dynamic> parsed;
-      try {
-        parsed = jsonDecode(res.body) as Map<String, dynamic>;
-      } catch (_) {
-        return Result.fail(const Failure(
-          code: 'parse',
-          message: 'Invalid response format',
-        ));
+      if (res.statusCode == 200) {
+        final Map<String, dynamic> parsed = jsonDecode(res.body);
+        final resp = TyreUploadResponse.fromJson(parsed);
+        return Result.ok(resp);
       }
 
-      // for debugging to prove backend data is present
-      print('PARSED vehicleIds: ${parsed["vehicleIds"]}');
-      print('PARSED storedData length: ${(parsed["storedData"] as List?)?.length}');
+      return Result.fail(_serverFail(res));
+    } on SocketException {
+      return Result.fail(const Failure(code: 'network', message: 'No internet connection'));
+    } on TimeoutException {
+      return Result.fail(const Failure(code: 'timeout', message: 'Request timed out'));
+    } catch (e) {
+      return Result.fail(Failure(code: 'unknown', message: e.toString()));
+    }
+  }
 
-      final model = VehiclePreferencesModel.fromJson(parsed);
-      return Result.ok(model);
+  @override
+  Future<Result<VehiclePreferencesModel>> addVehiclePreferences({
+    required String vehiclePreference,
+    required String brandName,
+    required String modelName,
+    required String licensePlate,
+    required bool? isOwn,
+    required String tireBrand,
+    required String tireDimension,
+  }) async {
+    final box = GetStorage();
+    final tok = box.read<String>("token");
+
+    if (tok == null || tok.isEmpty) {
+      return Result.fail(const Failure(
+        code: 'validation',
+        message: 'No token available. Please login again.',
+      ));
     }
 
-    return Result.fail(_serverFail(res));
-  } on SocketException {
-    return Result.fail(const Failure(
-      code: 'network',
-      message: 'No internet connection',
-    ));
-  } on TimeoutException {
-    return Result.fail(const Failure(
-      code: 'timeout',
-      message: 'Request timed out',
-    ));
-  } catch (e) {
-    return Result.fail(Failure(
-      code: 'unknown',
-      message: e.toString(),
-    ));
+    final uri = Uri.parse(ApiConfig.vehiclePreferences);
+
+    final headers = <String, String>{
+      HttpHeaders.acceptHeader: 'application/json',
+      HttpHeaders.contentTypeHeader: 'application/json',
+      HttpHeaders.authorizationHeader: 'Bearer $tok',
+    };
+
+    final bodyArray = [
+      {
+        "vehiclePreference": vehiclePreference,
+        "brandName": brandName,
+        "modelName": modelName,
+        "licensePlate": licensePlate,
+        "isOwn": isOwn,
+        "tireBrand": tireBrand,
+        "tireDimension": tireDimension,
+      }
+    ];
+
+    final bodyJson = jsonEncode(bodyArray);
+
+    try {
+      final res = await http
+          .post(uri, headers: headers, body: bodyJson)
+          .timeout(timeout);
+
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        final parsed = jsonDecode(res.body);
+        if (parsed is! Map<String, dynamic>) {
+          return Result.fail(const Failure(code: 'parse', message: 'Invalid response format'));
+        }
+        final model = VehiclePreferencesModel.fromJson(parsed);
+        return Result.ok(model);
+      }
+
+      return Result.fail(_serverFail(res));
+    } on SocketException {
+      return Result.fail(const Failure(code: 'network', message: 'No internet connection'));
+    } on TimeoutException {
+      return Result.fail(const Failure(code: 'timeout', message: 'Request timed out'));
+    } catch (e) {
+      return Result.fail(Failure(code: 'unknown', message: e.toString()));
+    }
   }
-}
-
-
 }
 
 class ApiConfig {
-  static const login  = 'http://54.162.208.215/backend/api/login';
+  static const login = 'http://54.162.208.215/backend/api/login';
   static const signup = 'http://54.162.208.215/backend/api/signup';
-  static const String _twoWheelerUrl =
-    'http://54.162.208.215/app/tyre/twowheeler/upload';
-      static const String vehiclePreferences =
+  static const String vehiclePreferences =
       'http://54.162.208.215/backend/api/addVehiclePreference';
-        static const String fourWheelerUrl =
+  static const String fourWheelerUrl =
       'http://54.162.208.215/app/tyre/four_wheeler_upload/';
 }
-
