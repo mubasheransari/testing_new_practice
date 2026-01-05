@@ -1,13 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:get_storage/get_storage.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_bloc.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_event.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_state.dart';
-import 'package:ios_tiretest_ai/models/tyre_record.dart' hide TyreRecord;
-import 'package:ios_tiretest_ai/Screens/home_screen.dart';
-import 'package:ios_tiretest_ai/Screens/location_google_maos.dart' hide BottomTab;
-
-
 import 'dart:io';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
@@ -16,36 +10,10 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:share_plus/share_plus.dart';
-
-
-
-
-import 'package:dio/dio.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path/path.dart' as p;
-
-
-
-
 import '../../models/tyre_record.dart';
 
-import 'dart:io';
-
-import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:get_storage/get_storage.dart';
-import 'package:open_filex/open_filex.dart';
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
-import 'package:share_plus/share_plus.dart';
-
-import 'package:ios_tiretest_ai/Bloc/auth_bloc.dart';
-import 'package:ios_tiretest_ai/Bloc/auth_event.dart';
-import 'package:ios_tiretest_ai/Bloc/auth_state.dart';
-import 'package:ios_tiretest_ai/models/tyre_record.dart';
 
 enum _Filter { all, today, last7, thisMonth }
 enum _VehicleTab { all, car, bike }
@@ -61,17 +29,14 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen> {
   _Filter _filter = _Filter.all;
   _VehicleTab _vehicleTab = _VehicleTab.all;
 
-  /// local "downloaded" state (recordId -> true)
   final Map<int, bool> _downloaded = {};
 
-  /// local "downloading" state (recordId -> true)
   final Map<int, bool> _downloading = {};
 
   @override
   void initState() {
     super.initState();
 
-    // ✅ SAFETY NET: if global load didn't happen, fetch once here
     final bloc = context.read<AuthBloc>();
     final state = bloc.state;
 
@@ -116,10 +81,6 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen> {
     return '${d.day} ${months[d.month - 1]}, ${d.year}  —  $hh:$mm $am';
   }
 
-  // ============================================================
-  // ✅ LOCAL PDF (NO API)
-  // ============================================================
-
   String _safeFileName(TyreRecord r) {
     final dt = r.uploadedAt.toIso8601String().replaceAll(':', '-');
     return 'tyre_report_${r.vehicleType}_${r.recordId}_$dt.pdf';
@@ -127,11 +88,9 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen> {
 
   Future<Directory> _downloadDirectory() async {
     if (Platform.isAndroid) {
-      // Try public Downloads
       final dir = Directory('/storage/emulated/0/Download');
       if (await dir.exists()) return dir;
 
-      // fallback
       return (await getExternalStorageDirectory()) ??
           await getApplicationDocumentsDirectory();
     }
@@ -141,7 +100,6 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen> {
   Future<bool> _ensureStoragePermissionIfNeeded() async {
     if (!Platform.isAndroid) return true;
 
-    // If user denies, we can still write to app folder fallback.
     final status = await Permission.storage.status;
     if (status.isGranted) return true;
 
@@ -376,7 +334,6 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen> {
       final filePath = p.join(dir.path, _safeFileName(record));
       final file = File(filePath);
 
-      // if not exists, generate it now
       if (!await file.exists()) {
         final saved = await _savePdfToDisk(record);
         setState(() => _downloaded[id] = true);
@@ -452,7 +409,6 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen> {
       body: SafeArea(
         child: BlocBuilder<AuthBloc, AuthState>(
           builder: (context, state) {
-            // ✅ pick records based on vehicle tab
             List<TyreRecord> all;
             switch (_vehicleTab) {
               case _VehicleTab.all:
@@ -606,7 +562,6 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen> {
   }
 }
 
-/* ---------------- Vehicle Tabs ---------------- */
 
 class _VehicleTabs extends StatelessWidget {
   const _VehicleTabs({
@@ -678,8 +633,6 @@ class _VehicleTabs extends StatelessWidget {
   }
 }
 
-/* ---------------- Time Filters ---------------- */
-
 class _FiltersBar extends StatelessWidget {
   const _FiltersBar({required this.s, required this.active, required this.onChanged});
   final double s;
@@ -736,7 +689,6 @@ class _FiltersBar extends StatelessWidget {
   }
 }
 
-/* ---------------- Report Card ---------------- */
 
 class _ReportCard extends StatelessWidget {
   const _ReportCard({
@@ -963,7 +915,6 @@ class _DownloadPill extends StatelessWidget {
   }
 }
 
-/* ---------------- Download dialog ---------------- */
 
 class _DownloadDialog extends StatelessWidget {
   const _DownloadDialog({required this.s, required this.onDownload, required this.onShare});
