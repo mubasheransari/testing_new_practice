@@ -1,9 +1,9 @@
 import 'package:equatable/equatable.dart';
-import 'package:ios_tiretest_ai/Models/add_verhicle_preferences_model.dart';
-import 'package:ios_tiretest_ai/Models/auth_models.dart';
-import 'package:ios_tiretest_ai/Models/tyre_record.dart';
-import 'package:ios_tiretest_ai/Models/tyre_upload_response.dart';
-import 'package:ios_tiretest_ai/Models/user_profile.dart';
+import 'package:ios_tiretest_ai/models/add_verhicle_preferences_model.dart';
+import 'package:ios_tiretest_ai/models/auth_models.dart';
+import 'package:ios_tiretest_ai/models/tyre_record.dart';
+import 'package:ios_tiretest_ai/models/tyre_upload_response.dart';
+import 'package:ios_tiretest_ai/models/user_profile.dart';
 
 
 

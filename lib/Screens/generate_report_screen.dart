@@ -6,7 +6,7 @@ import 'package:ios_tiretest_ai/Bloc/auth_event.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_state.dart';
 import 'dart:io';
 import 'dart:convert';
-import 'package:ios_tiretest_ai/Models/tyre_upload_response.dart' as m;
+import 'package:ios_tiretest_ai/models/tyre_upload_response.dart' as m;
 
 
 

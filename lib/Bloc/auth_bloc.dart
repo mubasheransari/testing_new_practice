@@ -3,11 +3,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_event.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_state.dart';
-import 'package:ios_tiretest_ai/Models/four_wheeler_uploads_request.dart';
-import 'package:ios_tiretest_ai/Models/tyre_record.dart';
-import 'package:ios_tiretest_ai/Models/tyre_upload_request.dart';
+import 'package:ios_tiretest_ai/models/four_wheeler_uploads_request.dart';
+import 'package:ios_tiretest_ai/models/tyre_record.dart';
+import 'package:ios_tiretest_ai/models/tyre_upload_request.dart';
 import 'package:ios_tiretest_ai/Repository/repository.dart';
-import '../Models/auth_models.dart';
+import '../models/auth_models.dart';
 import 'package:bloc/bloc.dart';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
