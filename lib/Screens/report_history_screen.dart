@@ -241,7 +241,7 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen> {
           pw.SizedBox(height: 6),
           pw.Text(
             'This report was generated from the inspection data already fetched in the app (no server PDF used).',
-            style: const pw.TextStyle(fontSize: 11, color: PdfColors.grey700),
+            style:  pw.TextStyle(fontSize: 11, color: PdfColors.grey700,),
           ),
         ],
       ),
@@ -493,6 +493,7 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen> {
                           child: Text(
                             state.tyreHistoryError ?? 'Failed to load history',
                             style: TextStyle(
+                              fontFamily: 'ClashGrotesk',
                               color: const Color(0xFF111827),
                               fontSize: 13 * s,
                             ),
@@ -529,6 +530,7 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen> {
                     child: Text(
                       'No reports found.',
                       style: TextStyle(
+                        fontFamily: 'ClashGrotesk',
                         color: const Color(0xFF111827),
                         fontSize: 13.5 * s,
                       ),
