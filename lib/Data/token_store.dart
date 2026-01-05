@@ -2,7 +2,7 @@ import 'package:get_storage/get_storage.dart';
 
 class TokenStore {
   static const _kToken = 'auth_token';
-  final GetStorage _box = GetStorage(); // ✅ default box
+  final GetStorage _box = GetStorage();
 
   Future<void> save(String token) async => _box.write(_kToken, token);
   Future<String?> read() async {

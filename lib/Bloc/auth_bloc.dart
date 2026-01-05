@@ -271,9 +271,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       error: null,
     ));
 
-    // =====================================================
-    // ✅ GLOBAL HISTORY LOAD (ONLY ONCE)
-    // =====================================================
     if (state.tyreHistoryStatus == TyreHistoryStatus.initial &&
         profile?.userId != null) {
       add(

@@ -1,16 +1,6 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:http/http.dart' as http;
-import 'package:http_parser/http_parser.dart';
 import 'package:ios_tiretest_ai/Screens/car_tyres_scanner_screen.dart';
-import 'package:ios_tiretest_ai/Screens/tyre_scanner_camera.dart';
-import 'package:mime/mime.dart';
-
-
 import 'dart:convert';
-
 import 'dart:async';
 
 
@@ -45,7 +35,6 @@ class FourWheelerScanScreen extends StatefulWidget {
 class _FourWheelerScanScreenState extends State<FourWheelerScanScreen> {
   String? _error;
 
-  // ✅ allow user to edit vin if needed
   late final TextEditingController _vinController;
 
   @override
@@ -92,11 +81,7 @@ class _FourWheelerScanScreenState extends State<FourWheelerScanScreen> {
     // ✅ backend requires vin key always -> send UNKNOWN if empty
     final safeVin = vinToSend.isEmpty ? "UNKNOWN" : vinToSend;
 
-    // ✅ This scanner:
-    // - opens camera once
-    // - captures 4 tyres
-    // - auto uploads
-    // - on success -> pop(result)
+  
     final result = await Navigator.of(context, rootNavigator: true).push(
       MaterialPageRoute(
         builder: (_) => CarTyresScannerScreen(
@@ -114,11 +99,7 @@ class _FourWheelerScanScreenState extends State<FourWheelerScanScreen> {
       ),
     );
 
-    // user cancelled
     if (!mounted || result == null) return;
-
-    // ✅ you can navigate here after upload success
-    // result is Map like {success:true} OR parsed json response
     try {
       final map = (result is Map) ? result : jsonDecode(result.toString());
 
@@ -127,9 +108,6 @@ class _FourWheelerScanScreenState extends State<FourWheelerScanScreen> {
           content: Text(map['message']?.toString() ?? "Upload successful"),
         ),
       );
-
-      // ✅ TODO: Navigate to your next screen here:
-      // Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => YourNextScreen(data: map)));
 
     } catch (_) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -169,7 +147,6 @@ class _FourWheelerScanScreenState extends State<FourWheelerScanScreen> {
 
             const SizedBox(height: 12),
 
-            // ✅ VIN input (optional) - but we will always send vin key
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: TextField(
