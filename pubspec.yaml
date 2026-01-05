@@ -51,6 +51,9 @@ dependencies:
   image_picker:
   dio: ^5.7.0
   flutter_image_compress: ^2.4.0
+  pdf: ^3.10.7
+  share_plus: ^7.2.2
+  intl:
 
 
 dev_dependencies:

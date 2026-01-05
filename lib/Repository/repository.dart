@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:developer';
 import 'dart:io';
 import 'package:get_storage/get_storage.dart';
 import 'package:http/http.dart' as http;
@@ -9,6 +8,7 @@ import 'package:ios_tiretest_ai/Models/add_verhicle_preferences_model.dart';
 import 'package:ios_tiretest_ai/Models/auth_models.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:ios_tiretest_ai/Models/four_wheeler_uploads_request.dart';
+import 'package:ios_tiretest_ai/Models/tyre_record.dart';
 import 'package:mime/mime.dart';
 import 'package:ios_tiretest_ai/Models/tyre_upload_request.dart';
 import 'package:ios_tiretest_ai/Models/tyre_upload_response.dart';
@@ -17,25 +17,6 @@ import 'package:dio/dio.dart';
 import 'package:path/path.dart' as p;
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 
-
-
-import 'dart:async';
-import 'dart:convert';
-import 'dart:io';
-import 'package:get_storage/get_storage.dart';
-import 'package:http/http.dart' as http;
-import 'package:ios_tiretest_ai/Data/token_store.dart';
-import 'package:ios_tiretest_ai/Models/add_verhicle_preferences_model.dart';
-import 'package:ios_tiretest_ai/Models/auth_models.dart';
-import 'package:http_parser/http_parser.dart';
-import 'package:ios_tiretest_ai/Models/four_wheeler_uploads_request.dart';
-import 'package:mime/mime.dart';
-import 'package:ios_tiretest_ai/Models/tyre_upload_request.dart';
-import 'package:ios_tiretest_ai/Models/tyre_upload_response.dart';
-import 'package:ios_tiretest_ai/Models/user_profile.dart';
-import 'package:dio/dio.dart';
-import 'package:path/path.dart' as p;
-import 'package:flutter_image_compress/flutter_image_compress.dart';
 
 class Failure {
   final String code;
@@ -73,6 +54,12 @@ abstract class AuthRepository {
   });
 
   Future<Result<TyreUploadResponse>> uploadFourWheeler(FourWheelerUploadRequest req);
+
+   Future<Result<List<TyreRecord>>> fetchUserRecords({
+    required String userId,
+    required String vehicleType, // "car" | "bike"
+    String vehicleId = "ALL",
+  });
 }
 
 class AuthRepositoryHttp implements AuthRepository {
@@ -294,7 +281,7 @@ class AuthRepositoryHttp implements AuthRepository {
       // ignore: avoid_print
       print('<= [UPLOAD-4W] ${res.statusCode}');
       // ignore: avoid_print
-      log('<= Body: ${res.data}');
+      print('<= Body: ${res.data}');
 
       final status = res.statusCode ?? 0;
 
@@ -568,6 +555,57 @@ class AuthRepositoryHttp implements AuthRepository {
   }
 
   @override
+Future<Result<List<TyreRecord>>> fetchUserRecords({
+  required String userId,
+  required String vehicleType,
+  String vehicleId = "ALL",
+}) async {
+  try {
+    final uri = Uri.parse(ApiConfig.fetchUserRecord).replace(queryParameters: {
+      "vehicle_type": vehicleType.trim(),
+      "user_id": userId.trim(),
+      "vehicle_id": vehicleId.trim().isEmpty ? "ALL" : vehicleId.trim(),
+    });
+
+    final res = await http.get(uri).timeout(timeout);
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      final parsed = jsonDecode(res.body);
+      if (parsed is! Map<String, dynamic>) {
+        return Result.fail(const Failure(code: 'parse', message: 'Invalid response format'));
+      }
+
+      final data = parsed['data'];
+      if (data is! List) {
+        return Result.fail(const Failure(code: 'parse', message: 'Missing data list'));
+      }
+
+      final list = data
+          .whereType<Map>()
+          .map((e) => TyreRecord.fromJson(Map<String, dynamic>.from(e)))
+          .toList();
+
+      // sort latest first
+      list.sort((a, b) => b.uploadedAt.compareTo(a.uploadedAt));
+
+      return Result.ok(list);
+    }
+
+    return Result.fail(Failure(
+      code: 'server',
+      message: 'Server error (${res.statusCode})',
+      statusCode: res.statusCode,
+    ));
+  } on SocketException {
+    return Result.fail(const Failure(code: 'network', message: 'No internet connection'));
+  } on TimeoutException {
+    return Result.fail(const Failure(code: 'timeout', message: 'Request timed out'));
+  } catch (e) {
+    return Result.fail(Failure(code: 'unknown', message: e.toString()));
+  }
+}
+
+  @override
   Future<Result<VehiclePreferencesModel>> addVehiclePreferences({
     required String vehiclePreference,
     required String brandName,
@@ -641,6 +679,8 @@ class ApiConfig {
       'http://54.162.208.215/backend/api/addVehiclePreference';
   static const String fourWheelerUrl =
       'http://54.162.208.215/app/tyre/four_wheeler_upload/';
+        static const String fetchUserRecord =
+      'http://54.162.208.215/app/tyre/fetch_user_record/';
 }
 
 

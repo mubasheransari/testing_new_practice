@@ -16,13 +16,13 @@ class AppRoutes {
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
     switch (settings.name) {
       case reports:
-        return _page(const ReportHistoryScreen());
+        return _page( ReportHistoryScreen());
       case map:
-        return _page(const ReportHistoryScreen());
+        return _page( ReportHistoryScreen());
       case about:
-        return _page(const SponsoredVendorsScreen());
+        return _page( SponsoredVendorsScreen());
       case profile:
-        return _page(const ReportHistoryScreen());
+        return _page( ReportHistoryScreen());
       case home:
       default:
         return _page(const InspectionHomePixelPerfect());

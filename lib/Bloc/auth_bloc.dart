@@ -4,19 +4,11 @@ import 'package:get_storage/get_storage.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_event.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_state.dart';
 import 'package:ios_tiretest_ai/Models/four_wheeler_uploads_request.dart';
+import 'package:ios_tiretest_ai/Models/tyre_record.dart';
 import 'package:ios_tiretest_ai/Models/tyre_upload_request.dart';
 import 'package:ios_tiretest_ai/Repository/repository.dart';
 import '../Models/auth_models.dart';
-import 'dart:io';
-
 import 'package:bloc/bloc.dart';
-import 'package:get_storage/get_storage.dart';
-
-import 'auth_event.dart';
-import 'auth_state.dart';
-
-// keep your imports/models:
-// AuthRepository, LoginRequest, SignupRequest, TyreUploadRequest, TyreUploadResponse, etc.
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final AuthRepository repo;
@@ -26,13 +18,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<LoginRequested>(_onLogin);
     on<SignupRequested>(_onSignup);
     on<UploadTwoWheelerRequested>(_onTwoWheelerUpload);
-
-    /// ✅ NEW
     on<UploadFourWheelerRequested>(_onFourWheelerUpload);
-
     on<FetchProfileRequested>(_onFetchProfile);
     on<ClearAuthError>((e, emit) => emit(state.copyWith(error: null)));
     on<AddVehiclePreferenccesEvent>(addVehiclePreferences);
+    on<FetchTyreHistoryRequested>(_onFetchTyreHistory);
   }
 
   Future<void> _onAppStarted(AppStarted e, Emitter<AuthState> emit) async {
@@ -265,6 +255,44 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   Future<void> _onFetchProfile(
+  FetchProfileRequested e,
+  Emitter<AuthState> emit,
+) async {
+  emit(state.copyWith(profileStatus: ProfileStatus.loading, error: null));
+
+  final r = await repo.fetchProfile(token: e.token);
+
+  if (r.isSuccess) {
+    final profile = r.data;
+
+    emit(state.copyWith(
+      profileStatus: ProfileStatus.success,
+      profile: profile,
+      error: null,
+    ));
+
+    // =====================================================
+    // ✅ GLOBAL HISTORY LOAD (ONLY ONCE)
+    // =====================================================
+    if (state.tyreHistoryStatus == TyreHistoryStatus.initial &&
+        profile?.userId != null) {
+      add(
+        FetchTyreHistoryRequested(
+          userId: profile!.userId.toString(),
+          vehicleId: "ALL",
+        ),
+      );
+    }
+  } else {
+    emit(state.copyWith(
+      profileStatus: ProfileStatus.failure,
+      error: r.failure?.message ?? 'Failed to fetch profile',
+    ));
+  }
+}
+
+/*
+  Future<void> _onFetchProfile(
     FetchProfileRequested e,
     Emitter<AuthState> emit,
   ) async {
@@ -284,7 +312,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         error: r.failure?.message ?? 'Failed to fetch profile',
       ));
     }
-  }
+  }*/
 
   Future<void> addVehiclePreferences(
     AddVehiclePreferenccesEvent event,
@@ -319,4 +347,49 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       vehiclePreferencesModel: result.data,
     ));
   }
+
+  Future<void> _onFetchTyreHistory(
+  FetchTyreHistoryRequested e,
+  Emitter<AuthState> emit,
+) async {
+  emit(state.copyWith(
+    tyreHistoryStatus: TyreHistoryStatus.loading,
+    tyreHistoryError: null,
+  ));
+
+  try {
+    final results = await Future.wait([
+      repo.fetchUserRecords(userId: e.userId, vehicleType: "car", vehicleId: e.vehicleId),
+      repo.fetchUserRecords(userId: e.userId, vehicleType: "bike", vehicleId: e.vehicleId),
+    ]);
+
+    final carRes = results[0];
+    final bikeRes = results[1];
+
+    if (!carRes.isSuccess && !bikeRes.isSuccess) {
+      emit(state.copyWith(
+        tyreHistoryStatus: TyreHistoryStatus.failure,
+        tyreHistoryError: carRes.failure?.message ?? bikeRes.failure?.message ?? "Failed to load history",
+      ));
+      return;
+    }
+
+    final updated = Map<String, List<TyreRecord>>.from(state.tyreRecordsByType);
+
+    if (carRes.isSuccess) updated['car'] = carRes.data ?? const <TyreRecord>[];
+    if (bikeRes.isSuccess) updated['bike'] = bikeRes.data ?? const <TyreRecord>[];
+
+    emit(state.copyWith(
+      tyreHistoryStatus: TyreHistoryStatus.success,
+      tyreHistoryError: null,
+      tyreRecordsByType: updated,
+    ));
+  } catch (ex) {
+    emit(state.copyWith(
+      tyreHistoryStatus: TyreHistoryStatus.failure,
+      tyreHistoryError: ex.toString(),
+    ));
+  }
+}
+
 }

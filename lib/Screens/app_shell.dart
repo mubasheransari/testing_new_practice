@@ -49,7 +49,7 @@ class _AppShellState extends State<AppShell> {
           index: _tab.index,
           children: [
             _TabNavigator(key: _keys[BottomTab.home], initial: const InspectionHomePixelPerfect()),
-            _TabNavigator(key: _keys[BottomTab.reports], initial: const ReportHistoryScreen()),
+            _TabNavigator(key: _keys[BottomTab.reports], initial:  ReportHistoryScreen()),
             _TabNavigator(key: _keys[BottomTab.map], initial: const LocationVendorsMapScreen()),
             _TabNavigator(key: _keys[BottomTab.about], initial: const SponsoredVendorsScreen()),
             _TabNavigator(key: _keys[BottomTab.profile], initial: const ProfilePage()),

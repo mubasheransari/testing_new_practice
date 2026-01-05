@@ -1,6 +1,5 @@
 import 'package:equatable/equatable.dart';
 
-import 'package:equatable/equatable.dart';
 
 abstract class AuthEvent extends Equatable {
   const AuthEvent();
@@ -57,14 +56,12 @@ class UploadTwoWheelerRequested extends AuthEvent {
   });
 
   @override
-  List<Object?> get props =>
-      [userId, vehicleId, token, frontPath, backPath, vehicleType, vin];
+  List<Object?> get props => [userId, vehicleId, token, frontPath, backPath, vehicleType, vin];
 }
 
-/// ✅ NEW: Upload 4-wheeler (car) tyres
 class UploadFourWheelerRequested extends AuthEvent {
   final String vehicleId;
-  final String vehicleType; // "Car" or "car" (backend strict sometimes)
+  final String vehicleType;
   final String vin;
 
   final String frontLeftTyreId;
@@ -72,7 +69,6 @@ class UploadFourWheelerRequested extends AuthEvent {
   final String backLeftTyreId;
   final String backRightTyreId;
 
-  /// paths of captured images
   final String frontLeftPath;
   final String frontRightPath;
   final String backLeftPath;
@@ -149,4 +145,15 @@ class AddVehiclePreferenccesEvent extends AuthEvent {
         tireDimension,
       ];
 }
+class FetchTyreHistoryRequested extends AuthEvent {
+  final String userId;
+  final String vehicleId; // default ALL
 
+  const FetchTyreHistoryRequested({
+    required this.userId,
+    this.vehicleId = "ALL",
+  });
+
+  @override
+  List<Object?> get props => [userId, vehicleId];
+}
