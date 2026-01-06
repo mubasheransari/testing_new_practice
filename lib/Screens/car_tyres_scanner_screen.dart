@@ -17,14 +17,11 @@ class CarTyresScannerScreen extends StatefulWidget {
   final String userId;
   final String vehicleId;
   final String token;
-
   final String vin;
-
   final String frontLeftTyreId;
   final String frontRightTyreId;
   final String backLeftTyreId;
   final String backRightTyreId;
-
   final String vehicleType;
 
   const CarTyresScannerScreen({
@@ -55,14 +52,9 @@ class _CarTyresScannerScreenState extends State<CarTyresScannerScreen> {
   XFile? _frontRight;
   XFile? _backLeft;
   XFile? _backRight;
-
   TyrePos _active = TyrePos.frontLeft;
-
   String? _error;
-
   bool _navigated = false;
-
-  // ✅ NEW
   final ImagePicker _picker = ImagePicker();
 
   bool get _allCaptured =>
@@ -107,7 +99,6 @@ class _CarTyresScannerScreenState extends State<CarTyresScannerScreen> {
     }
   }
 
-  // ✅ SAFE stop to avoid "dead thread" + "invalid texture"
   Future<void> _stopCameraSafely() async {
     if (_stopping) return;
     _stopping = true;
@@ -196,14 +187,13 @@ class _CarTyresScannerScreenState extends State<CarTyresScannerScreen> {
     }
   }
 
-  // ✅ NEW: pick image from gallery and treat it same as capture
   Future<void> _pickFromGallery() async {
     if (_stopping) return;
 
     try {
       final picked = await _picker.pickImage(
         source: ImageSource.gallery,
-        imageQuality: 95, // keep quality decent (you already compress later)
+        imageQuality: 95, 
       );
 
       if (!mounted) return;
@@ -288,7 +278,6 @@ class _CarTyresScannerScreenState extends State<CarTyresScannerScreen> {
           else
             Positioned.fill(child: Container(color: Colors.black)),
 
-          // header
           SafeArea(
             child: Padding(
               padding: EdgeInsets.fromLTRB(12 * s, 4 * s, 12 * s, 0),
@@ -365,7 +354,6 @@ class _CarTyresScannerScreenState extends State<CarTyresScannerScreen> {
                   onRetake: _retake,
                 ),
 
-                // ✅ NEW: show active tyre image preview (the one user clicked / selected)
                 SizedBox(height: 10 * s),
                 _ActiveTyrePreview(
                   s: s,
@@ -382,7 +370,7 @@ class _CarTyresScannerScreenState extends State<CarTyresScannerScreen> {
             bottom: 14 * s,
             child: BottomActionBar(
               enabled: _ready && !_stopping,
-              onPickGallery: _pickFromGallery, // ✅ NEW
+              onPickGallery: _pickFromGallery, 
               onPickDocs: () {},
               onCapture: _capture,
               galleryIconAsset: 'assets/gallery_icon.png',

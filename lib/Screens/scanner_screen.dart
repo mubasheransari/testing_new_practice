@@ -2,7 +2,6 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_bloc.dart';
-import 'package:ios_tiretest_ai/Screens/generate_report_screen.dart';
 import 'package:ios_tiretest_ai/Widgets/bottom_action_bar.dart' show BottomActionBar;
 import 'package:ios_tiretest_ai/Widgets/scan_overlay.dart';
 

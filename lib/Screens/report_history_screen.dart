@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_bloc.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_event.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_state.dart';
@@ -6,7 +7,6 @@ import 'dart:io';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:share_plus/share_plus.dart';
@@ -41,8 +41,7 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen> {
     final state = bloc.state;
 
     final userId = state.profile?.userId?.toString() ?? '';
-    if (userId.isNotEmpty &&
-        state.tyreHistoryStatus == TyreHistoryStatus.initial) {
+    if (userId.isNotEmpty && state.tyreHistoryStatus == TyreHistoryStatus.initial) {
       bloc.add(FetchTyreHistoryRequested(userId: userId, vehicleId: "ALL"));
     }
   }
@@ -64,17 +63,13 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen> {
         return all.where((e) => e.uploadedAt.isAfter(from)).toList();
       case _Filter.thisMonth:
         return all
-            .where((e) =>
-                e.uploadedAt.year == now.year &&
-                e.uploadedAt.month == now.month)
+            .where((e) => e.uploadedAt.year == now.year && e.uploadedAt.month == now.month)
             .toList();
     }
   }
 
   String _prettyDate(DateTime d) {
-    const months = [
-      'Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'
-    ];
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     final hh = d.hour % 12 == 0 ? 12 : d.hour % 12;
     final mm = d.minute.toString().padLeft(2, '0');
     final am = d.hour >= 12 ? 'PM' : 'AM';
@@ -82,48 +77,38 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen> {
   }
 
   String _safeFileName(TyreRecord r) {
-    final dt = r.uploadedAt.toIso8601String().replaceAll(':', '-');
+    final dt = DateFormat('yyyyMMdd_HHmmss').format(r.uploadedAt);
     return 'tyre_report_${r.vehicleType}_${r.recordId}_$dt.pdf';
   }
 
+
   Future<Directory> _downloadDirectory() async {
     if (Platform.isAndroid) {
-      final dir = Directory('/storage/emulated/0/Download');
-      if (await dir.exists()) return dir;
-
-      return (await getExternalStorageDirectory()) ??
-          await getApplicationDocumentsDirectory();
+      final dir = await getExternalStorageDirectory();
+      if (dir != null) return dir;
+      return await getApplicationDocumentsDirectory();
     }
     return await getApplicationDocumentsDirectory();
   }
 
+  /// ✅ create Reports folder
+  Future<Directory> _reportsDir() async {
+    final base = await _downloadDirectory();
+    final dir = Directory(p.join(base.path, 'Reports'));
+    if (!await dir.exists()) {
+      await dir.create(recursive: true);
+    }
+    return dir;
+  }
+
   Future<bool> _ensureStoragePermissionIfNeeded() async {
-    if (!Platform.isAndroid) return true;
-
-    final status = await Permission.storage.status;
-    if (status.isGranted) return true;
-
-    final req = await Permission.storage.request();
-    return req.isGranted;
+    return true;
   }
 
-  pw.Widget _badge(String text, PdfColor color) {
-    return pw.Container(
-      padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: pw.BoxDecoration(
-        color: color,
-        borderRadius: pw.BorderRadius.circular(999),
-      ),
-      child: pw.Text(
-        text,
-        style: pw.TextStyle(
-          color: PdfColors.white,
-          fontSize: 10,
-          fontWeight: pw.FontWeight.bold,
-        ),
-      ),
-    );
-  }
+
+  static const PdfColor _pdfBg = PdfColor.fromInt(0xFFF6F7FA);
+  static const PdfColor _g1 = PdfColor.fromInt(0xFF00C6FF);
+  static const PdfColor _g2 = PdfColor.fromInt(0xFF7F53FD);
 
   PdfColor _statusColorPdf(String v) {
     final t = v.toLowerCase();
@@ -131,6 +116,67 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen> {
     if (t.contains('warning')) return PdfColors.orange;
     if (t.contains('safe')) return PdfColors.green;
     return PdfColors.teal;
+  }
+
+  pw.Widget _pill(String text, PdfColor bg) {
+    return pw.Container(
+      padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: pw.BoxDecoration(
+        color: bg,
+        borderRadius: pw.BorderRadius.circular(999),
+      ),
+      child: pw.Text(
+        text,
+        style: pw.TextStyle(
+          color: PdfColors.white,
+          fontSize: 10.5,
+          fontWeight: pw.FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  pw.Widget _card({required pw.Widget child}) {
+    return pw.Container(
+      padding: const pw.EdgeInsets.all(14),
+      decoration: pw.BoxDecoration(
+        color: PdfColors.white,
+        borderRadius: pw.BorderRadius.circular(14),
+        border: pw.Border.all(color: PdfColor.fromInt(0xFFE7EAF0)),
+      ),
+      child: child,
+    );
+  }
+
+  pw.Widget _kv(String k, String v) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.only(bottom: 6),
+      child: pw.Row(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.SizedBox(
+            width: 110,
+            child: pw.Text(
+              k,
+              style: pw.TextStyle(
+                fontSize: 10.5,
+                color: PdfColor.fromInt(0xFF6A6F7B),
+                fontWeight: pw.FontWeight.bold,
+              ),
+            ),
+          ),
+          pw.Expanded(
+            child: pw.Text(
+              v,
+              style: pw.TextStyle(
+                fontSize: 10.8,
+                color: PdfColor.fromInt(0xFF111827),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   String _summaryStatus(TyreRecord r) {
@@ -147,101 +193,237 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen> {
     return 'Completed';
   }
 
-  Future<List<int>> _buildPdfBytes(TyreRecord r) async {
-    final doc = pw.Document();
+  pw.TableRow _statusRow(String wheel, String status) {
+    final c = _statusColorPdf(status);
+    return pw.TableRow(
+      decoration: const pw.BoxDecoration(color: PdfColors.white),
+      children: [
+        pw.Padding(
+          padding: const pw.EdgeInsets.all(10),
+          child: pw.Text(
+            wheel,
+            style: pw.TextStyle(
+              fontSize: 11,
+              color: PdfColor.fromInt(0xFF111827),
+              fontWeight: pw.FontWeight.bold,
+            ),
+          ),
+        ),
+        pw.Padding(
+          padding: const pw.EdgeInsets.all(10),
+          child: pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Expanded(
+                child: pw.Text(
+                  status,
+                  style: pw.TextStyle(
+                    fontSize: 11,
+                    color: PdfColor.fromInt(0xFF374151),
+                  ),
+                ),
+              ),
+              pw.SizedBox(width: 10),
+              _pill(status, c),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
 
+  Future<List<int>> _buildPdfBytes(TyreRecord r) async {
+    final logoBytes = (await rootBundle.load('assets/tiretest_logo.png')).buffer.asUint8List();
+    final logo = pw.MemoryImage(logoBytes);
+
+    final doc = pw.Document();
     final dateStr = DateFormat('dd MMM yyyy, hh:mm a').format(r.uploadedAt);
     final summary = _summaryStatus(r);
 
     doc.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(28),
+        margin: pw.EdgeInsets.zero,
         build: (context) => [
-          pw.Row(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-            children: [
-              pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Text(
-                    'Tyre Inspection Report',
-                    style: pw.TextStyle(
-                      fontSize: 20,
-                      fontWeight: pw.FontWeight.bold,
+          pw.Container(
+            color: _pdfBg,
+            child: pw.Column(
+              children: [
+                pw.Container(
+                  width: double.infinity,
+                  padding: const pw.EdgeInsets.fromLTRB(22, 28, 22, 18),
+                  decoration: const pw.BoxDecoration(
+                    gradient: pw.LinearGradient(
+                      colors: [_g1, _g2],
+                      begin: pw.Alignment.centerLeft,
+                      end: pw.Alignment.centerRight,
                     ),
                   ),
-                  pw.SizedBox(height: 6),
-                  pw.Text('Record ID: ${r.recordId}'),
-                  pw.Text('Vehicle: ${r.vehicleType.toUpperCase()} • ${r.vehicleId}'),
-                  pw.Text('Generated: $dateStr'),
-                ],
-              ),
-              _badge(summary, _statusColorPdf(summary)),
-            ],
-          ),
-
-          pw.SizedBox(height: 18),
-
-          pw.Container(
-            padding: const pw.EdgeInsets.all(12),
-            decoration: pw.BoxDecoration(
-              border: pw.Border.all(color: PdfColors.grey300),
-              borderRadius: pw.BorderRadius.circular(10),
-            ),
-            child: pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                pw.Text(
-                  'Wheel Status',
-                  style: pw.TextStyle(
-                    fontSize: 14,
-                    fontWeight: pw.FontWeight.bold,
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.center,
+                    children: [
+                      pw.Container(
+                        width: 84,
+                        height: 84,
+                        decoration: pw.BoxDecoration(
+                          color: PdfColors.white,
+                          borderRadius: pw.BorderRadius.circular(18),
+                        ),
+                        padding: const pw.EdgeInsets.all(10),
+                        child: pw.Image(logo, fit: pw.BoxFit.contain),
+                      ),
+                      pw.SizedBox(height: 12),
+                      pw.Text(
+                        'Tyre Inspection Report',
+                        style: pw.TextStyle(
+                          fontSize: 20,
+                          color: PdfColors.white,
+                          fontWeight: pw.FontWeight.bold,
+                          
+                        ),
+                      ),
+                      pw.SizedBox(height: 6),
+                      pw.Text(
+                        'Generated from your latest scan data',
+                        style: pw.TextStyle(
+                          fontSize: 11.5,
+                          color: PdfColors.white,
+                        ),
+                      ),
+                      pw.SizedBox(height: 12),
+                    /*  pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.center,
+                        children: [
+                          _pill(
+                            '${r.vehicleType.toUpperCase()} • ${r.vehicleId}',
+                            PdfColor.fromInt(0x33000000),
+                          ),
+                          pw.SizedBox(width: 10),
+                         // _pill(summary, _statusColorPdf(summary)),
+                        ],
+                      ),*/
+                    ],
                   ),
                 ),
-                pw.SizedBox(height: 10),
 
-                pw.Table(
-                  border: pw.TableBorder.all(color: PdfColors.grey300),
-                  columnWidths: const {
-                    0: pw.FlexColumnWidth(2),
-                    1: pw.FlexColumnWidth(4),
-                  },
-                  children: [
-                    pw.TableRow(
-                      decoration: const pw.BoxDecoration(color: PdfColors.grey200),
-                      children: [
-                        pw.Padding(
-                          padding: const pw.EdgeInsets.all(8),
-                          child: pw.Text('Wheel', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.fromLTRB(18, 18, 18, 24),
+                  child: pw.Column(
+                    children: [
+                      _card(
+                        child: pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.start,
+                          children: [
+                            pw.Text(
+                              'Inspection Details',
+                              style: pw.TextStyle(
+                                fontSize: 13.5,
+                                color: PdfColor.fromInt(0xFF111827),
+                                fontWeight: pw.FontWeight.bold,
+                              ),
+                            ),
+                            pw.SizedBox(height: 10),
+                            _kv('Vehicle Type', r.vehicleType.toUpperCase()),
+                            _kv('Date', dateStr),
+                          ],
                         ),
-                        pw.Padding(
-                          padding: const pw.EdgeInsets.all(8),
-                          child: pw.Text('Status', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                      ),
+                      pw.SizedBox(height: 14),
+                      _card(
+                        child: pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.start,
+                          children: [
+                            pw.Text(
+                              'Wheel Status',
+                              style: pw.TextStyle(
+                                fontSize: 13.5,
+                                color: PdfColor.fromInt(0xFF111827),
+                                fontWeight: pw.FontWeight.bold,
+                              ),
+                            ),
+                            pw.SizedBox(height: 10),
+                            pw.Table(
+                              border: pw.TableBorder.all(color: PdfColor.fromInt(0xFFE7EAF0)),
+                              columnWidths: const {
+                                0: pw.FlexColumnWidth(2),
+                                1: pw.FlexColumnWidth(4),
+                              },
+                              children: [
+                                pw.TableRow(
+                                  decoration: pw.BoxDecoration(
+                                    color: PdfColor.fromInt(0xFFF2F4F8),
+                                  ),
+                                  children: [
+                                    pw.Padding(
+                                      padding: const pw.EdgeInsets.all(10),
+                                      child: pw.Text(
+                                        'Wheel',
+                                        style: pw.TextStyle(
+                                          fontWeight: pw.FontWeight.bold,
+                                          fontSize: 11,
+                                          color: PdfColor.fromInt(0xFF111827),
+                                        ),
+                                      ),
+                                    ),
+                                    pw.Padding(
+                                      padding: const pw.EdgeInsets.all(10),
+                                      child: pw.Text(
+                                        'Status',
+                                        style: pw.TextStyle(
+                                          fontWeight: pw.FontWeight.bold,
+                                          fontSize: 11,
+                                          color: PdfColor.fromInt(0xFF111827),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                _statusRow('Front Left', r.frontLeftStatus),
+                                _statusRow('Front Right', r.frontRightStatus),
+                                _statusRow('Back Left', r.backLeftStatus),
+                                _statusRow('Back Right', r.backRightStatus),
+                              ],
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                    _row('Front Left', r.frontLeftStatus),
-                    _row('Front Right', r.frontRightStatus),
-                    _row('Back Left', r.backLeftStatus),
-                    _row('Back Right', r.backRightStatus),
-                  ],
+                      ),
+                      pw.SizedBox(height: 14),
+                      _card(
+                        child: pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.start,
+                          children: [
+                            pw.Text(
+                              'Notes',
+                              style: pw.TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: pw.FontWeight.bold,
+                                color: PdfColor.fromInt(0xFF111827),
+                              ),
+                            ),
+                            pw.SizedBox(height: 8),
+                            pw.Text(
+                              'This PDF is generated inside the app using your inspection result.',
+                              style: pw.TextStyle(
+                                fontSize: 10.8,
+                                color: PdfColor.fromInt(0xFF6A6F7B),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      pw.SizedBox(height: 18),
+                      pw.Text(
+                        'TireTest AI • Powered by your scan data',
+                        style: pw.TextStyle(
+                          fontSize: 10,
+                          color: PdfColor.fromInt(0xFF9AA1AE),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
-          ),
-
-          pw.SizedBox(height: 18),
-
-          pw.Text(
-            'Notes',
-            style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
-          ),
-          pw.SizedBox(height: 6),
-          pw.Text(
-            'This report was generated from the inspection data already fetched in the app (no server PDF used).',
-            style:  pw.TextStyle(fontSize: 11, color: PdfColors.grey700,),
           ),
         ],
       ),
@@ -250,38 +432,10 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen> {
     return doc.save();
   }
 
-  pw.TableRow _row(String label, String status) {
-    final c = _statusColorPdf(status);
-    return pw.TableRow(
-      children: [
-        pw.Padding(
-          padding: const pw.EdgeInsets.all(8),
-          child: pw.Text(label),
-        ),
-        pw.Padding(
-          padding: const pw.EdgeInsets.all(8),
-          child: pw.Row(
-            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-            children: [
-              pw.Expanded(
-                child: pw.Text(
-                  status,
-                  maxLines: 2,
-                ),
-              ),
-              pw.SizedBox(width: 10),
-              _badge(status, c),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
   Future<File> _savePdfToDisk(TyreRecord record) async {
     await _ensureStoragePermissionIfNeeded();
 
-    final dir = await _downloadDirectory();
+    final dir = await _reportsDir(); 
     final path = p.join(dir.path, _safeFileName(record));
 
     final bytes = await _buildPdfBytes(record);
@@ -292,7 +446,6 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen> {
 
   Future<void> _downloadPdf(TyreRecord record) async {
     final id = record.recordId;
-
     if (_downloading[id] == true) return;
 
     setState(() => _downloading[id] = true);
@@ -319,7 +472,6 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen> {
     } catch (e) {
       setState(() => _downloading[id] = false);
       if (!mounted) return;
-
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Download failed: $e')),
       );
@@ -330,19 +482,8 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen> {
     final id = record.recordId;
 
     try {
-      final dir = await _downloadDirectory();
-      final filePath = p.join(dir.path, _safeFileName(record));
-      final file = File(filePath);
-
-      if (!await file.exists()) {
-        final saved = await _savePdfToDisk(record);
-        setState(() => _downloaded[id] = true);
-        await Share.shareXFiles(
-          [XFile(saved.path)],
-          text: 'Tyre Inspection Report (${record.vehicleType.toUpperCase()})',
-        );
-        return;
-      }
+      final file = await _savePdfToDisk(record);
+      setState(() => _downloaded[id] = true);
 
       await Share.shareXFiles(
         [XFile(file.path)],
@@ -389,10 +530,7 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen> {
         return FadeTransition(
           opacity: curved,
           child: SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(0, 0.06),
-              end: Offset.zero,
-            ).animate(curved),
+            position: Tween<Offset>(begin: const Offset(0, 0.06), end: Offset.zero).animate(curved),
             child: child,
           ),
         );
@@ -409,6 +547,7 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen> {
       body: SafeArea(
         child: BlocBuilder<AuthBloc, AuthState>(
           builder: (context, state) {
+            // ✅ pick records based on vehicle tab
             List<TyreRecord> all;
             switch (_vehicleTab) {
               case _VehicleTab.all:
@@ -478,11 +617,7 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen> {
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12 * s),
                       boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x14000000),
-                          blurRadius: 12,
-                          offset: Offset(0, 6),
-                        )
+                        BoxShadow(color: Color(0x14000000), blurRadius: 12, offset: Offset(0, 6))
                       ],
                     ),
                     child: Row(
@@ -520,11 +655,7 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen> {
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12 * s),
                       boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x14000000),
-                          blurRadius: 12,
-                          offset: Offset(0, 6),
-                        )
+                        BoxShadow(color: Color(0x14000000), blurRadius: 12, offset: Offset(0, 6))
                       ],
                     ),
                     child: Text(
@@ -564,6 +695,7 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen> {
   }
 }
 
+/* ---------------- Vehicle Tabs ---------------- */
 
 class _VehicleTabs extends StatelessWidget {
   const _VehicleTabs({
@@ -618,9 +750,7 @@ class _VehicleTabs extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12 * s),
-        boxShadow: const [
-          BoxShadow(color: Color(0x14000000), blurRadius: 12, offset: Offset(0, 6))
-        ],
+        boxShadow: const [BoxShadow(color: Color(0x14000000), blurRadius: 12, offset: Offset(0, 6))],
       ),
       child: Row(
         children: [
@@ -634,6 +764,7 @@ class _VehicleTabs extends StatelessWidget {
     );
   }
 }
+
 
 class _FiltersBar extends StatelessWidget {
   const _FiltersBar({required this.s, required this.active, required this.onChanged});
@@ -674,9 +805,7 @@ class _FiltersBar extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12 * s),
-        boxShadow: const [
-          BoxShadow(color: Color(0x14000000), blurRadius: 12, offset: Offset(0, 6))
-        ],
+        boxShadow: const [BoxShadow(color: Color(0x14000000), blurRadius: 12, offset: Offset(0, 6))],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -729,9 +858,7 @@ class _ReportCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12 * s),
-        boxShadow: const [
-          BoxShadow(color: Color(0x12000000), blurRadius: 10, offset: Offset(0, 6))
-        ],
+        boxShadow: const [BoxShadow(color: Color(0x12000000), blurRadius: 10, offset: Offset(0, 6))],
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -740,10 +867,7 @@ class _ReportCard extends StatelessWidget {
             width: 9 * s,
             height: 131 * s,
             decoration: const BoxDecoration(
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(12),
-                bottomLeft: Radius.circular(12),
-              ),
+              borderRadius: BorderRadius.only(topLeft: Radius.circular(12), bottomLeft: Radius.circular(12)),
               gradient: LinearGradient(
                 colors: [Color(0xFF00C6FF), Color(0xFF7F53FD)],
                 begin: Alignment.topCenter,
@@ -808,11 +932,7 @@ class _ReportCard extends StatelessWidget {
                       SizedBox(width: 6 * s),
                       Text(
                         'Status: $statusSummary',
-                        style: TextStyle(
-                          color: statusColor,
-                          fontSize: 12.5 * s,
-                          fontWeight: FontWeight.w800,
-                        ),
+                        style: TextStyle(color: statusColor, fontSize: 12.5 * s, fontWeight: FontWeight.w800),
                       ),
                     ],
                   ),
@@ -843,24 +963,16 @@ class _DownloadPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final label = downloading
-        ? 'Downloading...'
-        : (downloaded ? 'Downloaded' : 'Download\nFull Report');
+    final label = downloading ? 'Downloading...' : (downloaded ? 'Downloaded' : 'Download\nFull Report');
 
     final pill = Container(
       padding: EdgeInsets.symmetric(horizontal: 10 * s, vertical: 8 * s),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12 * s),
         color: enabled ? null : const Color(0xFFF1F5F9),
-        gradient: enabled
-            ? const LinearGradient(colors: [Color(0xFFEEF6FF), Color(0xFFEFF1FF)])
-            : null,
+        gradient: enabled ? const LinearGradient(colors: [Color(0xFFEEF6FF), Color(0xFFEFF1FF)]) : null,
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(.05),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
+          BoxShadow(color: Colors.black.withOpacity(.05), blurRadius: 8, offset: const Offset(0, 4)),
         ],
       ),
       child: Row(
@@ -871,24 +983,15 @@ class _DownloadPill extends StatelessWidget {
             height: 30 * s,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: enabled
-                  ? const LinearGradient(colors: [Color(0xFF00C6FF), Color(0xFF7F53FD)])
-                  : null,
+              gradient: enabled ? const LinearGradient(colors: [Color(0xFF00C6FF), Color(0xFF7F53FD)]) : null,
               color: enabled ? null : const Color(0xFFE2E8F0),
             ),
             child: downloading
                 ? Padding(
                     padding: EdgeInsets.all(6 * s),
-                    child: const CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
+                    child: const CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                   )
-                : Icon(
-                    Icons.picture_as_pdf_rounded,
-                    size: 19 * s,
-                    color: enabled ? Colors.white : const Color(0xFF6B7280),
-                  ),
+                : Icon(Icons.picture_as_pdf_rounded, size: 19 * s, color: enabled ? Colors.white : const Color(0xFF6B7280)),
           ),
           SizedBox(width: 8 * s),
           Text(
@@ -936,9 +1039,7 @@ class _DownloadDialog extends StatelessWidget {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(18 * s),
-              boxShadow: const [
-                BoxShadow(color: Color(0x26000000), blurRadius: 18, offset: Offset(0, 10))
-              ],
+              boxShadow: const [BoxShadow(color: Color(0x26000000), blurRadius: 18, offset: Offset(0, 10))],
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -956,11 +1057,7 @@ class _DownloadDialog extends StatelessWidget {
                 Text(
                   'Get a detailed PDF of your wheel inspection. You can also share it directly.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: const Color(0xFF6B7280),
-                    fontSize: 13.5 * s,
-                    height: 1.35,
-                  ),
+                  style: TextStyle(color: const Color(0xFF6B7280), fontSize: 13.5 * s, height: 1.35),
                 ),
                 SizedBox(height: 16 * s),
                 SizedBox(
@@ -970,19 +1067,13 @@ class _DownloadDialog extends StatelessWidget {
                     icon: const Icon(Icons.download_rounded),
                     label: Text(
                       'Download PDF',
-                      style: TextStyle(
-                        fontFamily: 'ClashGrotesk',
-                        fontWeight: FontWeight.w800,
-                        fontSize: 16 * s,
-                      ),
+                      style: TextStyle(fontFamily: 'ClashGrotesk', fontWeight: FontWeight.w800, fontSize: 16 * s),
                     ),
                     style: ElevatedButton.styleFrom(
                       padding: EdgeInsets.symmetric(vertical: 14 * s),
                       foregroundColor: Colors.white,
                       backgroundColor: const Color(0xFF4F7BFF),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14 * s),
-                      ),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14 * s)),
                     ),
                   ),
                 ),
@@ -992,11 +1083,7 @@ class _DownloadDialog extends StatelessWidget {
                   icon: const Icon(Icons.ios_share_rounded),
                   label: Text(
                     'Share Report',
-                    style: TextStyle(
-                      fontFamily: 'ClashGrotesk',
-                      fontWeight: FontWeight.w800,
-                      color: const Color(0xFF4F7BFF),
-                    ),
+                    style: TextStyle(fontFamily: 'ClashGrotesk', fontWeight: FontWeight.w800, color: const Color(0xFF4F7BFF)),
                   ),
                 ),
               ],

@@ -126,7 +126,6 @@ class ProfilePage extends StatelessWidget {
                   ),
                 ),
                 SizedBox(width: 14 * s),
-                // Name + handle + button
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

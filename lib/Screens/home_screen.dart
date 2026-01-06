@@ -3,7 +3,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_bloc.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_event.dart';
-
 import 'package:ios_tiretest_ai/Screens/scanner_screen.dart';
 import 'package:ios_tiretest_ai/Screens/verhicle_form_preferences_screen.dart';
 import 'package:ios_tiretest_ai/Widgets/gradient_text_widget.dart';
@@ -60,9 +59,9 @@ class InspectionHomePixelPerfect extends StatelessWidget {
     const baseW = 393.0;
     final s = size.width / baseW;
 
-    // want BOTH cards ≈ 60% of screen → 0.3 + 0.3
-    final carH = (size.height * 0.30).clamp(210 * s, 360.0);   // keep look
-    final bikeH = (size.height * 0.30).clamp(200 * s, 350.0);  // keep look
+
+    final carH = (size.height * 0.30).clamp(210 * s, 360.0);   
+    final bikeH = (size.height * 0.30).clamp(200 * s, 350.0);
 
     return Scaffold(
       backgroundColor: kBg,
@@ -91,7 +90,6 @@ class InspectionHomePixelPerfect extends StatelessWidget {
   }
 }
 
-/* ------------------------ Header ------------------------ */
 class _Header extends StatelessWidget {
   const _Header({required this.s});
   final double s;
@@ -99,6 +97,15 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final profile = context.read<AuthBloc>().state.profile;
+    print("profile details ${profile!.firstName.toString()}");
+      print("profile details ${profile!.firstName.toString()}");
+        print("profile details ${profile!.firstName.toString()}");
+          print("profile details ${profile!.firstName.toString()}");
+              print("profile details ${profile!.firstName.toString()}");
+      print("profile details ${profile!.firstName.toString()}");
+        print("profile details ${profile!.firstName.toString()}");
+          print("profile details ${profile!.firstName.toString()}");
+          
     final name = (profile != null)
         ? '${profile.firstName ?? ''} ${profile.lastName ?? ''}'.trim()
         : 'User';
@@ -172,7 +179,6 @@ class _Header extends StatelessWidget {
   }
 }
 
-/* ------------------------ Search ------------------------ */
 class _SearchBar extends StatelessWidget {
   const _SearchBar({required this.s});
   final double s;
@@ -225,7 +231,6 @@ class _SearchBar extends StatelessWidget {
   }
 }
 
-/* ------------------------ Car Card ------------------------ */
 class _CarCard extends StatelessWidget {
   const _CarCard({
     required this.s,
@@ -305,7 +310,7 @@ class _CarCard extends StatelessWidget {
                   onTap: () {
                     Navigator.of(context, rootNavigator: true).push(
                       MaterialPageRoute(
-                        builder: (_) => const VehicleFormPreferencesScreen()//ScannerFrontTireScreen(),
+                        builder: (_) => const VehicleFormPreferencesScreen()
                       ),
                     );
                   },
@@ -420,7 +425,6 @@ class _BikeCard extends StatelessWidget {
   }
 }
 
-/* ------------------------ Chip Buttons ------------------------ */
 class _ChipButtonWhite extends StatelessWidget {
   const _ChipButtonWhite({
     required this.s,

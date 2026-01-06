@@ -2,10 +2,6 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:ios_tiretest_ai/Screens/home_screen.dart';
-import 'package:ios_tiretest_ai/Screens/report_history_screen.dart';
-import 'dart:math' as math;
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 
@@ -34,10 +30,7 @@ class _LocationVendorsMapScreenState extends State<LocationVendorsMapScreen> {
   // Marker art cache
   BitmapDescriptor? _markerIcon;
 
-  Future<BitmapDescriptor> _loadMarkerFromAsset(String asset, {Size? logicalSize}) {
-    final cfg = createLocalImageConfiguration(context, size: logicalSize);
-    return BitmapDescriptor.fromAssetImage(cfg, asset);
-  }
+
 
   @override
   void initState() {
@@ -46,16 +39,9 @@ class _LocationVendorsMapScreenState extends State<LocationVendorsMapScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       _markerIcon ??= await markerFromAssetAtDp(context, 'assets/marker_icon.png', 62);
       _refreshMarkersIcon();
-
-      // ⛔️ Do not auto-select a marker on load (prevents auto popup)
-      // if (widget.showFirstTooltipOnLoad && _markers.isNotEmpty) {
-      //   setState(() => _selected = _markers.first.markerId);
-      //   await _updateAnchor();
-      // }
     });
   }
 
-  // ------------------------ Map style ------------------------
   static const _mapStyleJson = '''
   [
     {"elementType":"geometry","stylers":[{"color":"#f5f5f5"}]},
@@ -73,7 +59,6 @@ class _LocationVendorsMapScreenState extends State<LocationVendorsMapScreen> {
   ]
   ''';
 
-  // ------------------------ Seed data ------------------------
   static const _minLat = 24.7433195;
   static const _maxLat = 49.3457868;
   static const _minLng = -124.7844079;
@@ -90,7 +75,7 @@ class _LocationVendorsMapScreenState extends State<LocationVendorsMapScreen> {
     for (var i = 0; i < count; i++) {
       final pos = _randomUsaLatLng(r);
       final id = MarkerId('m$i');
-      final rating = (3.2 + r.nextDouble() * 1.6); // 3.2..4.8
+      final rating = (3.2 + r.nextDouble() * 1.6);
       final v = VendorLite(
         i.isEven ? 'National Tyres And Autocare' : 'U.S. Auto Inspection',
         i.isEven ? 'Braconash Road, Leyland PR25 3ZE' : 'Service • USA',
@@ -112,11 +97,10 @@ class _LocationVendorsMapScreenState extends State<LocationVendorsMapScreen> {
               _selectedScreenPx = null;
             });
           }
-          // Optionally center the map without showing a popup:
-          // await _gm?.animateCamera(CameraUpdate.newLatLng(pos));
+        
         },
 
-        anchor: const Offset(.5, .5), // center since our art is circular
+        anchor: const Offset(.5, .5), 
       ));
     }
   }
@@ -139,7 +123,6 @@ class _LocationVendorsMapScreenState extends State<LocationVendorsMapScreen> {
     setState(() => _selectedScreenPx = Offset(sc.x.toDouble(), sc.y.toDouble()));
   }
 
-  // ------------------------ Custom marker (kept, bug fixed) ------------------------
   Future<Uint8List> _buildMarkerArt({required double diameter}) async {
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
@@ -299,7 +282,6 @@ class _LocationVendorsMapScreenState extends State<LocationVendorsMapScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Replace bad Positioned-in-Column with padding (visually identical)
                   Padding(
                     padding: const EdgeInsets.only(left: 16, bottom: 12),
                     child: Container(

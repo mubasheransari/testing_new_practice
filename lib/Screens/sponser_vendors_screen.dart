@@ -1,15 +1,8 @@
 import 'package:flutter/material.dart';
 
-
-
-
-
-
-
 class SponsoredVendorsScreen extends StatelessWidget {
   const SponsoredVendorsScreen({super.key});
 
-  // Palette & gradients tuned to screenshot
   static const _bg = Color(0xFFF6F7FB);
   static const _title = Color(0xFF111111);
   static const _text = Color(0xFF7D8790);
@@ -87,7 +80,6 @@ class SponsoredVendorsScreen extends StatelessWidget {
 
             SizedBox(height: 14 * s),
 
-            // ===== Vendor cards (repeat)
             ...List.generate(4, (_) => _VendorCard(scale: s)),
           ],
         ),
@@ -113,7 +105,6 @@ class SponsoredVendorsScreen extends StatelessWidget {
   }
 }
 
-/* ----------------------------- Stat Tile (exact) ----------------------------- */
 
 class _StatTile extends StatelessWidget {
   const _StatTile({
@@ -163,7 +154,6 @@ class _StatTile extends StatelessWidget {
           ),
           SizedBox(height: 8 * s),
 
-          // White rounded label (very soft gradient like screenshot)
           Container(
             width: double.infinity,
             padding: EdgeInsets.symmetric(horizontal: 10 * s, vertical: 9 * s),
@@ -215,7 +205,6 @@ class _StatTile extends StatelessWidget {
   }
 }
 
-/* -------------------------------- Vendor Card -------------------------------- */
 
 class _VendorCard extends StatelessWidget {
   const _VendorCard({required this.scale});
@@ -267,7 +256,6 @@ class _VendorCard extends StatelessWidget {
                   ),
                 ),
 
-                // Share gradient chip (top-right)
                 Positioned(
                   top: 6 * s,
                   right: 6 * s,

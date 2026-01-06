@@ -1,10 +1,5 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:ios_tiretest_ai/models/tyre_upload_response.dart';
-
-
-import 'dart:io';
-import 'package:flutter/material.dart';
 
 class InspectionResultScreen extends StatelessWidget {
   const InspectionResultScreen({

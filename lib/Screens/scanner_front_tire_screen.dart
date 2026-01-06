@@ -1,15 +1,11 @@
 import 'dart:io';
-
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image/image.dart' as img;
-
 import 'package:ios_tiretest_ai/Bloc/auth_bloc.dart';
-import 'package:ios_tiretest_ai/Screens/generate_report_screen.dart';
 import 'package:ios_tiretest_ai/Widgets/bottom_action_bar.dart';
 
-/// overlay painter is in same file for simplicity
 class ScannerFrontTireScreenNew extends StatefulWidget {
   const ScannerFrontTireScreenNew({super.key});
 

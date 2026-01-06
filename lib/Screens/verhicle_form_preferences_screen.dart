@@ -4,7 +4,6 @@ import 'package:get_storage/get_storage.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_bloc.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_event.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_state.dart';
-import 'package:ios_tiretest_ai/Screens/car_tyre_scan_screen.dart';
 import 'package:ios_tiretest_ai/Screens/car_tyres_scanner_screen.dart';
 
 const kBg = Color(0xFFF6F7FA);
@@ -21,7 +20,7 @@ class _VehicleFormPreferencesScreenState
     extends State<VehicleFormPreferencesScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  String _vehiclePreference = 'Car'; // Car / Bike
+  String _vehiclePreference = 'Car'; 
   final _brandCtrl = TextEditingController(text: 'BMW');
   final _modelCtrl = TextEditingController(text: 'i7');
   final _plateCtrl = TextEditingController(text: '8383092');
@@ -72,12 +71,8 @@ class _VehicleFormPreferencesScreenState
       listenWhen: (prev, curr) =>
           prev.addVehiclePreferencesStatus != curr.addVehiclePreferencesStatus,
       listener: (context, state) {
-        // ✅ On success → navigate to ScannerFrontTireScreen
         if (state.addVehiclePreferencesStatus ==
             AddVehiclePreferencesStatus.success) {
-          print("STATE ${state.vehiclePreferencesModel!.storedData.first.id}");
-          print("STATE ${state.vehiclePreferencesModel!.storedData.first.id}");
-          print("STATE ${state.vehiclePreferencesModel!.storedData.first.id}");
           Navigator.of(context, rootNavigator: true).push(
             MaterialPageRoute(
               builder: (_) => CarTyresScannerScreen(
@@ -114,7 +109,6 @@ class _VehicleFormPreferencesScreenState
           );
         }
 
-        // ❌ On failure → show error
         if (state.addVehiclePreferencesStatus ==
             AddVehiclePreferencesStatus.failure) {
           final msg =
@@ -220,7 +214,6 @@ class _VehicleFormPreferencesScreenState
   }
 }
 
-/* ------------------------ Header ------------------------ */
 
 class _HeaderTitle extends StatelessWidget {
   const _HeaderTitle({required this.s});
@@ -265,7 +258,6 @@ class _HeaderTitle extends StatelessWidget {
   }
 }
 
-/* ------------------------ Card Shell ------------------------ */
 
 class _VehicleCard extends StatelessWidget {
   const _VehicleCard({required this.s, required this.child});
@@ -293,7 +285,6 @@ class _VehicleCard extends StatelessWidget {
   }
 }
 
-/* ------------------------ Vehicle Preference Toggle ------------------------ */
 
 class _VehiclePreferenceToggle extends StatelessWidget {
   const _VehiclePreferenceToggle({
@@ -320,7 +311,7 @@ class _VehiclePreferenceToggle extends StatelessWidget {
             color: const Color(0xFF111827),
           ),
         ),
-        SizedBox(height: 10 * s),
+      /*  SizedBox(height: 10 * s),
         Container(
           height: 42 * s,
           decoration: BoxDecoration(
@@ -346,7 +337,7 @@ class _VehiclePreferenceToggle extends StatelessWidget {
               // ),
             ],
           ),
-        ),
+        ),*/
       ],
     );
   }
@@ -418,7 +409,6 @@ class _ToggleChip extends StatelessWidget {
   }
 }
 
-/* ------------------------ Text Row ------------------------ */
 
 class _TextFieldRow extends StatelessWidget {
   const _TextFieldRow({
@@ -486,7 +476,6 @@ class _TextFieldRow extends StatelessWidget {
   }
 }
 
-/* ------------------------ Own switch ------------------------ */
 
 class _OwnSwitch extends StatelessWidget {
   const _OwnSwitch({
@@ -524,7 +513,6 @@ class _OwnSwitch extends StatelessWidget {
   }
 }
 
-/* ------------------------ Primary Button ------------------------ */
 
 class _PrimaryButton extends StatelessWidget {
   const _PrimaryButton({
