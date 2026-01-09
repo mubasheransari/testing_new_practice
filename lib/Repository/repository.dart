@@ -8,6 +8,7 @@ import 'package:ios_tiretest_ai/models/add_verhicle_preferences_model.dart';
 import 'package:ios_tiretest_ai/models/auth_models.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:ios_tiretest_ai/models/four_wheeler_uploads_request.dart';
+import 'package:ios_tiretest_ai/models/shop_vendor.dart';
 import 'package:ios_tiretest_ai/models/tyre_record.dart';
 import 'package:mime/mime.dart';
 import 'package:ios_tiretest_ai/models/tyre_upload_request.dart';
@@ -52,6 +53,10 @@ abstract class AuthRepository {
     required String tireBrand,
     required String tireDimension,
   });
+  Future<Result<List<ShopVendor>>> fetchNearbyShops({
+  required double latitude,
+  required double longitude,
+});
 
   Future<Result<TyreUploadResponse>> uploadFourWheeler(FourWheelerUploadRequest req);
 
@@ -555,6 +560,92 @@ class AuthRepositoryHttp implements AuthRepository {
   }
 
   @override
+Future<Result<List<ShopVendor>>> fetchNearbyShops({
+  required double latitude,
+  required double longitude,
+}) async {
+  try {
+    final dio = Dio(
+      BaseOptions(
+        headers: {
+          HttpHeaders.acceptHeader: 'application/json',
+          HttpHeaders.contentTypeHeader: 'application/json',
+        },
+        validateStatus: (_) => true,
+        responseType: ResponseType.plain,
+        connectTimeout: const Duration(seconds: 20),
+        receiveTimeout: const Duration(seconds: 30),
+        sendTimeout: const Duration(seconds: 30),
+      ),
+    );
+
+    final url = ApiConfig.shopsUrl;
+    print("LOCATION URL :: $url");
+    print("LOCATION URL :: $url");
+    print("LOCATION URL :: $url");
+
+    // Your Postman shows GET with JSON body (non-standard).
+    // Dio supports sending `data` in GET; backend must accept it.
+    final res = await dio.get(
+      url,
+      data: {
+        "latitude": latitude,
+        "longitude": longitude,
+      },
+    );
+
+    final status = res.statusCode ?? 0;
+
+    if (status ==200) {
+      final raw = res.data;
+      print("API DATA $raw");
+      print("API DATA $raw");
+
+      dynamic decoded;
+      if (raw is String) {
+        decoded = jsonDecode(raw);
+      } else {
+        decoded = raw;
+      }
+
+      if (decoded is! List) {
+        // sometimes backend wraps: {data:[...]} - handle both
+        if (decoded is Map && decoded['data'] is List) {
+          final list = (decoded['data'] as List)
+              .whereType<Map>()
+              .map((e) => ShopVendor.fromJson(Map<String, dynamic>.from(e)))
+              .toList();
+          return Result.ok(list);
+        }
+
+        return Result.fail(const Failure(
+          code: 'parse',
+          message: 'Invalid shops response format',
+        ));
+      }
+
+      final list = decoded
+          .whereType<Map>()
+          .map((e) => ShopVendor.fromJson(Map<String, dynamic>.from(e)))
+          .toList();
+
+      return Result.ok(list);
+    }
+
+    return Result.fail(Failure(
+      code: 'server',
+      message: 'Server error ($status)',
+      statusCode: status,
+    ));
+  } on SocketException {
+    return Result.fail(const Failure(code: 'network', message: 'No internet connection'));
+  } on TimeoutException {
+    return Result.fail(const Failure(code: 'timeout', message: 'Request timed out'));
+  } catch (e) {
+    return Result.fail(Failure(code: 'unknown', message: e.toString()));
+  }}
+
+  @override
 Future<Result<List<TyreRecord>>> fetchUserRecords({
   required String userId,
   required String vehicleType,
@@ -681,5 +772,6 @@ class ApiConfig {
       'http://54.162.208.215/app/tyre/four_wheeler_upload/';
         static const String fetchUserRecord =
       'http://54.162.208.215/app/tyre/fetch_user_record/';
+       static const String shopsUrl = 'http://54.162.208.215/backend/api/shops';
 }//Testing@123
 

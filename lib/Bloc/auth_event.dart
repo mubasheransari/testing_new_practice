@@ -157,3 +157,17 @@ class FetchTyreHistoryRequested extends AuthEvent {
   @override
   List<Object?> get props => [userId, vehicleId];
 }
+// ADD THIS near bottom
+
+class FetchNearbyShopsRequested extends AuthEvent {
+  final double latitude;
+  final double longitude;
+
+  const FetchNearbyShopsRequested({
+    required this.latitude,
+    required this.longitude,
+  });
+
+  @override
+  List<Object?> get props => [latitude, longitude];
+}

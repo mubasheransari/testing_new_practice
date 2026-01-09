@@ -4,6 +4,7 @@ import 'package:get_storage/get_storage.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_event.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_state.dart';
 import 'package:ios_tiretest_ai/models/four_wheeler_uploads_request.dart';
+import 'package:ios_tiretest_ai/models/shop_vendor.dart';
 import 'package:ios_tiretest_ai/models/tyre_record.dart';
 import 'package:ios_tiretest_ai/models/tyre_upload_request.dart';
 import 'package:ios_tiretest_ai/Repository/repository.dart';
@@ -23,14 +24,96 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<ClearAuthError>((e, emit) => emit(state.copyWith(error: null)));
     on<AddVehiclePreferenccesEvent>(addVehiclePreferences);
     on<FetchTyreHistoryRequested>(_onFetchTyreHistory);
+    on<FetchNearbyShopsRequested>(_onFetchNearbyShops);
+
   }
 
   Future<void> _onAppStarted(AppStarted e, Emitter<AuthState> emit) async {
-    final tok = await repo.getSavedToken();
-    if (tok != null && tok.isNotEmpty) {
-      add(const FetchProfileRequested());
-    }
+  final tok = await repo.getSavedToken();
+
+  if (tok != null && tok.isNotEmpty) {
+    add(const FetchProfileRequested());
+
+    // ✅ TEST: Karachi (your screenshot coordinates)
+    add(const FetchNearbyShopsRequested(
+      latitude: 24.91767709433974,
+      longitude: 67.1005464655281,
+    ));
+
+    // ✅ USA CENTER (if you want USA default instead, use this)
+    // add(const FetchNearbyShopsRequested(
+    //   latitude: 39.8283,
+    //   longitude: -98.5795,
+    // ));
   }
+}
+
+Future<void> _onFetchNearbyShops(
+  FetchNearbyShopsRequested e,
+  Emitter<AuthState> emit,
+) async {
+  emit(state.copyWith(
+    shopsStatus: ShopsStatus.loading,
+    shopsError: null,
+  ));
+
+  final r = await repo.fetchNearbyShops(
+    latitude: e.latitude,
+    longitude: e.longitude,
+  );
+
+  if (r.isSuccess) {
+    emit(state.copyWith(
+      shopsStatus: ShopsStatus.success,
+      shops: r.data ?? const <ShopVendor>[],
+      shopsError: null,
+    ));
+  } else {
+    emit(state.copyWith(
+      shopsStatus: ShopsStatus.failure,
+      shopsError: r.failure?.message ?? 'Failed to load shops',
+    ));
+  }
+}
+
+
+//   Future<void> _onFetchNearbyShops(
+//   FetchNearbyShopsRequested e,
+//   Emitter<AuthState> emit,
+// ) async {
+//   emit(state.copyWith(
+//     shopsStatus: ShopsStatus.loading,
+//     shopsError: null,
+//   ));
+
+//   final r = await repo.fetchNearbyShops(
+//     latitude: e.latitude,
+//     longitude: e.longitude,
+//   );
+
+//   if (r.isSuccess) {
+//     emit(state.copyWith(
+//       shopsStatus: ShopsStatus.success,
+//       shops: r.data ?? const <ShopVendor>[],
+//       shopsError: null,
+//     ));
+//   } else {
+//     emit(state.copyWith(
+//       shopsStatus: ShopsStatus.failure,
+//       shopsError: r.failure?.message ?? 'Failed to load shops',
+//     ));
+//   }
+// }
+
+
+//   Future<void> _onAppStarted(AppStarted e, Emitter<AuthState> emit) async {
+//     final tok = await repo.getSavedToken();
+//     if (tok != null && tok.isNotEmpty) {
+//       add(const FetchProfileRequested());
+//       add(FetchNearbyShopsRequested(latitude: 24.91767709433974,longitude: 67.1005464655281));
+//     }
+
+//   }
 
   Future<void> _onLogin(LoginRequested e, Emitter<AuthState> emit) async {
     emit(state.copyWith(loginStatus: AuthStatus.loading, error: null));

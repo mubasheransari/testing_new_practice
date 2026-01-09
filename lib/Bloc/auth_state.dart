@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:ios_tiretest_ai/models/add_verhicle_preferences_model.dart';
 import 'package:ios_tiretest_ai/models/auth_models.dart';
+import 'package:ios_tiretest_ai/models/shop_vendor.dart';
 import 'package:ios_tiretest_ai/models/tyre_record.dart';
 import 'package:ios_tiretest_ai/models/tyre_upload_response.dart';
 import 'package:ios_tiretest_ai/models/user_profile.dart';
@@ -12,12 +13,222 @@ enum TwoWheelerStatus { initial, uploading, success, failure }
 enum FourWheelerStatus { initial, uploading, success, failure }
 enum ProfileStatus { initial, loading, success, failure }
 enum AddVehiclePreferencesStatus { initial, loading, success, failure }
-
 enum TyreHistoryStatus { initial, loading, success, failure }
+enum ShopsStatus { initial, loading, success, failure }
+
+class AuthState extends Equatable {
+  // ---------------- SHOPS ----------------
+  final ShopsStatus shopsStatus;
+  final List<ShopVendor> shops;
+  final String? shopsError;
+
+  // ---------------- HISTORY ----------------
+  final TyreHistoryStatus tyreHistoryStatus;
+  final String? tyreHistoryError;
+  final Map<String, List<TyreRecord>> tyreRecordsByType;
+
+  // ---------------- AUTH ----------------
+  final AuthStatus loginStatus;
+  final AuthStatus signupStatus;
+  final LoginResponse? loginResponse;
+  final SignupResponse? signupResponse;
+
+  final String? error;
+
+  // ---------------- VEHICLE PREF ----------------
+  final AddVehiclePreferencesStatus addVehiclePreferencesStatus;
+  final VehiclePreferencesModel? vehiclePreferencesModel;
+  final String? errorMessageVehiclePreferences;
+
+  // ---------------- UPLOADS ----------------
+  final TwoWheelerStatus twoWheelerStatus;
+  final TyreUploadResponse? twoWheelerResponse;
+
+  final FourWheelerStatus fourWheelerStatus;
+  final TyreUploadResponse? fourWheelerResponse;
+  final String? fourWheelerError;
+
+  // ---------------- PROFILE ----------------
+  final ProfileStatus profileStatus;
+  final UserProfile? profile;
+
+  // (legacy list you still keep)
+  final List<TyreRecord> records;
+  final String? recordsError;
+  final String recordsVehicleType;
+
+  const AuthState({
+    // shops
+    this.shopsStatus = ShopsStatus.initial,
+    this.shops = const <ShopVendor>[],
+    this.shopsError,
+
+    // history
+    this.tyreHistoryStatus = TyreHistoryStatus.initial,
+    this.tyreHistoryError,
+    this.tyreRecordsByType = const {},
+
+    // auth
+    this.loginStatus = AuthStatus.initial,
+    this.signupStatus = AuthStatus.initial,
+    this.loginResponse,
+    this.signupResponse,
+    this.error,
+
+    // vehicle pref
+    this.addVehiclePreferencesStatus = AddVehiclePreferencesStatus.initial,
+    this.vehiclePreferencesModel,
+    this.errorMessageVehiclePreferences,
+
+    // uploads
+    this.twoWheelerStatus = TwoWheelerStatus.initial,
+    this.twoWheelerResponse,
+
+    this.fourWheelerStatus = FourWheelerStatus.initial,
+    this.fourWheelerResponse,
+    this.fourWheelerError,
+
+    // profile
+    this.profileStatus = ProfileStatus.initial,
+    this.profile,
+
+    // legacy
+    this.records = const [],
+    this.recordsError,
+    this.recordsVehicleType = 'car',
+  });
+
+  // helpers
+  List<TyreRecord> get carRecords => tyreRecordsByType['car'] ?? const <TyreRecord>[];
+  List<TyreRecord> get bikeRecords => tyreRecordsByType['bike'] ?? const <TyreRecord>[];
+
+  List<TyreRecord> get allTyreRecords {
+    final combined = <TyreRecord>[...carRecords, ...bikeRecords];
+    combined.sort((a, b) => b.uploadedAt.compareTo(a.uploadedAt));
+    return combined;
+  }
+
+  // ✅ FIXED COPYWITH (THIS WAS YOUR MAIN BUG)
+  AuthState copyWith({
+    ShopsStatus? shopsStatus,
+    List<ShopVendor>? shops,
+    String? shopsError,
+
+    TyreHistoryStatus? tyreHistoryStatus,
+    String? tyreHistoryError,
+    Map<String, List<TyreRecord>>? tyreRecordsByType,
+
+    AuthStatus? loginStatus,
+    AuthStatus? signupStatus,
+    LoginResponse? loginResponse,
+    SignupResponse? signupResponse,
+    String? error,
+
+    AddVehiclePreferencesStatus? addVehiclePreferencesStatus,
+    VehiclePreferencesModel? vehiclePreferencesModel,
+    String? errorMessageVehiclePreferences,
+
+    TwoWheelerStatus? twoWheelerStatus,
+    TyreUploadResponse? twoWheelerResponse,
+
+    FourWheelerStatus? fourWheelerStatus,
+    TyreUploadResponse? fourWheelerResponse,
+    String? fourWheelerError,
+
+    ProfileStatus? profileStatus,
+    UserProfile? profile,
+
+    List<TyreRecord>? records,
+    String? recordsError,
+    String? recordsVehicleType,
+  }) {
+    return AuthState(
+      // ✅ SHOPS
+      shopsStatus: shopsStatus ?? this.shopsStatus,
+      shops: shops ?? this.shops,
+      shopsError: shopsError ?? this.shopsError,
+
+      // ✅ HISTORY
+      tyreHistoryStatus: tyreHistoryStatus ?? this.tyreHistoryStatus,
+      tyreHistoryError: tyreHistoryError ?? this.tyreHistoryError,
+      tyreRecordsByType: tyreRecordsByType ?? this.tyreRecordsByType,
+
+      // ✅ AUTH
+      loginStatus: loginStatus ?? this.loginStatus,
+      signupStatus: signupStatus ?? this.signupStatus,
+      loginResponse: loginResponse ?? this.loginResponse,
+      signupResponse: signupResponse ?? this.signupResponse,
+      error: error ?? this.error,
+
+      // ✅ VEHICLE PREF
+      addVehiclePreferencesStatus:
+          addVehiclePreferencesStatus ?? this.addVehiclePreferencesStatus,
+      vehiclePreferencesModel: vehiclePreferencesModel ?? this.vehiclePreferencesModel,
+      errorMessageVehiclePreferences:
+          errorMessageVehiclePreferences ?? this.errorMessageVehiclePreferences,
+
+      // ✅ UPLOADS
+      twoWheelerStatus: twoWheelerStatus ?? this.twoWheelerStatus,
+      twoWheelerResponse: twoWheelerResponse ?? this.twoWheelerResponse,
+
+      fourWheelerStatus: fourWheelerStatus ?? this.fourWheelerStatus,
+      fourWheelerResponse: fourWheelerResponse ?? this.fourWheelerResponse,
+      fourWheelerError: fourWheelerError ?? this.fourWheelerError,
+
+      // ✅ PROFILE
+      profileStatus: profileStatus ?? this.profileStatus,
+      profile: profile ?? this.profile,
+
+      // legacy
+      records: records ?? this.records,
+      recordsError: recordsError ?? this.recordsError,
+      recordsVehicleType: recordsVehicleType ?? this.recordsVehicleType,
+    );
+  }
+
+  @override
+  List<Object?> get props => [
+        shopsStatus,
+        shops,
+        shopsError,
+        tyreHistoryStatus,
+        tyreHistoryError,
+        tyreRecordsByType,
+        loginStatus,
+        signupStatus,
+        loginResponse,
+        signupResponse,
+        error,
+        addVehiclePreferencesStatus,
+        vehiclePreferencesModel,
+        errorMessageVehiclePreferences,
+        twoWheelerStatus,
+        twoWheelerResponse,
+        fourWheelerStatus,
+        fourWheelerResponse,
+        fourWheelerError,
+        profileStatus,
+        profile,
+        records,
+        recordsError,
+        recordsVehicleType,
+      ];
+}
+
+
+/*enum AuthStatus { initial, loading, success, failure }
+enum TwoWheelerStatus { initial, uploading, success, failure }
+enum FourWheelerStatus { initial, uploading, success, failure }
+enum ProfileStatus { initial, loading, success, failure }
+enum AddVehiclePreferencesStatus { initial, loading, success, failure }
+enum TyreHistoryStatus { initial, loading, success, failure }
+enum ShopsStatus { initial, loading, success, failure }
 
 
 class AuthState extends Equatable {
-  
+    final ShopsStatus shopsStatus;
+  final List<ShopVendor> shops;
+  final String? shopsError;
   final TyreHistoryStatus tyreHistoryStatus;
 final String? tyreHistoryError;
 
@@ -53,8 +264,11 @@ final Map<String, List<TyreRecord>> tyreRecordsByType;
   final String recordsVehicleType; // car/bike
 
   const AuthState({
+      this.shopsStatus = ShopsStatus.initial,
+    this.shops = const <ShopVendor>[],
+    this.shopsError,
      this.tyreHistoryStatus = TyreHistoryStatus.initial,
-  this.tyreHistoryError,
+   this.tyreHistoryError,
   this.tyreRecordsByType = const {},
     this.addVehiclePreferencesStatus = AddVehiclePreferencesStatus.initial,
     this.loginStatus = AuthStatus.initial,
@@ -91,6 +305,9 @@ final Map<String, List<TyreRecord>> tyreRecordsByType;
   }
 
   AuthState copyWith({
+      ShopsStatus? shopsStatus,
+    List<ShopVendor>? shops,
+    String? shopsError,
     
     TyreHistoryStatus? tyreHistoryStatus,
 String? tyreHistoryError,
@@ -143,6 +360,9 @@ Map<String, List<TyreRecord>>? tyreRecordsByType,
 
   @override
   List<Object?> get props => [
+       shopsStatus,
+        shops,
+        shopsError,
       tyreHistoryStatus,
   tyreHistoryError,
   tyreRecordsByType,
@@ -161,12 +381,11 @@ Map<String, List<TyreRecord>>? tyreRecordsByType,
         fourWheelerStatus,
         fourWheelerResponse,
         fourWheelerError,
-
         records,
         recordsError,
         recordsVehicleType,
       ];
-}
+}*/
 
 // enum AuthStatus { initial, loading, success, failure }
 // enum TwoWheelerStatus { initial, uploading, success, failure }
