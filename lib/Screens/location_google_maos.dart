@@ -9,17 +9,6 @@ import '../Bloc/auth_state.dart';
 import '../models/shop_vendor.dart';
 
 
-import 'dart:ui' as ui;
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
-
-import '../Bloc/auth_bloc.dart';
-import '../Bloc/auth_event.dart';
-import '../Bloc/auth_state.dart';
-import '../models/shop_vendor.dart';
-
 class LocationVendorsMapScreen extends StatefulWidget {
   const LocationVendorsMapScreen({super.key, this.showFirstTooltipOnLoad = true});
   final bool showFirstTooltipOnLoad;
@@ -34,14 +23,14 @@ class _LocationVendorsMapScreenState extends State<LocationVendorsMapScreen> {
   // ✅ USA Center lat/lng
   static const LatLng usaCenter = LatLng(39.8283, -98.5795);
 
-  // ✅ Karachi test lat/lng (your screenshot)
+  // ✅ Karachi test lat/lng
   static const LatLng karachiTest = LatLng(24.91767709433974, 67.1005464655281);
 
-  // initial camera (you can choose usaCenter or karachiTest)
-  static const _initialZoom = 4.6;
+  static const double _initialZoom = 4.6;
 
   final Map<MarkerId, ShopVendor> _vendorByMarker = {};
   final Set<Marker> _markers = {};
+
   MarkerId? _selected;
   Offset? _selectedScreenPx;
 
@@ -71,7 +60,7 @@ class _LocationVendorsMapScreenState extends State<LocationVendorsMapScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       _markerIcon ??= await markerFromAssetAtDp(context, 'assets/marker_icon.png', 62);
 
-      // ✅ Trigger API
+      // ✅ Trigger API (replace with device current location later)
       context.read<AuthBloc>().add(const FetchNearbyShopsRequested(
             latitude: 24.91767709433974,
             longitude: 67.1005464655281,
@@ -84,31 +73,34 @@ class _LocationVendorsMapScreenState extends State<LocationVendorsMapScreen> {
     _markers.clear();
 
     for (final s in shops) {
-      // skip invalid
       if (s.latitude == 0 || s.longitude == 0) continue;
       if (s.latitude.abs() > 90 || s.longitude.abs() > 180) continue;
 
       final id = MarkerId(s.id.isNotEmpty ? s.id : '${s.shopName}_${s.latitude}_${s.longitude}');
       _vendorByMarker[id] = s;
 
-      _markers.add(Marker(
-        markerId: id,
-        position: LatLng(s.latitude, s.longitude),
-        icon: _markerIcon ?? BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
+      _markers.add(
+        Marker(
+          markerId: id,
+          position: LatLng(s.latitude, s.longitude),
+          icon: _markerIcon ?? BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
+          anchor: const Offset(.5, .5),
 
-        // keep: no tooltip on marker tap
-        onTap: () {
-          if (_selected != null || _selectedScreenPx != null) {
+          // ✅ NOW: show popup on marker tap
+          onTap: () async {
             setState(() {
-              _selected = null;
-              _selectedScreenPx = null;
+              _selected = id;
+              _selectedScreenPx = null; // reset until we calculate anchor
             });
-          }
-        },
-        anchor: const Offset(.5, .5),
-      ));
+
+            // ensure anchor is calculated after selection
+            await _updateAnchor();
+          },
+        ),
+      );
     }
 
+    // if selected marker removed
     if (_selected != null && !_vendorByMarker.containsKey(_selected)) {
       _selected = null;
       _selectedScreenPx = null;
@@ -119,10 +111,10 @@ class _LocationVendorsMapScreenState extends State<LocationVendorsMapScreen> {
 
   Future<void> _updateAnchor() async {
     if (_gm == null || _selected == null) return;
-    final m = _markers.where((x) => x.markerId == _selected).toList();
-    if (m.isEmpty) return;
+    final selectedMarker = _markers.where((m) => m.markerId == _selected).toList();
+    if (selectedMarker.isEmpty) return;
 
-    final sc = await _gm!.getScreenCoordinate(m.first.position);
+    final sc = await _gm!.getScreenCoordinate(selectedMarker.first.position);
     setState(() => _selectedScreenPx = Offset(sc.x.toDouble(), sc.y.toDouble()));
   }
 
@@ -145,6 +137,15 @@ class _LocationVendorsMapScreenState extends State<LocationVendorsMapScreen> {
     );
   }
 
+  void _hidePopup() {
+    if (_selected != null || _selectedScreenPx != null) {
+      setState(() {
+        _selected = null;
+        _selectedScreenPx = null;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final pad = MediaQuery.of(context).padding;
@@ -156,8 +157,7 @@ class _LocationVendorsMapScreenState extends State<LocationVendorsMapScreen> {
         top: true,
         bottom: false,
         child: BlocConsumer<AuthBloc, AuthState>(
-          listenWhen: (p, c) =>
-              p.shopsStatus != c.shopsStatus || p.shops.length != c.shops.length,
+          listenWhen: (p, c) => p.shopsStatus != c.shopsStatus || p.shops.length != c.shops.length,
           listener: (context, state) async {
             if (state.shopsStatus == ShopsStatus.success) {
               _buildMarkersFromApi(state.shops);
@@ -166,14 +166,11 @@ class _LocationVendorsMapScreenState extends State<LocationVendorsMapScreen> {
             }
           },
           builder: (context, state) {
-            // quick debug
-            debugPrint('UI shopsStatus=${state.shopsStatus} shops=${state.shops.length}');
-
             final loading = state.shopsStatus == ShopsStatus.loading;
 
             return Stack(
               children: [
-                // MAP
+                // ---------------- MAP ----------------
                 Positioned.fill(
                   child: LayoutBuilder(
                     builder: (ctx, c) {
@@ -184,7 +181,7 @@ class _LocationVendorsMapScreenState extends State<LocationVendorsMapScreen> {
                         children: [
                           GoogleMap(
                             initialCameraPosition: const CameraPosition(
-                              target: usaCenter, // ✅ USA center default
+                              target: usaCenter, // ✅ USA default
                               zoom: _initialZoom,
                             ),
                             onMapCreated: (ctrl) async {
@@ -193,10 +190,7 @@ class _LocationVendorsMapScreenState extends State<LocationVendorsMapScreen> {
                               await _updateAnchor();
                             },
                             onCameraIdle: _updateAnchor,
-                            onTap: (_) => setState(() {
-                              _selected = null;
-                              _selectedScreenPx = null;
-                            }),
+                            onTap: (_) => _hidePopup(),
                             markers: _markers,
                             zoomControlsEnabled: false,
                             compassEnabled: false,
@@ -207,12 +201,12 @@ class _LocationVendorsMapScreenState extends State<LocationVendorsMapScreen> {
                             trafficEnabled: false,
                           ),
 
-                          // tooltip
-                          if (_selected != null && _selectedScreenPx != null)
+                          // ✅ POPUP (same UI style as your screenshot)
+                          if (_selected != null && _selectedScreenPx != null && _vendorByMarker[_selected] != null)
                             _TooltipPositioner(
                               mapSize: Size(mapW, mapH),
                               anchor: _selectedScreenPx!,
-                              child: _VendorTooltipCard(vendor: _vendorByMarker[_selected]!),
+                              child: _VendorPopupCard(vendor: _vendorByMarker[_selected]!),
                             ),
                         ],
                       );
@@ -220,7 +214,7 @@ class _LocationVendorsMapScreenState extends State<LocationVendorsMapScreen> {
                   ),
                 ),
 
-                // Bottom UI
+                // ---------------- BOTTOM UI ----------------
                 Positioned(
                   left: 4,
                   right: 0,
@@ -245,16 +239,11 @@ class _LocationVendorsMapScreenState extends State<LocationVendorsMapScreen> {
                               bottomRight: Radius.circular(999),
                             ),
                             boxShadow: [
-                              BoxShadow(
-                                color: Color(0x1F000000),
-                                blurRadius: 6,
-                                offset: Offset(0, 2),
-                              ),
+                              BoxShadow(color: Color(0x1F000000), blurRadius: 6, offset: Offset(0, 2)),
                             ],
                           ),
                           child: Text(
                             'Sponsored vendors :',
-                            textAlign: TextAlign.center,
                             style: TextStyle(
                               fontFamily: 'ClashGrotesk',
                               color: Colors.white,
@@ -273,19 +262,18 @@ class _LocationVendorsMapScreenState extends State<LocationVendorsMapScreen> {
                           error: state.shopsStatus == ShopsStatus.failure ? state.shopsError : null,
                           shops: state.shops,
                           onTapShop: (shop) async {
-                            final markerId = MarkerId(shop.id.isNotEmpty
-                                ? shop.id
-                                : '${shop.shopName}_${shop.latitude}_${shop.longitude}');
-
+                            final markerId = MarkerId(shop.id.isNotEmpty ? shop.id : '${shop.shopName}_${shop.latitude}_${shop.longitude}');
                             final pos = LatLng(shop.latitude, shop.longitude);
 
                             await _gm?.animateCamera(
-                              CameraUpdate.newCameraPosition(
-                                CameraPosition(target: pos, zoom: 10.8),
-                              ),
+                              CameraUpdate.newCameraPosition(CameraPosition(target: pos, zoom: 12.0)),
                             );
 
-                            setState(() => _selected = markerId);
+                            // ✅ also show popup when tapping card (same as before)
+                            setState(() {
+                              _selected = markerId;
+                              _selectedScreenPx = null;
+                            });
                             await _updateAnchor();
                           },
                         ),
@@ -304,11 +292,7 @@ class _LocationVendorsMapScreenState extends State<LocationVendorsMapScreen> {
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(999),
                         boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(.08),
-                            blurRadius: 12,
-                            offset: const Offset(0, 6),
-                          )
+                          BoxShadow(color: Colors.black.withOpacity(.08), blurRadius: 12, offset: const Offset(0, 6)),
                         ],
                       ),
                       child: const Row(
@@ -330,6 +314,7 @@ class _LocationVendorsMapScreenState extends State<LocationVendorsMapScreen> {
   }
 }
 
+// -------------------------- Bottom cards --------------------------
 class _BottomCards extends StatelessWidget {
   const _BottomCards({
     required this.loading,
@@ -401,8 +386,9 @@ class _BottomCards extends StatelessWidget {
   }
 }
 
-class _VendorTooltipCard extends StatelessWidget {
-  const _VendorTooltipCard({required this.vendor});
+// -------------------------- Popup card (MATCH screenshot) --------------------------
+class _VendorPopupCard extends StatelessWidget {
+  const _VendorPopupCard({required this.vendor});
   final ShopVendor vendor;
 
   @override
@@ -412,66 +398,139 @@ class _VendorTooltipCard extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: Container(
-        width: 250,
-        height: 140,
+        width: 230, // ✅ same as screenshot
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE9ECF2)),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(.08), blurRadius: 16, offset: const Offset(0, 8))],
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(.12),
+              blurRadius: 18,
+              offset: const Offset(0, 10),
+            )
+          ],
         ),
-        clipBehavior: Clip.antiAlias,
-        child: Row(
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(
-              width: 96,
-              height: double.infinity,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  _imgOrPlaceholder(img),
-                  Positioned(left: 6, top: 6, child: _ratingPill(vendor.rating)),
-                ],
-              ),
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            // ✅ IMAGE (rounded like screenshot)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: SizedBox(
+                height: 118, // ✅ close to screenshot
+               // width: double.infinity,
+                child: Stack(
+                  fit: StackFit.expand,
                   children: [
-                    Text(vendor.shopName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5)),
-                    const SizedBox(height: 4),
-                    Row(children: [
-                      const Icon(Icons.build_circle_rounded, size: 14, color: Color(0xFF6C7A91)),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          (vendor.services?.trim().isNotEmpty == true)
-                              ? vendor.services!.trim()
-                              : 'Vehicle inspection service',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 12.2, color: Color(0xFF6C7A91)),
-                        ),
-                      ),
-                    ]),
-                    const Spacer(),
-                    Row(children: [
-                      _circleIcon(Icons.call_rounded),
-                      const SizedBox(width: 6),
-                      _circleIcon(Icons.chat_bubble_rounded),
-                      const SizedBox(width: 6),
-                      _circleIcon(Icons.navigation_rounded),
-                      const Spacer(),
-                      const Icon(Icons.more_horiz_rounded, size: 22, color: Color(0xFF9AA1AE)),
-                    ]),
+                    _imgOrPlaceholder(img),
+                    Positioned(
+                      left: 10,
+                      top: 10,
+                      child: _ratingPillSmall(vendor.rating),
+                    ),
                   ],
                 ),
               ),
+            ),
+
+            const SizedBox(height: 10),
+
+            // ✅ TITLE + ICONS
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    vendor.shopName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF111827),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                _circleBlueIcon(Icons.call_rounded),
+                const SizedBox(width: 10),
+                _circleBlueIcon(Icons.navigation_rounded),
+              ],
+            ),
+
+            const SizedBox(height: 6),
+
+            // ✅ subtitle
+            Text(
+              (vendor.services?.trim().isNotEmpty == true)
+                  ? vendor.services!.trim()
+                  : 'Vehicle inspection service',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 13.5,
+                color: Color(0xFF9CA3AF),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+
+            const SizedBox(height: 6),
+
+            // ✅ Closed - Opens (same line, same colors)
+            const Row(
+              children: [
+                Text(
+                  'Closed',
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    color: Color(0xFFEF4444),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                Text(
+                  ' - Opens 08:00',
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    color: Color(0xFF111827),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 10),
+
+            // ✅ Quote row
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: const Color(0xFFE5E7EB)),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: const Image(
+                    image: NetworkImage('https://i.pravatar.cc/100?img=11'),
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    '"Fast car inspection service\nand excellent customer service."',
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      color: const Color(0xFF9CA3AF).withOpacity(.95),
+                      fontWeight: FontWeight.w600,
+                      height: 1.2,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -479,14 +538,191 @@ class _VendorTooltipCard extends StatelessWidget {
     );
   }
 
-  static Widget _circleIcon(IconData icon) => Container(
-        width: 28,
-        height: 28,
-        decoration: const BoxDecoration(color: Color(0xFFF0F3F9), shape: BoxShape.circle),
-        child: Icon(icon, size: 16, color: Color(0xFF5F6C86)),
-      );
+  // ✅ EXACT BLUE CIRCLE BUTTON (like screenshot)
+  static Widget _circleBlueIcon(IconData icon) {
+    return Container(
+      width: 34,
+      height: 34,
+      decoration: const BoxDecoration(
+        color: Color(0xFF3B82F6),
+        shape: BoxShape.circle,
+      ),
+      child: Icon(icon, size: 18, color: Colors.white),
+    );
+  }
 }
 
+// ✅ rating pill (small like screenshot)
+Widget _ratingPillSmall(double rating) {
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(999),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(.08),
+          blurRadius: 10,
+          offset: const Offset(0, 4),
+        )
+      ],
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Icon(Icons.star_rounded, size: 16, color: Color(0xFFFBBF24)),
+        const SizedBox(width: 4),
+        Text(
+          rating.toStringAsFixed(1),
+          style: const TextStyle(
+            fontWeight: FontWeight.w900,
+            fontSize: 13.5,
+            color: Color(0xFF111827),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+// class _VendorPopupCard extends StatelessWidget {
+//   const _VendorPopupCard({required this.vendor});
+//   final ShopVendor vendor;
+
+//   @override
+//   Widget build(BuildContext context) {
+//     final img = vendor.shopImageUrl;
+
+//     return Material(
+//       color: Colors.transparent,
+//       child: Container(
+//         width: 292,
+//         decoration: BoxDecoration(
+//           color: Colors.white,
+//           borderRadius: BorderRadius.circular(16),
+//           boxShadow: [BoxShadow(color: Colors.black.withOpacity(.12), blurRadius: 18, offset: const Offset(0, 10))],
+//         ),
+//         clipBehavior: Clip.antiAlias,
+//         child: Column(
+//           mainAxisSize: MainAxisSize.min,
+//           children: [
+//             // image
+//             SizedBox(
+//               height: 126,
+//               child: Stack(
+//                 fit: StackFit.expand,
+//                 children: [
+//                   _imgOrPlaceholder(img),
+//                   Positioned(left: 10, top: 10, child: _ratingPill(vendor.rating)),
+//                 ],
+//               ),
+//             ),
+
+//             // details
+//             Padding(
+//               padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+//               child: Column(
+//                 crossAxisAlignment: CrossAxisAlignment.start,
+//                 children: [
+//                   // title + icons
+//                   Row(
+//                     children: [
+//                       Expanded(
+//                         child: Text(
+//                           vendor.shopName,
+//                           maxLines: 1,
+//                           overflow: TextOverflow.ellipsis,
+//                           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+//                         ),
+//                       ),
+//                       const SizedBox(width: 8),
+//                       _circleBlueIcon(Icons.call_rounded),
+//                       const SizedBox(width: 8),
+//                       _circleBlueIcon(Icons.navigation_rounded),
+//                     ],
+//                   ),
+//                   const SizedBox(height: 6),
+
+//                   Text(
+//                     (vendor.services?.trim().isNotEmpty == true) ? vendor.services!.trim() : 'Vehicle inspection service',
+//                     maxLines: 1,
+//                     overflow: TextOverflow.ellipsis,
+//                     style: const TextStyle(fontSize: 13.5, color: Color(0xFF8B95A7), fontWeight: FontWeight.w600),
+//                   ),
+
+//                   const SizedBox(height: 6),
+//                   const Text(
+//                     'Closed - Opens 08:00',
+//                     style: TextStyle(fontSize: 13.5, color: Color(0xFFE11D48), fontWeight: FontWeight.w700),
+//                   ),
+
+//                   const SizedBox(height: 10),
+
+//                   // quote row (like screenshot)
+//                   Row(
+//                     crossAxisAlignment: CrossAxisAlignment.start,
+//                     children: [
+//                       const CircleAvatar(
+//                         radius: 14,
+//                         backgroundImage: NetworkImage('https://i.pravatar.cc/100?img=11'),
+//                       ),
+//                       const SizedBox(width: 10),
+//                       Expanded(
+//                         child: Text(
+//                           '"Fast car inspection service\nand excellent customer service."',
+//                           style: TextStyle(
+//                             fontSize: 12.5,
+//                             color: Colors.black.withOpacity(.55),
+//                             fontWeight: FontWeight.w600,
+//                             height: 1.2,
+//                           ),
+//                         ),
+//                       ),
+//                     ],
+//                   )
+//                 ],
+//               ),
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+
+//   static Widget _circleBlueIcon(IconData icon) {
+//     return Container(
+//       width: 34,
+//       height: 34,
+//       decoration: const BoxDecoration(
+//         color: Color(0xFFE9F2FF),
+//         shape: BoxShape.circle,
+//       ),
+//       child: const Icon(Icons.circle, color: Colors.transparent), // placeholder (keeps alignment)
+//       alignment: Alignment.center,
+//       foregroundDecoration: const BoxDecoration(shape: BoxShape.circle),
+//      // child2: null,
+//     );
+//   }
+// }
+
+// Flutter doesn’t allow child2; so we do it correctly:
+extension _FixChild on Widget {
+  Widget get child2 => this;
+}
+
+Widget _circleBlueIcon(IconData icon) {
+  return Container(
+    width: 34,
+    height: 34,
+    decoration: const BoxDecoration(
+      color: Color(0xFFE9F2FF),
+      shape: BoxShape.circle,
+    ),
+    child: Icon(icon, size: 18, color: const Color(0xFF2D7BFF)),
+  );
+}
+
+// -------------------------- Your existing vendor card --------------------------
 class _VendorCard extends StatelessWidget {
   const _VendorCard({required this.v});
   final ShopVendor v;
@@ -559,6 +795,7 @@ class _VendorCard extends StatelessWidget {
   }
 }
 
+// -------------------------- Utils --------------------------
 Widget _imgOrPlaceholder(String? url) {
   if (url == null || url.trim().isEmpty) {
     return Container(
@@ -575,7 +812,9 @@ Widget _imgOrPlaceholder(String? url) {
         ? w
         : Container(
             color: const Color(0xFFF2F4F7),
-            child: const Center(child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))),
+            child: const Center(
+              child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)),
+            ),
           ),
     errorBuilder: (c, e, s) => Container(
       color: const Color(0xFFF2F4F7),
@@ -587,12 +826,15 @@ Widget _imgOrPlaceholder(String? url) {
 
 Widget _ratingPill(double rating) {
   return Container(
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
     decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(999)),
     child: Row(children: [
       const Icon(Icons.star_rounded, size: 16, color: Color(0xFFFFB300)),
-      const SizedBox(width: 2),
-      Text('$rating', style: const TextStyle(fontWeight: FontWeight.w800, fontFamily: 'ClashGrotesk', letterSpacing: 1.0)),
+      const SizedBox(width: 4),
+      Text(
+        rating.toStringAsFixed(1),
+        style: const TextStyle(fontWeight: FontWeight.w800, letterSpacing: .2),
+      ),
     ]),
   );
 }
@@ -605,11 +847,11 @@ class _TooltipPositioner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const cardW = 250.0;
-    const cardH = 140.0;
+    const cardW = 292.0;
+    const cardH = 235.0;
 
-    final left = (anchor.dx - cardW * .65).clamp(12.0, mapSize.width - cardW - 12.0);
-    final top = (anchor.dy - cardH - 22).clamp(80.0, mapSize.height - cardH - 12.0);
+    final left = (anchor.dx - cardW * .55).clamp(12.0, mapSize.width - cardW - 12.0);
+    final top = (anchor.dy - cardH - 16).clamp(80.0, mapSize.height - cardH - 12.0);
 
     return Positioned(left: left, top: top, child: child);
   }
@@ -632,6 +874,621 @@ Future<BitmapDescriptor> markerFromAssetAtDp(
   final bytes = await frame.image.toByteData(format: ui.ImageByteFormat.png);
   return BitmapDescriptor.fromBytes(bytes!.buffer.asUint8List());
 }
+
+
+
+// class LocationVendorsMapScreen extends StatefulWidget {
+//   const LocationVendorsMapScreen({super.key, this.showFirstTooltipOnLoad = true});
+//   final bool showFirstTooltipOnLoad;
+
+//   @override
+//   State<LocationVendorsMapScreen> createState() => _LocationVendorsMapScreenState();
+// }
+
+// class _LocationVendorsMapScreenState extends State<LocationVendorsMapScreen> {
+//   GoogleMapController? _gm;
+
+//   // ✅ USA Center lat/lng
+//   static const LatLng usaCenter = LatLng(39.8283, -98.5795);
+
+//   // ✅ Karachi test lat/lng (your screenshot)
+//   static const LatLng karachiTest = LatLng(24.91767709433974, 67.1005464655281);
+
+//   // initial camera (you can choose usaCenter or karachiTest)
+//   static const _initialZoom = 4.6;
+
+//   final Map<MarkerId, ShopVendor> _vendorByMarker = {};
+//   final Set<Marker> _markers = {};
+//   MarkerId? _selected;
+//   Offset? _selectedScreenPx;
+
+//   BitmapDescriptor? _markerIcon;
+
+//   static const _mapStyleJson = '''
+//   [
+//     {"elementType":"geometry","stylers":[{"color":"#f5f5f5"}]},
+//     {"elementType":"labels.icon","stylers":[{"visibility":"off"}]},
+//     {"elementType":"labels.text.fill","stylers":[{"color":"#616161"}]},
+//     {"elementType":"labels.text.stroke","stylers":[{"color":"#f5f5f5"}]},
+//     {"featureType":"administrative.land_parcel","stylers":[{"visibility":"off"}]},
+//     {"featureType":"poi","stylers":[{"visibility":"off"}]},
+//     {"featureType":"road","elementType":"geometry","stylers":[{"color":"#ffffff"}]},
+//     {"featureType":"road","elementType":"labels.icon","stylers":[{"visibility":"off"}]},
+//     {"featureType":"road.arterial","elementType":"labels.text.fill","stylers":[{"color":"#757575"}]},
+//     {"featureType":"road.highway","elementType":"geometry","stylers":[{"color":"#dadada"}]},
+//     {"featureType":"transit","stylers":[{"visibility":"off"}]},
+//     {"featureType":"water","elementType":"geometry","stylers":[{"color":"#e9f2ff"}]}
+//   ]
+//   ''';
+
+//   @override
+//   void initState() {
+//     super.initState();
+
+//     WidgetsBinding.instance.addPostFrameCallback((_) async {
+//       _markerIcon ??= await markerFromAssetAtDp(context, 'assets/marker_icon.png', 62);
+
+//       // ✅ Trigger API
+//       context.read<AuthBloc>().add(const FetchNearbyShopsRequested(
+//             latitude: 24.91767709433974,
+//             longitude: 67.1005464655281,
+//           ));
+//     });
+//   }
+
+//   void _buildMarkersFromApi(List<ShopVendor> shops) {
+//     _vendorByMarker.clear();
+//     _markers.clear();
+
+//     for (final s in shops) {
+//       // skip invalid
+//       if (s.latitude == 0 || s.longitude == 0) continue;
+//       if (s.latitude.abs() > 90 || s.longitude.abs() > 180) continue;
+
+//       final id = MarkerId(s.id.isNotEmpty ? s.id : '${s.shopName}_${s.latitude}_${s.longitude}');
+//       _vendorByMarker[id] = s;
+
+//       _markers.add(Marker(
+//         markerId: id,
+//         position: LatLng(s.latitude, s.longitude),
+//         icon: _markerIcon ?? BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
+
+//         // keep: no tooltip on marker tap
+//         onTap: () {
+//           if (_selected != null || _selectedScreenPx != null) {
+//             setState(() {
+//               _selected = null;
+//               _selectedScreenPx = null;
+//             });
+//           }
+//         },
+//         anchor: const Offset(.5, .5),
+//       ));
+//     }
+
+//     if (_selected != null && !_vendorByMarker.containsKey(_selected)) {
+//       _selected = null;
+//       _selectedScreenPx = null;
+//     }
+
+//     setState(() {});
+//   }
+
+//   Future<void> _updateAnchor() async {
+//     if (_gm == null || _selected == null) return;
+//     final m = _markers.where((x) => x.markerId == _selected).toList();
+//     if (m.isEmpty) return;
+
+//     final sc = await _gm!.getScreenCoordinate(m.first.position);
+//     setState(() => _selectedScreenPx = Offset(sc.x.toDouble(), sc.y.toDouble()));
+//   }
+
+//   Future<void> _focusFirstShop(List<ShopVendor> shops) async {
+//     if (_gm == null) return;
+//     if (shops.isEmpty) return;
+
+//     final first = shops.firstWhere(
+//       (x) => x.latitude != 0 && x.longitude != 0 && x.latitude.abs() <= 90 && x.longitude.abs() <= 180,
+//       orElse: () => shops.first,
+//     );
+
+//     await _gm?.animateCamera(
+//       CameraUpdate.newCameraPosition(
+//         CameraPosition(
+//           target: LatLng(first.latitude, first.longitude),
+//           zoom: 11,
+//         ),
+//       ),
+//     );
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     final pad = MediaQuery.of(context).padding;
+//     final s = MediaQuery.of(context).size.width / 390.0;
+
+//     return Scaffold(
+//       backgroundColor: const Color(0xFFF6F7FA),
+//       body: SafeArea(
+//         top: true,
+//         bottom: false,
+//         child: BlocConsumer<AuthBloc, AuthState>(
+//           listenWhen: (p, c) =>
+//               p.shopsStatus != c.shopsStatus || p.shops.length != c.shops.length,
+//           listener: (context, state) async {
+//             if (state.shopsStatus == ShopsStatus.success) {
+//               _buildMarkersFromApi(state.shops);
+//               await _focusFirstShop(state.shops);
+//               await _updateAnchor();
+//             }
+//           },
+//           builder: (context, state) {
+//             // quick debug
+//             debugPrint('UI shopsStatus=${state.shopsStatus} shops=${state.shops.length}');
+
+//             final loading = state.shopsStatus == ShopsStatus.loading;
+
+//             return Stack(
+//               children: [
+//                 // MAP
+//                 Positioned.fill(
+//                   child: LayoutBuilder(
+//                     builder: (ctx, c) {
+//                       final mapW = c.maxWidth;
+//                       final mapH = c.maxHeight;
+
+//                       return Stack(
+//                         children: [
+//                           GoogleMap(
+//                             initialCameraPosition: const CameraPosition(
+//                               target: usaCenter, // ✅ USA center default
+//                               zoom: _initialZoom,
+//                             ),
+//                             onMapCreated: (ctrl) async {
+//                               _gm = ctrl;
+//                               await _gm?.setMapStyle(_mapStyleJson);
+//                               await _updateAnchor();
+//                             },
+//                             onCameraIdle: _updateAnchor,
+//                             onTap: (_) => setState(() {
+//                               _selected = null;
+//                               _selectedScreenPx = null;
+//                             }),
+//                             markers: _markers,
+//                             zoomControlsEnabled: false,
+//                             compassEnabled: false,
+//                             myLocationEnabled: false,
+//                             myLocationButtonEnabled: false,
+//                             mapToolbarEnabled: false,
+//                             buildingsEnabled: false,
+//                             trafficEnabled: false,
+//                           ),
+
+//                           // tooltip
+//                           if (_selected != null && _selectedScreenPx != null)
+//                             _TooltipPositioner(
+//                               mapSize: Size(mapW, mapH),
+//                               anchor: _selectedScreenPx!,
+//                               child: _VendorTooltipCard(vendor: _vendorByMarker[_selected]!),
+//                             ),
+//                         ],
+//                       );
+//                     },
+//                   ),
+//                 ),
+
+//                 // Bottom UI
+//                 Positioned(
+//                   left: 4,
+//                   right: 0,
+//                   bottom: 18 + pad.bottom,
+//                   child: Column(
+//                     crossAxisAlignment: CrossAxisAlignment.start,
+//                     children: [
+//                       Padding(
+//                         padding: const EdgeInsets.only(left: 16, bottom: 12),
+//                         child: Container(
+//                           padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 4),
+//                           decoration: const BoxDecoration(
+//                             gradient: LinearGradient(
+//                               colors: [Color(0xFF6D63FF), Color(0xFF2DA3FF)],
+//                               begin: Alignment.centerLeft,
+//                               end: Alignment.centerRight,
+//                             ),
+//                             borderRadius: BorderRadius.only(
+//                               topLeft: Radius.circular(10),
+//                               bottomLeft: Radius.circular(10),
+//                               topRight: Radius.circular(999),
+//                               bottomRight: Radius.circular(999),
+//                             ),
+//                             boxShadow: [
+//                               BoxShadow(
+//                                 color: Color(0x1F000000),
+//                                 blurRadius: 6,
+//                                 offset: Offset(0, 2),
+//                               ),
+//                             ],
+//                           ),
+//                           child: Text(
+//                             'Sponsored vendors :',
+//                             textAlign: TextAlign.center,
+//                             style: TextStyle(
+//                               fontFamily: 'ClashGrotesk',
+//                               color: Colors.white,
+//                               fontSize: 19 * s,
+//                               fontWeight: FontWeight.w600,
+//                               letterSpacing: 0.2,
+//                             ),
+//                           ),
+//                         ),
+//                       ),
+//                       const SizedBox(height: 13),
+//                       SizedBox(
+//                         height: 216,
+//                         child: _BottomCards(
+//                           loading: loading,
+//                           error: state.shopsStatus == ShopsStatus.failure ? state.shopsError : null,
+//                           shops: state.shops,
+//                           onTapShop: (shop) async {
+//                             final markerId = MarkerId(shop.id.isNotEmpty
+//                                 ? shop.id
+//                                 : '${shop.shopName}_${shop.latitude}_${shop.longitude}');
+
+//                             final pos = LatLng(shop.latitude, shop.longitude);
+
+//                             await _gm?.animateCamera(
+//                               CameraUpdate.newCameraPosition(
+//                                 CameraPosition(target: pos, zoom: 10.8),
+//                               ),
+//                             );
+
+//                             setState(() => _selected = markerId);
+//                             await _updateAnchor();
+//                           },
+//                         ),
+//                       ),
+//                     ],
+//                   ),
+//                 ),
+
+//                 if (loading)
+//                   Positioned(
+//                     top: 14 + pad.top,
+//                     right: 14,
+//                     child: Container(
+//                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+//                       decoration: BoxDecoration(
+//                         color: Colors.white,
+//                         borderRadius: BorderRadius.circular(999),
+//                         boxShadow: [
+//                           BoxShadow(
+//                             color: Colors.black.withOpacity(.08),
+//                             blurRadius: 12,
+//                             offset: const Offset(0, 6),
+//                           )
+//                         ],
+//                       ),
+//                       child: const Row(
+//                         mainAxisSize: MainAxisSize.min,
+//                         children: [
+//                           SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+//                           SizedBox(width: 8),
+//                           Text('Loading...', style: TextStyle(fontWeight: FontWeight.w600)),
+//                         ],
+//                       ),
+//                     ),
+//                   ),
+//               ],
+//             );
+//           },
+//         ),
+//       ),
+//     );
+//   }
+// }
+
+// class _BottomCards extends StatelessWidget {
+//   const _BottomCards({
+//     required this.loading,
+//     required this.error,
+//     required this.shops,
+//     required this.onTapShop,
+//   });
+
+//   final bool loading;
+//   final String? error;
+//   final List<ShopVendor> shops;
+//   final void Function(ShopVendor shop) onTapShop;
+
+//   @override
+//   Widget build(BuildContext context) {
+//     if (error != null) {
+//       return Padding(
+//         padding: const EdgeInsets.only(left: 14, right: 14),
+//         child: Container(
+//           height: 216,
+//           decoration: BoxDecoration(
+//             color: Colors.white,
+//             borderRadius: BorderRadius.circular(12),
+//             boxShadow: [BoxShadow(color: Colors.black.withOpacity(.06), blurRadius: 16, offset: const Offset(0, 8))],
+//           ),
+//           alignment: Alignment.center,
+//           child: Text(
+//             error!,
+//             textAlign: TextAlign.center,
+//             style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.redAccent),
+//           ),
+//         ),
+//       );
+//     }
+
+//     if (shops.isEmpty) {
+//       return Padding(
+//         padding: const EdgeInsets.only(left: 14, right: 14),
+//         child: Container(
+//           height: 216,
+//           decoration: BoxDecoration(
+//             color: Colors.white,
+//             borderRadius: BorderRadius.circular(12),
+//             boxShadow: [BoxShadow(color: Colors.black.withOpacity(.06), blurRadius: 16, offset: const Offset(0, 8))],
+//           ),
+//           alignment: Alignment.center,
+//           child: Text(
+//             loading ? 'Loading vendors...' : 'No vendors found',
+//             style: const TextStyle(fontWeight: FontWeight.w800),
+//           ),
+//         ),
+//       );
+//     }
+
+//     return ListView.separated(
+//       padding: const EdgeInsets.only(left: 14),
+//       scrollDirection: Axis.horizontal,
+//       physics: const BouncingScrollPhysics(),
+//       itemBuilder: (_, i) {
+//         final v = shops[i];
+//         return GestureDetector(
+//           onTap: () => onTapShop(v),
+//           child: _VendorCard(v: v),
+//         );
+//       },
+//       separatorBuilder: (_, __) => const SizedBox(width: 14),
+//       itemCount: shops.length,
+//     );
+//   }
+// }
+
+// class _VendorTooltipCard extends StatelessWidget {
+//   const _VendorTooltipCard({required this.vendor});
+//   final ShopVendor vendor;
+
+//   @override
+//   Widget build(BuildContext context) {
+//     final img = vendor.shopImageUrl;
+
+//     return Material(
+//       color: Colors.transparent,
+//       child: Container(
+//         width: 250,
+//         height: 140,
+//         decoration: BoxDecoration(
+//           color: Colors.white,
+//           borderRadius: BorderRadius.circular(16),
+//           border: Border.all(color: const Color(0xFFE9ECF2)),
+//           boxShadow: [BoxShadow(color: Colors.black.withOpacity(.08), blurRadius: 16, offset: const Offset(0, 8))],
+//         ),
+//         clipBehavior: Clip.antiAlias,
+//         child: Row(
+//           children: [
+//             SizedBox(
+//               width: 96,
+//               height: double.infinity,
+//               child: Stack(
+//                 fit: StackFit.expand,
+//                 children: [
+//                   _imgOrPlaceholder(img),
+//                   Positioned(left: 6, top: 6, child: _ratingPill(vendor.rating)),
+//                 ],
+//               ),
+//             ),
+//             Expanded(
+//               child: Padding(
+//                 padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
+//                 child: Column(
+//                   crossAxisAlignment: CrossAxisAlignment.start,
+//                   children: [
+//                     Text(vendor.shopName,
+//                         maxLines: 1,
+//                         overflow: TextOverflow.ellipsis,
+//                         style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5)),
+//                     const SizedBox(height: 4),
+//                     Row(children: [
+//                       const Icon(Icons.build_circle_rounded, size: 14, color: Color(0xFF6C7A91)),
+//                       const SizedBox(width: 4),
+//                       Expanded(
+//                         child: Text(
+//                           (vendor.services?.trim().isNotEmpty == true)
+//                               ? vendor.services!.trim()
+//                               : 'Vehicle inspection service',
+//                           maxLines: 1,
+//                           overflow: TextOverflow.ellipsis,
+//                           style: const TextStyle(fontSize: 12.2, color: Color(0xFF6C7A91)),
+//                         ),
+//                       ),
+//                     ]),
+//                     const Spacer(),
+//                     Row(children: [
+//                       _circleIcon(Icons.call_rounded),
+//                       const SizedBox(width: 6),
+//                       _circleIcon(Icons.chat_bubble_rounded),
+//                       const SizedBox(width: 6),
+//                       _circleIcon(Icons.navigation_rounded),
+//                       const Spacer(),
+//                       const Icon(Icons.more_horiz_rounded, size: 22, color: Color(0xFF9AA1AE)),
+//                     ]),
+//                   ],
+//                 ),
+//               ),
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+
+//   static Widget _circleIcon(IconData icon) => Container(
+//         width: 28,
+//         height: 28,
+//         decoration: const BoxDecoration(color: Color(0xFFF0F3F9), shape: BoxShape.circle),
+//         child: Icon(icon, size: 16, color: Color(0xFF5F6C86)),
+//       );
+// }
+
+// class _VendorCard extends StatelessWidget {
+//   const _VendorCard({required this.v});
+//   final ShopVendor v;
+
+//   @override
+//   Widget build(BuildContext context) {
+//     final img = v.shopImageUrl;
+
+//     return Container(
+//       width: 250,
+//       decoration: BoxDecoration(
+//         color: Colors.white,
+//         borderRadius: BorderRadius.circular(9),
+//         boxShadow: [BoxShadow(color: Colors.black.withOpacity(.06), blurRadius: 16, offset: const Offset(0, 8))],
+//       ),
+//       clipBehavior: Clip.antiAlias,
+//       child: Column(
+//         crossAxisAlignment: CrossAxisAlignment.start,
+//         children: [
+//           SizedBox(
+//             height: 122,
+//             child: Stack(
+//               fit: StackFit.expand,
+//               children: [
+//                 ClipRRect(
+//                   borderRadius: const BorderRadius.only(topLeft: Radius.circular(5), topRight: Radius.circular(5)),
+//                   child: _imgOrPlaceholder(img),
+//                 ),
+//                 Positioned(left: 10, top: 10, child: _ratingPill(v.rating)),
+//               ],
+//             ),
+//           ),
+//           Expanded(
+//             child: Padding(
+//               padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+//               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+//                 Text(
+//                   v.shopName,
+//                   maxLines: 1,
+//                   overflow: TextOverflow.ellipsis,
+//                   style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, fontFamily: 'ClashGrotesk'),
+//                 ),
+//                 const SizedBox(height: 6),
+//                 Row(
+//                   crossAxisAlignment: CrossAxisAlignment.start,
+//                   children: [
+//                     Container(
+//                       width: 10,
+//                       height: 10,
+//                       margin: const EdgeInsets.only(top: 3),
+//                       decoration: const BoxDecoration(color: Color(0xFF3B82F6), shape: BoxShape.circle),
+//                     ),
+//                     const SizedBox(width: 8),
+//                     Expanded(
+//                       child: Text(
+//                         v.displayAddress,
+//                         maxLines: 2,
+//                         overflow: TextOverflow.ellipsis,
+//                         style: const TextStyle(fontSize: 13, color: Color(0xFF6C7A91), fontFamily: 'ClashGrotesk'),
+//                       ),
+//                     ),
+//                   ],
+//                 ),
+//               ]),
+//             ),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+// }
+
+// Widget _imgOrPlaceholder(String? url) {
+//   if (url == null || url.trim().isEmpty) {
+//     return Container(
+//       color: const Color(0xFFF2F4F7),
+//       alignment: Alignment.center,
+//       child: const Icon(Icons.image_not_supported_outlined, color: Color(0xFF9AA1AE)),
+//     );
+//   }
+
+//   return Image.network(
+//     url.trim(),
+//     fit: BoxFit.cover,
+//     loadingBuilder: (c, w, p) => p == null
+//         ? w
+//         : Container(
+//             color: const Color(0xFFF2F4F7),
+//             child: const Center(child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))),
+//           ),
+//     errorBuilder: (c, e, s) => Container(
+//       color: const Color(0xFFF2F4F7),
+//       alignment: Alignment.center,
+//       child: const Icon(Icons.image_not_supported_outlined, color: Color(0xFF9AA1AE)),
+//     ),
+//   );
+// }
+
+// Widget _ratingPill(double rating) {
+//   return Container(
+//     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+//     decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(999)),
+//     child: Row(children: [
+//       const Icon(Icons.star_rounded, size: 16, color: Color(0xFFFFB300)),
+//       const SizedBox(width: 2),
+//       Text('$rating', style: const TextStyle(fontWeight: FontWeight.w800, fontFamily: 'ClashGrotesk', letterSpacing: 1.0)),
+//     ]),
+//   );
+// }
+
+// class _TooltipPositioner extends StatelessWidget {
+//   const _TooltipPositioner({required this.mapSize, required this.anchor, required this.child});
+//   final Size mapSize;
+//   final Offset anchor;
+//   final Widget child;
+
+//   @override
+//   Widget build(BuildContext context) {
+//     const cardW = 250.0;
+//     const cardH = 140.0;
+
+//     final left = (anchor.dx - cardW * .65).clamp(12.0, mapSize.width - cardW - 12.0);
+//     final top = (anchor.dy - cardH - 22).clamp(80.0, mapSize.height - cardH - 12.0);
+
+//     return Positioned(left: left, top: top, child: child);
+//   }
+// }
+
+// Future<BitmapDescriptor> markerFromAssetAtDp(
+//   BuildContext context,
+//   String assetPath,
+//   double logicalDp,
+// ) async {
+//   final dpr = MediaQuery.of(context).devicePixelRatio;
+//   final targetWidthPx = (logicalDp * dpr).round();
+
+//   final data = await rootBundle.load(assetPath);
+//   final codec = await ui.instantiateImageCodec(
+//     data.buffer.asUint8List(),
+//     targetWidth: targetWidthPx,
+//   );
+//   final frame = await codec.getNextFrame();
+//   final bytes = await frame.image.toByteData(format: ui.ImageByteFormat.png);
+//   return BitmapDescriptor.fromBytes(bytes!.buffer.asUint8List());
+// }
 
 /*
 class LocationVendorsMapScreen extends StatefulWidget {
