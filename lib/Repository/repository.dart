@@ -10,6 +10,7 @@ import 'package:http_parser/http_parser.dart';
 import 'package:ios_tiretest_ai/models/four_wheeler_uploads_request.dart';
 import 'package:ios_tiretest_ai/models/shop_vendor.dart';
 import 'package:ios_tiretest_ai/models/tyre_record.dart';
+import 'package:ios_tiretest_ai/models/update_user_details_model.dart';
 import 'package:mime/mime.dart';
 import 'package:ios_tiretest_ai/models/tyre_upload_request.dart';
 import 'package:ios_tiretest_ai/models/tyre_upload_response.dart';
@@ -64,6 +65,10 @@ abstract class AuthRepository {
     required String userId,
     required String vehicleType, // "car" | "bike"
     String vehicleId = "ALL",
+  });
+    Future<UpdateUserDetailsResponse> updateUserDetails({
+    required String token,
+    required UpdateUserDetailsRequest request,
   });
 }
 
@@ -148,9 +153,77 @@ class AuthRepositoryHttp implements AuthRepository {
     return inFile;
   }
 
-  // ============================================================
-  // ✅ UPDATED: uploadFourWheeler uses _compressSafe for all files
-  // ============================================================
+@override
+Future<UpdateUserDetailsResponse> updateUserDetails({
+  required String token,
+  required UpdateUserDetailsRequest request,
+}) async {
+  try {
+    final uri = Uri.parse(ApiConfig.editProfile); 
+
+    final res = await http.put(
+      uri,
+      headers: {
+        "Authorization": "Bearer $token",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+      },
+      body: jsonEncode(request.toJson()),
+    );
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      if (res.body.trim().isEmpty) {
+        return const UpdateUserDetailsResponse(
+          message: "User details updated successfully",
+        );
+      }
+      final decoded = jsonDecode(res.body);
+      if (decoded is Map<String, dynamic>) {
+        return UpdateUserDetailsResponse.fromJson(decoded);
+      }
+      return const UpdateUserDetailsResponse(
+        message: "User details updated successfully",
+      );
+    }
+
+    // error message extraction
+    String message = "Request failed (${res.statusCode})";
+    try {
+      final decoded = jsonDecode(res.body);
+      if (decoded is Map && decoded["message"] != null) {
+        message = decoded["message"].toString();
+      }
+    } catch (_) {
+      if (res.body.isNotEmpty) message = res.body;
+    }
+
+    throw Exception(message);
+  } catch (e) {
+    throw Exception("Something went wrong: $e");
+  }
+}
+
+  String _extractDioMessage(DioException e) {
+    // Try backend message first
+    final data = e.response?.data;
+    if (data is Map && data["message"] != null) {
+      return data["message"].toString();
+    }
+
+    // Common fallbacks
+    if (e.type == DioExceptionType.connectionTimeout ||
+        e.type == DioExceptionType.receiveTimeout ||
+        e.type == DioExceptionType.sendTimeout) {
+      return "Request timed out. Please try again.";
+    }
+
+    if (e.response?.statusCode == 401) return "Unauthorized. Token expired.";
+    if (e.response?.statusCode == 404) return "API not found (404).";
+    if (e.response?.statusCode == 500) return "Server error (500).";
+
+    return e.message ?? "Request failed.";
+  }
+
   @override
   Future<Result<TyreUploadResponse>> uploadFourWheeler(
     FourWheelerUploadRequest req,
@@ -696,6 +769,8 @@ Future<Result<List<TyreRecord>>> fetchUserRecords({
   }
 }
 
+
+
   @override
   Future<Result<VehiclePreferencesModel>> addVehiclePreferences({
     required String vehiclePreference,
@@ -773,5 +848,7 @@ class ApiConfig {
         static const String fetchUserRecord =
       'http://54.162.208.215/app/tyre/fetch_user_record/';
        static const String shopsUrl = 'http://54.162.208.215/backend/api/shops';
-}//Testing@123
+       static const String editProfile = "http://54.162.208.215/backend/api/userDetailsUpdate";
+
+}
 
