@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_storage/get_storage.dart';
@@ -15,6 +17,8 @@ const kBg = Color(0xFFF6F7FA);
 
 class InspectionHomePixelPerfect extends StatelessWidget {
   const InspectionHomePixelPerfect({super.key});
+
+  
 
   void _toast(BuildContext ctx, String msg) =>
       ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(msg)));
@@ -55,6 +59,8 @@ class InspectionHomePixelPerfect extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    
+
     final size = MediaQuery.sizeOf(context);
     const baseW = 393.0;
     final s = size.width / baseW;
@@ -97,18 +103,58 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final profile = context.read<AuthBloc>().state.profile;
-    print("profile details ${profile!.firstName.toString()}");
-      print("profile details ${profile!.firstName.toString()}");
-        print("profile details ${profile!.firstName.toString()}");
-          print("profile details ${profile!.firstName.toString()}");
-              print("profile details ${profile!.firstName.toString()}");
-      print("profile details ${profile!.firstName.toString()}");
-        print("profile details ${profile!.firstName.toString()}");
-          print("profile details ${profile!.firstName.toString()}");
+
+    final avatar = (profile!.profileImage ?? '').toString();
+
+    Widget avatarWidget() {
+  // local file
+  if (avatar.isNotEmpty && !avatar.startsWith('http')) {
+    final f = File(avatar);
+    if (f.existsSync()) {
+      return Image.file(f, fit: BoxFit.cover);
+    }
+  }
+
+  // network url
+  if (avatar.isNotEmpty && avatar.startsWith('http')) {
+    return Image.network(
+      avatar,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) =>
+          Image.asset('assets/avatar.png', fit: BoxFit.cover),
+    );
+  }
+
+  // fallback
+  return Image.asset('assets/avatar.png', fit: BoxFit.cover);
+}
+
+
+        // Widget avatarWidget() {
+        //   // if local file path exists
+        //   if (avatar.isNotEmpty && !avatar.startsWith('http')) {
+        //     final f = File(avatar);
+        //     if (f.existsSync()) {
+        //       return Image.file(f, fit: BoxFit.cover);
+        //     }
+        //   }
+
+        //   // if network url
+        //   if (avatar.isNotEmpty && avatar.startsWith('http')) {
+        //     return Image.network(avatar, fit: BoxFit.cover);
+        //   }
+
+        //   return Image.asset('assets/avatar.png', fit: BoxFit.cover);
+        // }
+
           
     final name = (profile != null)
         ? '${profile.firstName ?? ''} ${profile.lastName ?? ''}'.trim()
         : 'User';
+
+        final profilePicture = (profile != null)
+        ? '${profile.profileImage ?? ''}'
+        : '';
 
     return Row(
       children: [
@@ -155,9 +201,12 @@ class _Header extends StatelessWidget {
             ),
           ),
         ),
-        SizedBox(width: 10 * s),
+        SizedBox(width: 12 * s),
+        // avatarWidget(),
         Container(
-          padding: EdgeInsets.all(2 * s),
+          height: 80,
+          width: 80,
+         // padding: EdgeInsets.all(2 * s),
           decoration: BoxDecoration(
             color: Colors.white,
             shape: BoxShape.circle,
@@ -169,10 +218,7 @@ class _Header extends StatelessWidget {
               ),
             ],
           ),
-          child: CircleAvatar(
-            radius: 30 * s,
-            backgroundImage: const AssetImage('assets/avatar.png'),
-          ),
+          child:  ClipOval(child: avatarWidget()),
         ),
       ],
     );
