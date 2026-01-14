@@ -452,14 +452,18 @@ class _AuthScreenState extends State<AuthScreen> {
                                             ),
                                           ],
                                         ),
-                                        _PrimaryGradientButton(
-                                          text: loginLoading
-                                              ? 'Please wait...'
-                                              : 'Login',
-                                          onPressed: loginLoading
-                                              ? null
-                                              : _submitLogin,
-                                          loading: loginLoading,
+                                        SizedBox(
+                                                     height: 40,
+                                          width:MediaQuery.of(context).size.width * 0.50,
+                                          child: _PrimaryGradientButton(
+                                            text: loginLoading
+                                                ? 'Please wait...'
+                                                : 'Login',
+                                            onPressed: loginLoading
+                                                ? null
+                                                : _submitLogin,
+                                            loading: loginLoading,
+                                          ),
                                         ),
                                         const SizedBox(height: 18),
                                         const CenterLabelDivider(
@@ -554,14 +558,18 @@ class _AuthScreenState extends State<AuthScreen> {
                                           },
                                         ),
                                         const SizedBox(height: 12),
-                                        _PrimaryGradientButton(
-                                          text: signupLoading
-                                              ? 'Please wait...'
-                                              : 'SignUp',
-                                          onPressed: signupLoading
-                                              ? null
-                                              : _submitSignup,
-                                          loading: signupLoading,
+                                        SizedBox(
+                                                      height: 40,
+                                          width:MediaQuery.of(context).size.width * 0.50,
+                                          child: _PrimaryGradientButton(
+                                            text: signupLoading
+                                                ? 'Please wait...'
+                                                : 'SignUp',
+                                            onPressed: signupLoading
+                                                ? null
+                                                : _submitSignup,
+                                            loading: signupLoading,
+                                          ),
                                         ),
                                         const SizedBox(height: 18),
                                         const CenterLabelDivider(
@@ -855,9 +863,10 @@ class _PrimaryGradientButton extends StatelessWidget {
                   : Text(
                       text,
                       style: const TextStyle(
+                                         fontFamily: 'ClashGrotesk',
                         color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w500,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
             ),

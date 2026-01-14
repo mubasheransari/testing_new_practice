@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_bloc.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_event.dart';
+import 'package:ios_tiretest_ai/Bloc/auth_state.dart';
 import 'package:ios_tiretest_ai/Screens/scanner_screen.dart';
 import 'package:ios_tiretest_ai/Screens/verhicle_form_preferences_screen.dart';
 import 'package:ios_tiretest_ai/Widgets/gradient_text_widget.dart';
@@ -95,6 +96,146 @@ class InspectionHomePixelPerfect extends StatelessWidget {
     );
   }
 }
+
+
+
+class _Header extends StatelessWidget {
+  const _Header({required this.s});
+  final double s;
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<AuthBloc, AuthState>(
+      buildWhen: (p, c) => p.profile != c.profile,
+      builder: (context, state) {
+        final profile = state.profile;
+
+        final raw = (profile?.profileImage ?? '').toString().trim();
+        final avatar = (raw.toLowerCase() == 'null') ? '' : raw;
+
+        bool isHttp(String v) {
+          final u = Uri.tryParse(v);
+          return u != null &&
+              u.hasScheme &&
+              (u.scheme == 'http' || u.scheme == 'https') &&
+              u.host.isNotEmpty;
+        }
+
+        String normalizeFilePath(String v) {
+          // file:///var/... => /var/...
+          if (v.startsWith('file://')) return Uri.parse(v).toFilePath();
+          return v;
+        }
+
+        Widget avatarWidget() {
+          // ✅ 1) local file path
+          if (avatar.isNotEmpty && !isHttp(avatar)) {
+            final path = normalizeFilePath(avatar);
+            final f = File(path);
+
+            if (f.existsSync()) {
+              return Image.file(
+                f,
+                fit: BoxFit.cover,
+                gaplessPlayback: true,
+                errorBuilder: (_, __, ___) =>
+                    Image.asset('assets/avatar.png', fit: BoxFit.cover),
+              );
+            }
+
+            // If file missing, show fallback
+            return Image.asset('assets/avatar.png', fit: BoxFit.cover);
+          }
+
+          // ✅ 2) network
+          if (avatar.isNotEmpty && isHttp(avatar)) {
+            return Image.network(
+              avatar,
+              fit: BoxFit.cover,
+              gaplessPlayback: true,
+              errorBuilder: (_, __, ___) =>
+                  Image.asset('assets/avatar.png', fit: BoxFit.cover),
+            );
+          }
+
+          // ✅ 3) fallback
+          return Image.asset('assets/avatar.png', fit: BoxFit.cover);
+        }
+
+        final name = (profile != null)
+            ? '${profile.firstName} ${profile.lastName}'.trim()
+            : 'User';
+
+        return Row(
+          children: [
+            Expanded(
+              child: RichText(
+                text: TextSpan(
+                  style: TextStyle(
+                    fontFamily: 'ClashGrotesk',
+                    fontSize: 14 * s,
+                    color: const Color(0xFF6A6F7B),
+                    height: 1.2,
+                  ),
+                  children: [
+                    TextSpan(
+                      text: 'Good morning,\n',
+                      style: TextStyle(
+                        fontFamily: 'ClashGrotesk',
+                        fontSize: 21 * s,
+                        fontWeight: FontWeight.w700,
+                        height: 1.2,
+                      ),
+                    ),
+                    WidgetSpan(
+                      alignment: PlaceholderAlignment.baseline,
+                      baseline: TextBaseline.alphabetic,
+                      child: GradientText(
+                        name,
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF00C6FF), Color(0xFF7F53FD)],
+                        ),
+                        style: TextStyle(
+                          fontFamily: 'ClashGrotesk',
+                          fontSize: 28 * s,
+                          fontWeight: FontWeight.bold,
+                          height: 1,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            SizedBox(width: 12 * s),
+
+            // ✅ Perfect circle
+            Container(
+              height: 70,
+              width: 70,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.06),
+                    blurRadius: 8 * s,
+                    offset: Offset(0, 4 * s),
+                  ),
+                ],
+              ),
+              clipBehavior: Clip.antiAlias, // ✅ important
+              child: avatarWidget(),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+
+/*
 
 class _Header extends StatelessWidget {
   const _Header({required this.s});
@@ -224,7 +365,7 @@ class _Header extends StatelessWidget {
     );
   }
 }
-
+*/
 class _SearchBar extends StatelessWidget {
   const _SearchBar({required this.s});
   final double s;
