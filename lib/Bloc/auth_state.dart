@@ -1,16 +1,254 @@
 import 'package:equatable/equatable.dart';
 import 'package:ios_tiretest_ai/models/add_verhicle_preferences_model.dart';
 import 'package:ios_tiretest_ai/models/auth_models.dart';
+import 'package:ios_tiretest_ai/models/reset_password_response.dart';
 import 'package:ios_tiretest_ai/models/shop_vendor.dart';
 import 'package:ios_tiretest_ai/models/tyre_record.dart';
 import 'package:ios_tiretest_ai/models/tyre_upload_response.dart';
 import 'package:ios_tiretest_ai/models/update_user_details_model.dart';
 import 'package:ios_tiretest_ai/models/user_profile.dart';
 
+
 import 'package:equatable/equatable.dart';
 
-// ✅ Add your existing imports
-// import '...';
+
+
+enum AuthStatus { initial, loading, success, failure }
+enum TwoWheelerStatus { initial, uploading, success, failure }
+enum FourWheelerStatus { initial, uploading, success, failure }
+enum ProfileStatus { initial, loading, success, failure }
+enum AddVehiclePreferencesStatus { initial, loading, success, failure }
+enum TyreHistoryStatus { initial, loading, success, failure }
+enum ShopsStatus { initial, loading, success, failure }
+enum UpdateProfileStatus { initial, loading, success, failure }
+
+/// ✅ NEW
+enum ChangePasswordStatus { initial, loading, success, failure }
+
+class AuthState extends Equatable {
+  final ShopsStatus shopsStatus;
+  final List<ShopVendor> shops;
+  final String? shopsError;
+
+  final TyreHistoryStatus tyreHistoryStatus;
+  final String? tyreHistoryError;
+  final Map<String, List<TyreRecord>> tyreRecordsByType;
+
+  final AuthStatus loginStatus;
+  final AuthStatus signupStatus;
+  final LoginResponse? loginResponse;
+  final SignupResponse? signupResponse;
+
+  final String? error;
+
+  final AddVehiclePreferencesStatus addVehiclePreferencesStatus;
+  final VehiclePreferencesModel? vehiclePreferencesModel;
+  final String? errorMessageVehiclePreferences;
+
+  final TwoWheelerStatus twoWheelerStatus;
+  final TyreUploadResponse? twoWheelerResponse;
+
+  final FourWheelerStatus fourWheelerStatus;
+  final TyreUploadResponse? fourWheelerResponse;
+  final String? fourWheelerError;
+
+  final ProfileStatus profileStatus;
+  final UserProfile? profile;
+
+  final UpdateProfileStatus updateProfileStatus;
+  final UpdateUserDetailsResponse? updateProfileResponse;
+  final String? updateProfileError;
+
+  /// ✅ NEW: Change Password
+  final ChangePasswordStatus changePasswordStatus;
+  final ResetPasswordResponse? changePasswordResponse;
+  final String? changePasswordError;
+
+  final List<TyreRecord> records;
+  final String? recordsError;
+  final String recordsVehicleType;
+
+  const AuthState({
+    this.shopsStatus = ShopsStatus.initial,
+    this.shops = const <ShopVendor>[],
+    this.shopsError,
+
+    this.tyreHistoryStatus = TyreHistoryStatus.initial,
+    this.tyreHistoryError,
+    this.tyreRecordsByType = const {},
+
+    this.loginStatus = AuthStatus.initial,
+    this.signupStatus = AuthStatus.initial,
+    this.loginResponse,
+    this.signupResponse,
+    this.error,
+
+    this.addVehiclePreferencesStatus = AddVehiclePreferencesStatus.initial,
+    this.vehiclePreferencesModel,
+    this.errorMessageVehiclePreferences,
+
+    this.twoWheelerStatus = TwoWheelerStatus.initial,
+    this.twoWheelerResponse,
+
+    this.fourWheelerStatus = FourWheelerStatus.initial,
+    this.fourWheelerResponse,
+    this.fourWheelerError,
+
+    this.profileStatus = ProfileStatus.initial,
+    this.profile,
+
+    this.updateProfileStatus = UpdateProfileStatus.initial,
+    this.updateProfileResponse,
+    this.updateProfileError,
+
+    /// ✅ NEW
+    this.changePasswordStatus = ChangePasswordStatus.initial,
+    this.changePasswordResponse,
+    this.changePasswordError,
+
+    this.records = const [],
+    this.recordsError,
+    this.recordsVehicleType = 'car',
+  });
+
+  List<TyreRecord> get carRecords => tyreRecordsByType['car'] ?? const <TyreRecord>[];
+  List<TyreRecord> get bikeRecords => tyreRecordsByType['bike'] ?? const <TyreRecord>[];
+
+  List<TyreRecord> get allTyreRecords {
+    final combined = <TyreRecord>[...carRecords, ...bikeRecords];
+    combined.sort((a, b) => b.uploadedAt.compareTo(a.uploadedAt));
+    return combined;
+  }
+
+  AuthState copyWith({
+    ShopsStatus? shopsStatus,
+    List<ShopVendor>? shops,
+    String? shopsError,
+
+    TyreHistoryStatus? tyreHistoryStatus,
+    String? tyreHistoryError,
+    Map<String, List<TyreRecord>>? tyreRecordsByType,
+
+    AuthStatus? loginStatus,
+    AuthStatus? signupStatus,
+    LoginResponse? loginResponse,
+    SignupResponse? signupResponse,
+    String? error,
+
+    AddVehiclePreferencesStatus? addVehiclePreferencesStatus,
+    VehiclePreferencesModel? vehiclePreferencesModel,
+    String? errorMessageVehiclePreferences,
+
+    TwoWheelerStatus? twoWheelerStatus,
+    TyreUploadResponse? twoWheelerResponse,
+
+    FourWheelerStatus? fourWheelerStatus,
+    TyreUploadResponse? fourWheelerResponse,
+    String? fourWheelerError,
+
+    ProfileStatus? profileStatus,
+    UserProfile? profile,
+
+    UpdateProfileStatus? updateProfileStatus,
+    UpdateUserDetailsResponse? updateProfileResponse,
+    String? updateProfileError,
+
+    /// ✅ NEW
+    ChangePasswordStatus? changePasswordStatus,
+    ResetPasswordResponse? changePasswordResponse,
+    String? changePasswordError,
+
+    List<TyreRecord>? records,
+    String? recordsError,
+    String? recordsVehicleType,
+  }) {
+    return AuthState(
+      shopsStatus: shopsStatus ?? this.shopsStatus,
+      shops: shops ?? this.shops,
+      shopsError: shopsError ?? this.shopsError,
+
+      tyreHistoryStatus: tyreHistoryStatus ?? this.tyreHistoryStatus,
+      tyreHistoryError: tyreHistoryError ?? this.tyreHistoryError,
+      tyreRecordsByType: tyreRecordsByType ?? this.tyreRecordsByType,
+
+      loginStatus: loginStatus ?? this.loginStatus,
+      signupStatus: signupStatus ?? this.signupStatus,
+      loginResponse: loginResponse ?? this.loginResponse,
+      signupResponse: signupResponse ?? this.signupResponse,
+      error: error ?? this.error,
+
+      addVehiclePreferencesStatus:
+          addVehiclePreferencesStatus ?? this.addVehiclePreferencesStatus,
+      vehiclePreferencesModel:
+          vehiclePreferencesModel ?? this.vehiclePreferencesModel,
+      errorMessageVehiclePreferences:
+          errorMessageVehiclePreferences ?? this.errorMessageVehiclePreferences,
+
+      twoWheelerStatus: twoWheelerStatus ?? this.twoWheelerStatus,
+      twoWheelerResponse: twoWheelerResponse ?? this.twoWheelerResponse,
+
+      fourWheelerStatus: fourWheelerStatus ?? this.fourWheelerStatus,
+      fourWheelerResponse: fourWheelerResponse ?? this.fourWheelerResponse,
+      fourWheelerError: fourWheelerError ?? this.fourWheelerError,
+
+      profileStatus: profileStatus ?? this.profileStatus,
+      profile: profile ?? this.profile,
+
+      updateProfileStatus: updateProfileStatus ?? this.updateProfileStatus,
+      updateProfileResponse: updateProfileResponse ?? this.updateProfileResponse,
+      updateProfileError: updateProfileError ?? this.updateProfileError,
+
+      /// ✅ NEW
+      changePasswordStatus: changePasswordStatus ?? this.changePasswordStatus,
+      changePasswordResponse: changePasswordResponse ?? this.changePasswordResponse,
+      changePasswordError: changePasswordError ?? this.changePasswordError,
+
+      records: records ?? this.records,
+      recordsError: recordsError ?? this.recordsError,
+      recordsVehicleType: recordsVehicleType ?? this.recordsVehicleType,
+    );
+  }
+
+  @override
+  List<Object?> get props => [
+        shopsStatus,
+        shops,
+        shopsError,
+        tyreHistoryStatus,
+        tyreHistoryError,
+        tyreRecordsByType,
+        loginStatus,
+        signupStatus,
+        loginResponse,
+        signupResponse,
+        error,
+        addVehiclePreferencesStatus,
+        vehiclePreferencesModel,
+        errorMessageVehiclePreferences,
+        twoWheelerStatus,
+        twoWheelerResponse,
+        fourWheelerStatus,
+        fourWheelerResponse,
+        fourWheelerError,
+        profileStatus,
+        profile,
+        updateProfileStatus,
+        updateProfileResponse,
+        updateProfileError,
+
+        /// ✅ NEW
+        changePasswordStatus,
+        changePasswordResponse,
+        changePasswordError,
+
+        records,
+        recordsError,
+        recordsVehicleType,
+      ];
+}
+
+
+/*
 
 enum AuthStatus { initial, loading, success, failure }
 enum TwoWheelerStatus { initial, uploading, success, failure }
@@ -250,7 +488,7 @@ class AuthState extends Equatable {
       ];
 }
 
-
+*/
 
 
 // enum AuthStatus { initial, loading, success, failure }

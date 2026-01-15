@@ -30,11 +30,6 @@ class InspectionHomePixelPerfect extends StatelessWidget {
     );
     if (result == null) return;
 
-    //  Navigator.of(context, rootNavigator: true).push(
-    //                   MaterialPageRoute(
-    //                     builder: (_) => const ScannerFrontTireScreen(),
-    //                   ),
-    //                 );
 
     final authState = context.read<AuthBloc>().state;
     final box = GetStorage();
@@ -459,7 +454,7 @@ class _CarCard extends StatelessWidget {
             top: -6 * s,
             child: SizedBox(
               width: height * 0.80,
-              height: height * 0.99,
+              height: height * 0.99, 
               child: Image.asset(
                 'assets/car_tyres_1_2000x3000.png',
                 fit: BoxFit.cover,

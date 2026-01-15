@@ -8,6 +8,8 @@ import 'package:ios_tiretest_ai/models/add_verhicle_preferences_model.dart';
 import 'package:ios_tiretest_ai/models/auth_models.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:ios_tiretest_ai/models/four_wheeler_uploads_request.dart';
+import 'package:ios_tiretest_ai/models/reset_password_request.dart';
+import 'package:ios_tiretest_ai/models/reset_password_response.dart';
 import 'package:ios_tiretest_ai/models/shop_vendor.dart';
 import 'package:ios_tiretest_ai/models/tyre_record.dart';
 import 'package:ios_tiretest_ai/models/update_user_details_model.dart';
@@ -38,6 +40,10 @@ class Result<T> {
 }
 
 abstract class AuthRepository {
+    Future<Result<ResetPasswordResponse>> resetPassword({
+    required ResetPasswordRequest request,
+    String? token, // optional (if backend needs it later)
+  });
   Future<Result<LoginResponse>> login(LoginRequest req);
   Future<Result<SignupResponse>> signup(SignupRequest req);
   Future<Result<UserProfile>> fetchProfile({String? token});
@@ -151,6 +157,60 @@ class AuthRepositoryHttp implements AuthRepository {
     }
 
     return inFile;
+  }
+
+  @override
+  Future<Result<ResetPasswordResponse>> resetPassword({
+    required ResetPasswordRequest request,
+    String? token,
+  }) async {
+    final uri = Uri.parse(ApiConfig.resetPassword);
+
+    // optional bearer
+    final headers = <String, String>{
+      ..._jsonHeaders(),
+      if ((token ?? '').trim().isNotEmpty)
+        HttpHeaders.authorizationHeader: 'Bearer ${token!.trim()}',
+    };
+
+    try {
+      final res = await http
+          .post(uri, headers: headers, body: jsonEncode(request.toJson()))
+          .timeout(timeout);
+
+      final status = res.statusCode;
+
+      if (status >= 200 && status < 300) {
+        if (res.body.trim().isEmpty) {
+          return Result.ok(const ResetPasswordResponse(message: "Password updated successfully"));
+        }
+        final decoded = jsonDecode(res.body);
+        if (decoded is Map<String, dynamic>) {
+          return Result.ok(ResetPasswordResponse.fromJson(decoded));
+        }
+        return Result.ok(const ResetPasswordResponse(message: "Password updated successfully"));
+      }
+
+      // extract backend message/error
+      String msg = "Request failed ($status)";
+      try {
+        final decoded = jsonDecode(res.body);
+        if (decoded is Map) {
+          if (decoded["message"] != null) msg = decoded["message"].toString();
+          if (decoded["error"] != null) msg = decoded["error"].toString();
+        }
+      } catch (_) {
+        if (res.body.trim().isNotEmpty) msg = res.body;
+      }
+
+      return Result.fail(Failure(code: "server", message: msg, statusCode: status));
+    } on SocketException {
+      return Result.fail(const Failure(code: 'network', message: 'No internet connection'));
+    } on TimeoutException {
+      return Result.fail(const Failure(code: 'timeout', message: 'Request timed out'));
+    } catch (e) {
+      return Result.fail(Failure(code: 'unknown', message: e.toString()));
+    }
   }
 
 @override
@@ -849,6 +909,8 @@ class ApiConfig {
       'http://54.162.208.215/app/tyre/fetch_user_record/';
        static const String shopsUrl = 'http://54.162.208.215/backend/api/shops';
        static const String editProfile = "http://54.162.208.215/backend/api/userDetailsUpdate";
+         static const String resetPassword =
+      "http://54.162.208.215/backend/api/resetpassword";
 
 }
 

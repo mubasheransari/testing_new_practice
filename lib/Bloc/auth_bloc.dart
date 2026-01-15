@@ -4,6 +4,7 @@ import 'package:get_storage/get_storage.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_event.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_state.dart';
 import 'package:ios_tiretest_ai/models/four_wheeler_uploads_request.dart';
+import 'package:ios_tiretest_ai/models/reset_password_request.dart';
 import 'package:ios_tiretest_ai/models/shop_vendor.dart';
 import 'package:ios_tiretest_ai/models/tyre_record.dart';
 import 'package:ios_tiretest_ai/models/tyre_upload_request.dart';
@@ -44,6 +45,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<ClearUpdateProfileError>(
       (e, emit) => emit(state.copyWith(updateProfileError: null)),
     );
+
+        on<ChangePasswordRequested>(_onChangePassword);
+    on<ClearChangePasswordError>((e, emit) => emit(state.copyWith(changePasswordError: null)));
   }
 
   Future<void> _onAppStarted(AppStarted e, Emitter<AuthState> emit) async {
@@ -115,13 +119,34 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       email: e.email,
       password: e.password,
     ));
+  
 
     if (r.isSuccess) {
+      print("SIGNUP RESPONSE ${r.data!.data}");
+      print("SIGNUP RESPONSE ${r.data!.data}");
+      print("SIGNUP RESPONSE ${r.data!.data}");
+      print("SIGNUP RESPONSE ${r.data!.data}");
+      print("SIGNUP RESPONSE ${r.data!.data}");
+          print("SIGNUP RESPONSE ${r.data!.data}");
+      print("SIGNUP RESPONSE ${r.data!.data}");
+      print("SIGNUP RESPONSE ${r.data!.data}");
+      print("SIGNUP RESPONSE ${r.data!.data}");
+      print("SIGNUP RESPONSE ${r.data!.data}");
       emit(state.copyWith(
         signupStatus: AuthStatus.success,
         signupResponse: r.data,
         error: null,
       ));
+         print("SIGNUP RESPONSE ${r.data!.data}");
+      print("SIGNUP RESPONSE ${r.data!.data}");
+      print("SIGNUP RESPONSE ${r.data!.data}");
+      print("SIGNUP RESPONSE ${r.data!.data}");
+      print("SIGNUP RESPONSE ${r.data!.data}");
+          print("SIGNUP RESPONSE ${r.data!.data}");
+      print("SIGNUP RESPONSE ${r.data!.data}");
+      print("SIGNUP RESPONSE ${r.data!.data}");
+      print("SIGNUP RESPONSE ${r.data!.data}");
+      print("SIGNUP RESPONSE ${r.data!.data}");
     } else {
       emit(state.copyWith(
         signupStatus: AuthStatus.failure,
@@ -492,6 +517,65 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       emit(state.copyWith(
         updateProfileStatus: UpdateProfileStatus.failure,
         updateProfileError: ex.toString(),
+      ));
+    }
+  }
+Future<void> _onChangePassword(ChangePasswordRequested e, Emitter<AuthState> emit) async {
+    if (state.changePasswordStatus == ChangePasswordStatus.loading) return;
+
+    final userId = state.profile?.userId?.toString() ?? '';
+    if (userId.trim().isEmpty) {
+      emit(state.copyWith(
+        changePasswordStatus: ChangePasswordStatus.failure,
+        changePasswordError: 'User profile not loaded. Please login again.',
+      ));
+      return;
+    }
+
+    if (e.newPassword.trim().isEmpty || e.confirmNewPassword.trim().isEmpty) {
+      emit(state.copyWith(
+        changePasswordStatus: ChangePasswordStatus.failure,
+        changePasswordError: 'Password fields are required.',
+      ));
+      return;
+    }
+
+    if (e.newPassword.trim() != e.confirmNewPassword.trim()) {
+      emit(state.copyWith(
+        changePasswordStatus: ChangePasswordStatus.failure,
+        changePasswordError: 'New passwords do not match.',
+      ));
+      return;
+    }
+
+    emit(state.copyWith(
+      changePasswordStatus: ChangePasswordStatus.loading,
+      changePasswordError: null,
+      changePasswordResponse: null,
+    ));
+
+    final box = GetStorage();
+    final token = (box.read<String>('auth_token') ?? '').trim(); // optional
+
+    final r = await repo.resetPassword(
+      request: ResetPasswordRequest(
+        userId: userId.trim(),
+        newPassword: e.newPassword.trim(),
+        confirmNewPassword: e.confirmNewPassword.trim(),
+      ),
+      token: token.isEmpty ? null : token,
+    );
+
+    if (r.isSuccess) {
+      emit(state.copyWith(
+        changePasswordStatus: ChangePasswordStatus.success,
+        changePasswordResponse: r.data,
+        changePasswordError: null,
+      ));
+    } else {
+      emit(state.copyWith(
+        changePasswordStatus: ChangePasswordStatus.failure,
+        changePasswordError: r.failure?.message ?? 'Failed to change password',
       ));
     }
   }
