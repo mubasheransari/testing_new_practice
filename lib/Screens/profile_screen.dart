@@ -3,28 +3,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_bloc.dart';
 import 'package:ios_tiretest_ai/Data/token_store.dart';
 import 'package:ios_tiretest_ai/Screens/auth_screen.dart';
-
-import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-
-// ✅ Add your imports
-// import 'auth_screen.dart';
-// import 'token_store.dart';
-import '../Bloc/auth_bloc.dart';
 import '../Bloc/auth_event.dart';
 import '../Bloc/auth_state.dart';
-
 import 'dart:io';
-import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 
-// ✅ your imports
-// import '../auth/auth_screen.dart';
-// import '../storage/token_store.dart';
-import '../Bloc/auth_bloc.dart';
-import '../Bloc/auth_event.dart';
-import '../Bloc/auth_state.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -146,28 +129,28 @@ class ProfilePage extends StatelessWidget {
                               child: ClipOval(child: avatarWidget()),
                             ),
                           ),
-                          Positioned(
-                            right: 4 * s,
-                            bottom: 4 * s,
-                            child: Container(
-                              width: 24 * s,
-                              height: 24 * s,
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                shape: BoxShape.circle,
-                                border: Border.all(color: _divider),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(.08),
-                                    blurRadius: 8 * s,
-                                    offset: Offset(0, 3 * s),
-                                  ),
-                                ],
-                              ),
-                              child: Icon(Icons.photo_camera_outlined,
-                                  size: 14 * s, color: _title),
-                            ),
-                          ),
+                          // Positioned(
+                          //   right: 4 * s,
+                          //   bottom: 4 * s,
+                          //   child: Container(
+                          //     width: 24 * s,
+                          //     height: 24 * s,
+                          //     decoration: BoxDecoration(
+                          //       color: Colors.white,
+                          //       shape: BoxShape.circle,
+                          //       border: Border.all(color: _divider),
+                          //       boxShadow: [
+                          //         BoxShadow(
+                          //           color: Colors.black.withOpacity(.08),
+                          //           blurRadius: 8 * s,
+                          //           offset: Offset(0, 3 * s),
+                          //         ),
+                          //       ],
+                          //     ),
+                          //     child: Icon(Icons.photo_camera_outlined,
+                          //         size: 14 * s, color: _title),
+                          //   ),
+                          // ),
                         ],
                       ),
                     ),
@@ -376,8 +359,304 @@ class ProfilePage extends StatelessWidget {
     );
   }
 
+
+
+static void _openEditProfileSheet(
+  BuildContext context, {
+  required double s,
+  required String firstName,
+  required String lastName,
+  required String phone,
+  required String profileImage, // can be url or path
+}) {
+  final fnCtrl = TextEditingController(text: firstName);
+  final lnCtrl = TextEditingController(text: lastName);
+  final phoneCtrl = TextEditingController(text: phone);
+
+  String pickedImagePath = profileImage;
+
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.white,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+    ),
+    builder: (_) {
+      return StatefulBuilder(
+        builder: (context, setSheetState) {
+          final state = context.watch<AuthBloc>().state;
+          final loading = state.updateProfileStatus == UpdateProfileStatus.loading;
+
+          const grad = LinearGradient(
+            colors: [Color(0xFF0ED2F7), Color(0xFF7F53FD)],
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+          );
+
+          TextStyle labelStyle() => const TextStyle(
+                fontFamily: 'ClashGrotesk',
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF6B7280),
+              );
+
+          TextStyle inputStyle() => const TextStyle(
+                fontFamily: 'ClashGrotesk',
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF111827),
+              );
+
+          InputDecoration dec(String label, IconData icon) {
+            return InputDecoration(
+              labelText: label,
+              labelStyle: labelStyle(),
+              prefixIcon: Icon(icon, color: const Color(0xFF6B7280)),
+              filled: true,
+              fillColor: const Color(0xFFF3F4F6),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide.none,
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            );
+          }
+
+          Widget avatarPreview() {
+            // Local file
+            if (pickedImagePath.isNotEmpty && !pickedImagePath.startsWith('http')) {
+              final f = File(pickedImagePath);
+              if (f.existsSync()) {
+                return Image.file(f, fit: BoxFit.cover);
+              }
+            }
+            // Network
+            if (pickedImagePath.isNotEmpty && pickedImagePath.startsWith('http')) {
+              return Image.network(pickedImagePath, fit: BoxFit.cover);
+            }
+            return Image.asset('assets/avatar.png', fit: BoxFit.cover);
+          }
+
+          Future<void> pickImage(ImageSource source) async {
+            try {
+              final picker = ImagePicker();
+              final xfile = await picker.pickImage(source: source, imageQuality: 80);
+              if (xfile == null) return;
+
+              setSheetState(() => pickedImagePath = xfile.path);
+            } catch (e) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Failed to pick image: $e', style: const TextStyle(fontFamily: 'ClashGrotesk'))),
+              );
+            }
+          }
+
+          void openPickChooser() {
+            if (loading) return;
+
+            showModalBottomSheet(
+              context: context,
+              backgroundColor: Colors.white,
+              shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+              ),
+              builder: (_) {
+                return SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 5,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE5E7EB),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        const Text(
+                          "Choose Photo",
+                          style: TextStyle(
+                            fontFamily: 'ClashGrotesk',
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+
+                        // Gallery
+                        ListTile(
+                          leading: const Icon(Icons.photo_library_outlined),
+                          title: const Text(
+                            "Upload from Gallery",
+                            style: TextStyle(
+                              fontFamily: 'ClashGrotesk',
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          onTap: () async {
+                            Navigator.pop(context);
+                            await pickImage(ImageSource.gallery);
+                          },
+                        ),
+
+                        // Camera
+                        ListTile(
+                          leading: const Icon(Icons.photo_camera_outlined),
+                          title: const Text(
+                            "Take a Photo",
+                            style: TextStyle(
+                              fontFamily: 'ClashGrotesk',
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          onTap: () async {
+                            Navigator.pop(context);
+                            await pickImage(ImageSource.camera);
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            );
+          }
+
+          return Padding(
+            padding: EdgeInsets.only(
+              left: 16,
+              right: 16,
+              top: 14,
+              bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 44,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE5E7EB),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                const Text(
+                  "Edit Profile",
+                  style: TextStyle(
+                    fontFamily: 'ClashGrotesk',
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                // ✅ Avatar with camera overlay (tap opens chooser)
+                Center(
+                  child: GestureDetector(
+                    onTap: openPickChooser,
+                    child: Stack(
+                      alignment: Alignment.bottomRight,
+                      children: [
+                        // Gradient ring
+                        Container(
+                          width: 88,
+                          height: 88,
+                          padding: const EdgeInsets.all(3),
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: grad,
+                          ),
+                          child: ClipOval(
+                            child: Container(
+                              color: const Color(0xFFF3F4F6),
+                              child: avatarPreview(),
+                            ),
+                          ),
+                        ),
+
+                        // Camera badge
+                        Container(
+                          width: 30,
+                          height: 30,
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: grad,
+                          ),
+                          child: const Icon(
+                            Icons.camera_alt_rounded,
+                            color: Colors.white,
+                            size: 16,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 14),
+
+                TextField(
+                  controller: fnCtrl,
+                  style: inputStyle(),
+                  decoration: dec("First Name", Icons.person_outline),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: lnCtrl,
+                  style: inputStyle(),
+                  decoration: dec("Last Name", Icons.person_outline),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: phoneCtrl,
+                  style: inputStyle(),
+                  keyboardType: TextInputType.phone,
+                  decoration: dec("Phone", Icons.phone_outlined),
+                ),
+
+                const SizedBox(height: 16),
+
+                // ✅ Save button with your gradient style
+                SizedBox(
+                  width: 155,
+                  height: 45,
+                  child: _PrimaryGradientButton(
+                    text: "Save Changes",
+                    loading: loading,
+                    onPressed: loading
+                        ? null
+                        : () {
+                            context.read<AuthBloc>().add(
+                                  UpdateUserDetailsRequested(
+                                    firstName: fnCtrl.text,
+                                    lastName: lnCtrl.text,
+                                    phone: phoneCtrl.text,
+                                    profileImage: pickedImagePath, // ✅ local path or url
+                                  ),
+                                );
+                            Navigator.pop(context);
+                          },
+                  ),
+                ),
+
+                const SizedBox(height: 10),
+              ],
+            ),
+          );
+        },
+      );
+    },
+  );
+}
+
+
+
+
   /// ✅ UPDATED: Edit Profile bottom sheet with image picker
-  static void _openEditProfileSheet(
+ /* static void _openEditProfileSheet(
     BuildContext context, {
     required double s,
     required String firstName,
@@ -616,6 +895,75 @@ class ProfilePage extends StatelessWidget {
           },
         );
       },
+    );
+  }*/
+}
+
+
+class _PrimaryGradientButton extends StatelessWidget {
+  const _PrimaryGradientButton({
+    required this.text,
+    required this.onPressed,
+    this.loading = false,
+  });
+
+  final String text;
+  final VoidCallback? onPressed;
+  final bool loading;
+
+  static const _grad = LinearGradient(
+    colors: [Color(0xFF0ED2F7), Color(0xFF7F53FD)],
+    begin: Alignment.centerLeft,
+    end: Alignment.centerRight,
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final disabled = loading || onPressed == null;
+
+    return Opacity(
+      opacity: disabled ? 0.8 : 1,
+      child: Container(
+        height: 54,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(28),
+          gradient: _grad,
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF7F53FD).withOpacity(0.25),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(28),
+            onTap: disabled ? null : onPressed,
+            child: Center(
+              child: loading
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : Text(
+                      text,
+                      style: const TextStyle(
+                        fontFamily: 'ClashGrotesk',
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
