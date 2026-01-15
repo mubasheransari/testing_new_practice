@@ -163,12 +163,12 @@ class _VehicleFormPreferencesScreenState
                           hint: 'e.g. 8383092',
                           controller: _plateCtrl,
                         ),
-                        SizedBox(height: 16 * s),
-                        _OwnSwitch(
-                          s: s,
-                          value: _isOwn,
-                          onChanged: (v) => setState(() => _isOwn = v),
-                        ),
+                        // SizedBox(height: 16 * s),
+                        // _OwnSwitch(
+                        //   s: s,
+                        //   value: _isOwn,
+                        //   onChanged: (v) => setState(() => _isOwn = v),
+                        // ),
                         SizedBox(height: 18 * s),
                         _TextFieldRow(
                           s: s,
@@ -223,6 +223,7 @@ class _HeaderTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
+        SizedBox(width: 5,),
         Expanded(
           child: RichText(
             text: TextSpan(
@@ -234,7 +235,7 @@ class _HeaderTitle extends StatelessWidget {
               ),
               children: [
                 TextSpan(
-                  text: 'Vehicle\n',
+                  text: 'Vehicle Preference\n',
                   style: TextStyle(
                     fontSize: 24 * s,
                     fontWeight: FontWeight.w800,
@@ -242,10 +243,10 @@ class _HeaderTitle extends StatelessWidget {
                   ),
                 ),
                 TextSpan(
-                  text: 'Add or edit your vehicle details',
+                  text: 'Add your vehicle details',
                   style: TextStyle(
                     fontSize: 13 * s,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w700,
                     color: const Color(0xFF6A6F7B),
                   ),
                 ),
@@ -302,15 +303,15 @@ class _VehiclePreferenceToggle extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Vehicle preference',
-          style: TextStyle(
-            fontFamily: 'ClashGrotesk',
-            fontSize: 14 * s,
-            fontWeight: FontWeight.w600,
-            color: const Color(0xFF111827),
-          ),
-        ),
+        // Text(
+        //   'Vehicle preferencergre',
+        //   style: TextStyle(
+        //     fontFamily: 'ClashGrotesk',
+        //     fontSize: 14 * s,
+        //     fontWeight: FontWeight.w600,
+        //     color: const Color(0xFF111827),
+        //   ),
+        // ),
       /*  SizedBox(height: 10 * s),
         Container(
           height: 42 * s,
