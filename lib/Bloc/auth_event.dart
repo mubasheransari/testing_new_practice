@@ -386,3 +386,44 @@ class ChangePasswordRequested extends AuthEvent {
 class ClearChangePasswordError extends AuthEvent {
   const ClearChangePasswordError();
 }
+
+
+
+class NotificationFetchRequested extends AuthEvent {
+  const NotificationFetchRequested({
+    this.page = 1,
+    this.limit = 4,
+    this.silent = false,
+  });
+
+  final int page;
+  final int limit;
+  final bool silent;
+
+  @override
+  List<Object?> get props => [page, limit, silent];
+}
+
+class NotificationStartListening extends AuthEvent {
+  const NotificationStartListening({this.intervalSeconds = 15});
+  final int intervalSeconds;
+
+  @override
+  List<Object?> get props => [intervalSeconds];
+}
+
+class NotificationStopListening extends AuthEvent {
+  const NotificationStopListening();
+}
+
+class NotificationMarkAllRead extends AuthEvent {
+  const NotificationMarkAllRead();
+}
+
+class NotificationMarkSeenByIds extends AuthEvent {
+  const NotificationMarkSeenByIds(this.ids);
+  final List<String> ids;
+
+  @override
+  List<Object?> get props => [ids];
+}

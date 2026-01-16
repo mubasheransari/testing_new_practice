@@ -8,6 +8,7 @@ import 'package:ios_tiretest_ai/models/tyre_upload_response.dart';
 import 'package:ios_tiretest_ai/models/update_user_details_model.dart';
 import 'package:ios_tiretest_ai/models/user_profile.dart';
 
+import 'package:ios_tiretest_ai/models/notification_models.dart';
 
 import 'package:equatable/equatable.dart';
 
@@ -21,11 +22,23 @@ enum AddVehiclePreferencesStatus { initial, loading, success, failure }
 enum TyreHistoryStatus { initial, loading, success, failure }
 enum ShopsStatus { initial, loading, success, failure }
 enum UpdateProfileStatus { initial, loading, success, failure }
+enum NotificationStatus { initial, loading, success, failure }
 
 /// ✅ NEW
 enum ChangePasswordStatus { initial, loading, success, failure }
 
 class AuthState extends Equatable {
+  final List<NotificationItem> notifications;
+final int notificationUnreadCount;
+final String? notificationError;
+final bool notificationListening; // optional UI info
+
+    final NotificationStatus notificationStatus;
+  // final List<NotificationItem> notifications;
+  // final String? notificationError;
+
+  // final int notificationUnreadCount;
+  final Set<String> notificationSeenIds;
   final ShopsStatus shopsStatus;
   final List<ShopVendor> shops;
   final String? shopsError;
@@ -69,6 +82,15 @@ class AuthState extends Equatable {
   final String recordsVehicleType;
 
   const AuthState({
+
+    this.notifications = const <NotificationItem>[],
+this.notificationUnreadCount = 0,
+this.notificationError,
+this.notificationListening = false,
+
+    this.notificationStatus = NotificationStatus.initial,
+
+    this.notificationSeenIds = const <String>{},
     this.shopsStatus = ShopsStatus.initial,
     this.shops = const <ShopVendor>[],
     this.shopsError,
@@ -121,6 +143,12 @@ class AuthState extends Equatable {
   }
 
   AuthState copyWith({
+List<NotificationItem>? notifications,
+int? notificationUnreadCount,
+String? notificationError,
+bool? notificationListening,
+
+
     ShopsStatus? shopsStatus,
     List<ShopVendor>? shops,
     String? shopsError,
@@ -163,6 +191,12 @@ class AuthState extends Equatable {
     String? recordsVehicleType,
   }) {
     return AuthState(
+    notifications: notifications ?? this.notifications,
+notificationUnreadCount: notificationUnreadCount ?? this.notificationUnreadCount,
+notificationError: notificationError ?? this.notificationError,
+notificationListening: notificationListening ?? this.notificationListening,
+
+
       shopsStatus: shopsStatus ?? this.shopsStatus,
       shops: shops ?? this.shops,
       shopsError: shopsError ?? this.shopsError,
@@ -211,6 +245,12 @@ class AuthState extends Equatable {
 
   @override
   List<Object?> get props => [
+    notifications,
+notificationUnreadCount,
+notificationError,
+notificationListening,
+
+
         shopsStatus,
         shops,
         shopsError,

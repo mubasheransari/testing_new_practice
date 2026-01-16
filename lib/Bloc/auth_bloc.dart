@@ -4,6 +4,7 @@ import 'package:get_storage/get_storage.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_event.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_state.dart';
 import 'package:ios_tiretest_ai/models/four_wheeler_uploads_request.dart';
+import 'package:ios_tiretest_ai/models/notification_models.dart';
 import 'package:ios_tiretest_ai/models/reset_password_request.dart';
 import 'package:ios_tiretest_ai/models/shop_vendor.dart';
 import 'package:ios_tiretest_ai/models/tyre_record.dart';
@@ -15,19 +16,46 @@ import '../models/auth_models.dart';
 import 'package:bloc/bloc.dart';
 
 import 'dart:async';
-import 'dart:io';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:get_storage/get_storage.dart';
 
-// ✅ Add your existing imports
-// import '...';
-import 'auth_event.dart';
-import 'auth_state.dart';
+
+  Timer? _notificationTimer;
+
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final AuthRepository repo;
+  Timer? _notifTimer;
+
+static const _kNotifReadIds = "notif_read_ids"; // List<String>
+static const _kNotifSeenIds = "notif_seen_ids"; // optional: "opened"
+Set<String> _readIds() {
+  final box = GetStorage();
+  final raw = box.read(_kNotifReadIds);
+  if (raw is List) {
+    return raw.map((e) => e.toString()).toSet();
+  }
+  return <String>{};
+}
+
+Future<void> _writeReadIds(Set<String> ids) async {
+  final box = GetStorage();
+  await box.write(_kNotifReadIds, ids.toList());
+}
+
+int _computeUnread(List<NotificationItem> list, Set<String> readIds) {
+  return list.where((n) => !readIds.contains(n.id)).length;
+}
+
+
 
   AuthBloc(this.repo) : super(const AuthState()) {
+
+on<NotificationFetchRequested>(_onNotificationFetch);
+on<NotificationStartListening>(_onNotificationStart);
+on<NotificationStopListening>(_onNotificationStop);
+on<NotificationMarkAllRead>(_onNotificationMarkAllRead);
+on<NotificationMarkSeenByIds>(_onNotificationMarkSeenByIds);
+
+
     on<AppStarted>(_onAppStarted);
     on<LoginRequested>(_onLogin);
     on<SignupRequested>(_onSignup);
@@ -50,7 +78,20 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<ClearChangePasswordError>((e, emit) => emit(state.copyWith(changePasswordError: null)));
   }
 
-  Future<void> _onAppStarted(AppStarted e, Emitter<AuthState> emit) async {
+  // Future<void> _onAppStarted(AppStarted e, Emitter<AuthState> emit) async {
+  //   final tok = await repo.getSavedToken();
+
+  //   if (tok != null && tok.isNotEmpty) {
+  //     add(const FetchProfileRequested());
+
+  //     add(const FetchNearbyShopsRequested(
+  //       latitude: 24.91767709433974,
+  //       longitude: 67.1005464655281,
+  //     ));
+  //   }
+  // }
+
+    Future<void> _onAppStarted(AppStarted e, Emitter<AuthState> emit) async {
     final tok = await repo.getSavedToken();
 
     if (tok != null && tok.isNotEmpty) {
@@ -60,8 +101,112 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         latitude: 24.91767709433974,
         longitude: 67.1005464655281,
       ));
+
+      // ✅ Start notification polling
+      add(const NotificationStartListening(intervalSeconds: 15));
     }
   }
+
+
+
+
+Future<void> _onNotificationFetch(
+  NotificationFetchRequested e,
+  Emitter<AuthState> emit,
+) async {
+  // If silent: don't show loaders/errors (only refresh count)
+  if (!e.silent) {
+    emit(state.copyWith(notificationError: null));
+  }
+
+  final r = await repo.fetchNotifications(page: e.page, limit: e.limit);
+
+  if (!r.isSuccess) {
+    if (!e.silent) {
+      emit(state.copyWith(
+        notificationError: r.failure?.message ?? "Failed to load notifications",
+      ));
+    }
+    return;
+  }
+
+  final list = r.data ?? const <NotificationItem>[];
+
+  // compute unread locally
+  final readIds = _readIds();
+  final unread = _computeUnread(list, readIds);
+
+  emit(state.copyWith(
+    notifications: list,
+    notificationUnreadCount: unread,
+    notificationError: null,
+  ));
+}
+
+Future<void> _onNotificationStart(
+  NotificationStartListening e,
+  Emitter<AuthState> emit,
+) async {
+  // avoid multiple timers
+  _notifTimer?.cancel();
+
+  emit(state.copyWith(notificationListening: true));
+
+  // initial fetch
+  add(const NotificationFetchRequested(page: 1, limit: 50, silent: true));
+
+  _notifTimer = Timer.periodic(Duration(seconds: e.intervalSeconds), (_) {
+    add(const NotificationFetchRequested(page: 1, limit: 50, silent: true));
+  });
+}
+
+Future<void> _onNotificationStop(
+  NotificationStopListening e,
+  Emitter<AuthState> emit,
+) async {
+  _notifTimer?.cancel();
+  _notifTimer = null;
+  emit(state.copyWith(notificationListening: false));
+}
+
+Future<void> _onNotificationMarkAllRead(
+  NotificationMarkAllRead e,
+  Emitter<AuthState> emit,
+) async {
+  final current = state.notifications;
+  if (current.isEmpty) {
+    emit(state.copyWith(notificationUnreadCount: 0));
+    return;
+  }
+
+  final ids = current.map((n) => n.id).where((id) => id.isNotEmpty).toSet();
+  final readIds = _readIds()..addAll(ids);
+  await _writeReadIds(readIds);
+
+  emit(state.copyWith(notificationUnreadCount: 0));
+}
+
+Future<void> _onNotificationMarkSeenByIds(
+  NotificationMarkSeenByIds e,
+  Emitter<AuthState> emit,
+) async {
+  if (e.ids.isEmpty) return;
+
+  final readIds = _readIds()..addAll(e.ids.where((x) => x.trim().isNotEmpty));
+  await _writeReadIds(readIds);
+
+  final unread = _computeUnread(state.notifications, readIds);
+
+  emit(state.copyWith(notificationUnreadCount: unread));
+}
+
+
+  @override
+  Future<void> close() {
+    _notificationTimer?.cancel();
+    return super.close();
+  }
+
 
   Future<void> _onFetchNearbyShops(
     FetchNearbyShopsRequested e,

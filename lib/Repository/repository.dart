@@ -20,6 +20,8 @@ import 'package:ios_tiretest_ai/models/user_profile.dart';
 import 'package:dio/dio.dart';
 import 'package:path/path.dart' as p;
 import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:ios_tiretest_ai/models/notification_models.dart';
+
 
 
 class Failure {
@@ -40,6 +42,11 @@ class Result<T> {
 }
 
 abstract class AuthRepository {
+Future<Result<List<NotificationItem>>> fetchNotifications({
+  int page = 1,
+  int limit = 50,
+});
+
     Future<Result<ResetPasswordResponse>> resetPassword({
     required ResetPasswordRequest request,
     String? token, // optional (if backend needs it later)
@@ -158,6 +165,58 @@ class AuthRepositoryHttp implements AuthRepository {
 
     return inFile;
   }
+
+ @override
+Future<Result<List<NotificationItem>>> fetchNotifications({
+  int page = 1,
+  int limit = 50,
+}) async {
+  final uri = Uri.parse(ApiConfig.getNotification).replace(queryParameters: {
+    "page": "$page",
+    "limit": "$limit",
+  });
+
+  try {
+    final res = await http.get(uri, headers: _jsonHeaders()).timeout(timeout);
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      final decoded = jsonDecode(res.body);
+
+      if (decoded is! Map<String, dynamic>) {
+        return Result.fail(const Failure(code: "parse", message: "Invalid response"));
+      }
+
+      final data = decoded["data"];
+      if (data is! List) {
+        return Result.fail(const Failure(code: "parse", message: "Missing data list"));
+      }
+
+      final list = data
+          .whereType<Map>()
+          .map((e) => NotificationItem.fromJson(Map<String, dynamic>.from(e)))
+          .toList();
+
+      // newest first by sentAt/createdAt
+      list.sort((a, b) {
+        final ad = a.sentAt ?? a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final bd = b.sentAt ?? b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+        return bd.compareTo(ad);
+      });
+
+      return Result.ok(list);
+    }
+
+    return Result.fail(_serverFail(res));
+  } on SocketException {
+    return Result.fail(const Failure(code: 'network', message: 'No internet connection'));
+  } on TimeoutException {
+    return Result.fail(const Failure(code: 'timeout', message: 'Request timed out'));
+  } catch (e) {
+    return Result.fail(Failure(code: 'unknown', message: e.toString()));
+  }
+}
+
+
 
   @override
   Future<Result<ResetPasswordResponse>> resetPassword({
@@ -911,6 +970,8 @@ class ApiConfig {
        static const String editProfile = "http://54.162.208.215/backend/api/userDetailsUpdate";
          static const String resetPassword =
       "http://54.162.208.215/backend/api/resetpassword";
+      static const String getNotification =
+    "http://54.162.208.215/backend/api/getNotification";
 
 }
 

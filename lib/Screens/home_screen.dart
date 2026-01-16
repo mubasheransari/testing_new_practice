@@ -6,6 +6,7 @@ import 'package:get_storage/get_storage.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_bloc.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_event.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_state.dart';
+import 'package:ios_tiretest_ai/Screens/notifications_screen.dart';
 import 'package:ios_tiretest_ai/Screens/scanner_screen.dart';
 import 'package:ios_tiretest_ai/Screens/verhicle_form_preferences_screen.dart';
 import 'package:ios_tiretest_ai/Widgets/gradient_text_widget.dart';
@@ -92,8 +93,6 @@ class InspectionHomePixelPerfect extends StatelessWidget {
   }
 }
 
-
-
 class _Header extends StatelessWidget {
   const _Header({required this.s});
   final double s;
@@ -101,7 +100,10 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<AuthBloc, AuthState>(
-      buildWhen: (p, c) => p.profile != c.profile,
+      // ✅ rebuild when profile OR notification count changes
+      buildWhen: (p, c) =>
+          p.profile != c.profile ||
+          p.notificationUnreadCount != c.notificationUnreadCount,
       builder: (context, state) {
         final profile = state.profile;
 
@@ -161,6 +163,8 @@ class _Header extends StatelessWidget {
             ? '${profile.firstName} ${profile.lastName}'.trim()
             : 'User';
 
+        final unread = state.notificationUnreadCount;
+
         return Row(
           children: [
             Expanded(
@@ -202,9 +206,33 @@ class _Header extends StatelessWidget {
                 ),
               ),
             ),
+
             SizedBox(width: 12 * s),
 
-            // ✅ Perfect circle
+            // ✅ Notification Bell (before avatar)
+            _NotificationBell(
+              s: s,
+              count: unread,
+              onTap: () {
+  Navigator.push(
+    context,
+    MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+  );
+},
+
+             /* onTap: () {
+                
+                // UI only: you can open notification screen here
+                // Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationsScreen()));
+
+                // Optional: mark read when opening
+                context.read<AuthBloc>().add(const NotificationMarkAllRead());
+              },*/
+            ),
+
+            SizedBox(width: 10 * s),
+
+            // ✅ Perfect circle avatar
             Container(
               height: 70,
               width: 70,
@@ -219,7 +247,7 @@ class _Header extends StatelessWidget {
                   ),
                 ],
               ),
-              clipBehavior: Clip.antiAlias, // ✅ important
+              clipBehavior: Clip.antiAlias,
               child: avatarWidget(),
             ),
           ],
@@ -228,6 +256,226 @@ class _Header extends StatelessWidget {
     );
   }
 }
+
+class _NotificationBell extends StatelessWidget {
+  const _NotificationBell({
+    required this.s,
+    required this.count,
+    required this.onTap,
+  });
+
+  final double s;
+  final int count;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        // Bell container matching your avatar style
+        Material(
+          color: Colors.white,
+          shape: const CircleBorder(),
+          elevation: 0,
+          child: InkWell(
+            onTap: onTap,
+            customBorder: const CircleBorder(),
+            child: Container(
+              height: 52,
+              width: 52,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.06),
+                    blurRadius: 8 * s,
+                    offset: Offset(0, 4 * s),
+                  ),
+                ],
+              ),
+              child: const Center(
+                child: Icon(
+                  Icons.notifications_none_rounded,
+                  size: 26,
+                  color: Color(0xFF1B1B1B),
+                ),
+              ),
+            ),
+          ),
+        ),
+
+        // Badge
+        if (count > 0)
+          Positioned(
+            right: -2,
+            top: -2,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.redAccent,
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: Colors.white, width: 2),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.12),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Text(
+                count > 99 ? '99+' : '$count',
+                style: TextStyle(
+                  fontFamily: 'ClashGrotesk',
+                  color: Colors.white,
+                  fontSize: 11 * s,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+
+// class _Header extends StatelessWidget {
+//   const _Header({required this.s});
+//   final double s;
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return BlocBuilder<AuthBloc, AuthState>(
+//       buildWhen: (p, c) => p.profile != c.profile,
+//       builder: (context, state) {
+//         final profile = state.profile;
+
+//         final raw = (profile?.profileImage ?? '').toString().trim();
+//         final avatar = (raw.toLowerCase() == 'null') ? '' : raw;
+
+//         bool isHttp(String v) {
+//           final u = Uri.tryParse(v);
+//           return u != null &&
+//               u.hasScheme &&
+//               (u.scheme == 'http' || u.scheme == 'https') &&
+//               u.host.isNotEmpty;
+//         }
+
+//         String normalizeFilePath(String v) {
+//           // file:///var/... => /var/...
+//           if (v.startsWith('file://')) return Uri.parse(v).toFilePath();
+//           return v;
+//         }
+
+//         Widget avatarWidget() {
+//           // ✅ 1) local file path
+//           if (avatar.isNotEmpty && !isHttp(avatar)) {
+//             final path = normalizeFilePath(avatar);
+//             final f = File(path);
+
+//             if (f.existsSync()) {
+//               return Image.file(
+//                 f,
+//                 fit: BoxFit.cover,
+//                 gaplessPlayback: true,
+//                 errorBuilder: (_, __, ___) =>
+//                     Image.asset('assets/avatar.png', fit: BoxFit.cover),
+//               );
+//             }
+
+//             // If file missing, show fallback
+//             return Image.asset('assets/avatar.png', fit: BoxFit.cover);
+//           }
+
+//           // ✅ 2) network
+//           if (avatar.isNotEmpty && isHttp(avatar)) {
+//             return Image.network(
+//               avatar,
+//               fit: BoxFit.cover,
+//               gaplessPlayback: true,
+//               errorBuilder: (_, __, ___) =>
+//                   Image.asset('assets/avatar.png', fit: BoxFit.cover),
+//             );
+//           }
+
+//           // ✅ 3) fallback
+//           return Image.asset('assets/avatar.png', fit: BoxFit.cover);
+//         }
+
+//         final name = (profile != null)
+//             ? '${profile.firstName} ${profile.lastName}'.trim()
+//             : 'User';
+
+//         return Row(
+//           children: [
+//             Expanded(
+//               child: RichText(
+//                 text: TextSpan(
+//                   style: TextStyle(
+//                     fontFamily: 'ClashGrotesk',
+//                     fontSize: 14 * s,
+//                     color: const Color(0xFF6A6F7B),
+//                     height: 1.2,
+//                   ),
+//                   children: [
+//                     TextSpan(
+//                       text: 'Good morning,\n',
+//                       style: TextStyle(
+//                         fontFamily: 'ClashGrotesk',
+//                         fontSize: 21 * s,
+//                         fontWeight: FontWeight.w700,
+//                         height: 1.2,
+//                       ),
+//                     ),
+//                     WidgetSpan(
+//                       alignment: PlaceholderAlignment.baseline,
+//                       baseline: TextBaseline.alphabetic,
+//                       child: GradientText(
+//                         name,
+//                         gradient: const LinearGradient(
+//                           colors: [Color(0xFF00C6FF), Color(0xFF7F53FD)],
+//                         ),
+//                         style: TextStyle(
+//                           fontFamily: 'ClashGrotesk',
+//                           fontSize: 28 * s,
+//                           fontWeight: FontWeight.bold,
+//                           height: 1,
+//                         ),
+//                       ),
+//                     ),
+//                   ],
+//                 ),
+//               ),
+//             ),
+//             SizedBox(width: 12 * s),
+
+//             // ✅ Perfect circle
+//             Container(
+//               height: 70,
+//               width: 70,
+//               decoration: BoxDecoration(
+//                 color: Colors.white,
+//                 shape: BoxShape.circle,
+//                 boxShadow: [
+//                   BoxShadow(
+//                     color: Colors.black.withOpacity(0.06),
+//                     blurRadius: 8 * s,
+//                     offset: Offset(0, 4 * s),
+//                   ),
+//                 ],
+//               ),
+//               clipBehavior: Clip.antiAlias, // ✅ important
+//               child: avatarWidget(),
+//             ),
+//           ],
+//         );
+//       },
+//     );
+//   }
+// }
 
 
 /*
