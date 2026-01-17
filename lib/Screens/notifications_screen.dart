@@ -27,95 +27,122 @@ class NotificationsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+     final s = MediaQuery.sizeOf(context).width / 393;
     // On open: fetch once (silent) to ensure latest
     context.read<AuthBloc>().add(const NotificationFetchRequested(page: 1, limit: 50, silent: true));
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F7FA),
-      appBar: AppBar(
-        title: const Text(
-          "Notifications",
-          style: TextStyle(fontFamily: 'ClashGrotesk', fontWeight: FontWeight.w800),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              context.read<AuthBloc>().add(const NotificationMarkAllRead());
-            },
-            child: const Text(
-              "Mark all read",
-              style: TextStyle(
-                fontFamily: 'ClashGrotesk',
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ],
-      ),
-      body: BlocBuilder<AuthBloc, AuthState>(
-        buildWhen: (p, c) =>
-            p.notifications != c.notifications ||
-            p.notificationUnreadCount != c.notificationUnreadCount ||
-            p.notificationError != c.notificationError,
-        builder: (context, state) {
-          final list = state.notifications;
-          final readIds = _readIds();
-
-          if ((state.notificationError ?? '').isNotEmpty) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(18),
-                child: Text(
-                  state.notificationError!,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontFamily: 'ClashGrotesk'),
-                ),
-              ),
-            );
-          }
-
-          if (list.isEmpty) {
-            return const Center(
-              child: Text(
-                "No notifications yet.",
-                style: TextStyle(fontFamily: 'ClashGrotesk', fontWeight: FontWeight.w700),
-              ),
-            );
-          }
-
-          return ListView.separated(
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 18),
-            itemCount: list.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 10),
-            itemBuilder: (context, i) {
-              final n = list[i];
-              final isRead = readIds.contains(n.id);
-
-              final dt = n.sentAt ?? n.createdAt;
-              final subtitle = _fmtDate(dt);
-
-              return _NotificationTile(
-                item: n,
-                isRead: isRead,
-                subtitle: subtitle,
-                onTap: () {
-                  // ✅ mark read locally -> decreases counter
-                  context.read<AuthBloc>().add(NotificationMarkSeenByIds([n.id]));
-
-                  // ✅ show details bottom sheet (optional)
-                  showModalBottomSheet(
-                    context: context,
-                    backgroundColor: Colors.white,
-                    shape: const RoundedRectangleBorder(
-                      borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+          backgroundColor: Color(0xFFF6F7FB),
+      // backgroundColor: const Color(0xFFF6F7FA),
+      // appBar: AppBar(
+      //   title: const Text(
+      //     "Notifications",
+      //     style: TextStyle(fontFamily: 'ClashGrotesk', fontWeight: FontWeight.w800),
+      //   ),
+      //   actions: [
+      //     TextButton(
+      //       onPressed: () {
+      //         context.read<AuthBloc>().add(const NotificationMarkAllRead());
+      //       },
+      //       child: const Text(
+      //         "Mark all read",
+      //         style: TextStyle(
+      //           fontFamily: 'ClashGrotesk',
+      //           fontWeight: FontWeight.w700,
+      //         ),
+      //       ),
+      //     ),
+      //   ],
+      // ),
+      body: Column(
+        children: [
+                Padding(
+                  padding: const EdgeInsets.only(top:65.0),
+                  child: SizedBox(
+                    height: 34 * s,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Text(
+                          'Notifications',
+                        style: TextStyle(
+                         fontFamily: 'ClashGrotesk',
+                         fontSize: 24 * s,
+                         fontWeight: FontWeight.w900,
+                         color: Color(0xFF111111))
+                        ),
+                      ],
                     ),
-                    builder: (_) => _NotificationDetails(item: n),
+                  ),
+                ),
+                SizedBox(height: 7 * s),
+          BlocBuilder<AuthBloc, AuthState>(
+            buildWhen: (p, c) =>
+                p.notifications != c.notifications ||
+                p.notificationUnreadCount != c.notificationUnreadCount ||
+                p.notificationError != c.notificationError,
+            builder: (context, state) {
+              final list = state.notifications;
+              final readIds = _readIds();
+          
+              if ((state.notificationError ?? '').isNotEmpty) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(18),
+                    child: Text(
+                      state.notificationError!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontFamily: 'ClashGrotesk'),
+                    ),
+                  ),
+                );
+              }
+          
+              if (list.isEmpty) {
+                return const Center(
+                  child: Text(
+                    "No notifications yet.",
+                    style: TextStyle(fontFamily: 'ClashGrotesk', fontWeight: FontWeight.w700),
+                  ),
+                );
+              }
+          
+              return ListView.separated(
+                shrinkWrap: true,
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 18),
+                itemCount: list.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 10),
+                itemBuilder: (context, i) {
+                  final n = list[i];
+                  final isRead = readIds.contains(n.id);
+          
+                  final dt = n.sentAt ?? n.createdAt;
+                  final subtitle = _fmtDate(dt);
+          
+                  return _NotificationTile(
+                    item: n,
+                    isRead: isRead,
+                    subtitle: subtitle,
+                    onTap: () {
+                      // ✅ mark read locally -> decreases counter
+                      context.read<AuthBloc>().add(NotificationMarkSeenByIds([n.id]));
+          
+                      // ✅ show details bottom sheet (optional)
+                      showModalBottomSheet(
+                        context: context,
+                        backgroundColor: Colors.white,
+                        shape: const RoundedRectangleBorder(
+                          borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+                        ),
+                        builder: (_) => _NotificationDetails(item: n),
+                      );
+                    },
                   );
                 },
               );
             },
-          );
-        },
+          ),
+        ],
       ),
     );
   }

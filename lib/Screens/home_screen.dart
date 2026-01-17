@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -10,6 +11,7 @@ import 'package:ios_tiretest_ai/Screens/notifications_screen.dart';
 import 'package:ios_tiretest_ai/Screens/scanner_screen.dart';
 import 'package:ios_tiretest_ai/Screens/verhicle_form_preferences_screen.dart';
 import 'package:ios_tiretest_ai/Widgets/gradient_text_widget.dart';
+import 'package:ios_tiretest_ai/Widgets/key_image_view.dart';
 
 
 
@@ -146,13 +148,19 @@ class _Header extends StatelessWidget {
 
           // ✅ 2) network
           if (avatar.isNotEmpty && isHttp(avatar)) {
-            return Image.network(
-              avatar,
+            return KeyImageView(
+  imageKey: "24bdb363-f93b-454a-afed-366600e67d0f - car - a8a0fd3531ed46d0900857eee419f06e - CAP5849644838479962527.jpg", // "uuid - car - uuid - CAP....jpg"
+  height: 120,
+  width: 160,
+  borderRadius: 14,
+);
+            /* Image.network(
+            "24bdb363-f93b-454a-afed-366600e67d0f - car - a8a0fd3531ed46d0900857eee419f06e - CAP5849644838479962527.jpg", // avatar,
               fit: BoxFit.cover,
               gaplessPlayback: true,
               errorBuilder: (_, __, ___) =>
                   Image.asset('assets/avatar.png', fit: BoxFit.cover),
-            );
+            );*/
           }
 
           // ✅ 3) fallback
@@ -164,6 +172,12 @@ class _Header extends StatelessWidget {
             : 'User';
 
         final unread = state.notificationUnreadCount;
+
+        final encoded = base64Encode(
+  utf8.encode(
+    "24bdb363-f93b-454a-afed-366600e67d0f - car - a8a0fd3531ed46d0900857eee419f06e - CAP5849644838479962527.jpg",
+  ),
+);
 
         return Row(
           children: [
@@ -248,7 +262,13 @@ class _Header extends StatelessWidget {
                 ],
               ),
               clipBehavior: Clip.antiAlias,
-              child: avatarWidget(),
+              child: Image.network(encoded),
+//               child:  KeyImageView(
+//   imageKey: "24bdb363-f93b-454a-afed-366600e67d0f - car - a8a0fd3531ed46d0900857eee419f06e - CAP5849644838479962527.jpg", // "uuid - car - uuid - CAP....jpg"
+//   height: 120,
+//   width: 160,
+//   borderRadius: 14,
+// )//avatarWidget(),
             ),
           ],
         );
