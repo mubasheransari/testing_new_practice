@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_storage/get_storage.dart';
@@ -11,18 +10,11 @@ import 'package:ios_tiretest_ai/Screens/notifications_screen.dart';
 import 'package:ios_tiretest_ai/Screens/scanner_screen.dart';
 import 'package:ios_tiretest_ai/Screens/verhicle_form_preferences_screen.dart';
 import 'package:ios_tiretest_ai/Widgets/gradient_text_widget.dart';
-import 'package:ios_tiretest_ai/Widgets/key_image_view.dart';
-
-
-
-
 
 const kBg = Color(0xFFF6F7FA);
 
 class InspectionHomePixelPerfect extends StatelessWidget {
   const InspectionHomePixelPerfect({super.key});
-
-  
 
   void _toast(BuildContext ctx, String msg) =>
       ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(msg)));
@@ -32,7 +24,6 @@ class InspectionHomePixelPerfect extends StatelessWidget {
       MaterialPageRoute(builder: (_) =>  ScannerFrontTireScreen(vehicleID: '',)),
     );
     if (result == null) return;
-
 
     final authState = context.read<AuthBloc>().state;
     final box = GetStorage();
@@ -58,12 +49,10 @@ class InspectionHomePixelPerfect extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    
-
+  
     final size = MediaQuery.sizeOf(context);
     const baseW = 393.0;
     final s = size.width / baseW;
-
 
     final carH = (size.height * 0.30).clamp(210 * s, 360.0);   
     final bikeH = (size.height * 0.30).clamp(200 * s, 350.0);
@@ -126,7 +115,18 @@ class _Header extends StatelessWidget {
           return v;
         }
 
-        Widget avatarWidget() {
+         Widget avatarWidget() {
+          if (avatar.isNotEmpty && !avatar.startsWith('http')) {
+            final f = File(avatar);
+            if (f.existsSync()) return Image.file(f, fit: BoxFit.cover);
+          }
+          if (avatar.isNotEmpty && avatar.startsWith('http')) {
+            return Image.network(avatar, fit: BoxFit.cover);
+          }
+          return Image.asset('assets/avatar.png', fit: BoxFit.cover);
+        }
+
+      /*  Widget avatarWidget() {
           // ✅ 1) local file path
           if (avatar.isNotEmpty && !isHttp(avatar)) {
             final path = normalizeFilePath(avatar);
@@ -165,7 +165,7 @@ class _Header extends StatelessWidget {
 
           // ✅ 3) fallback
           return Image.asset('assets/avatar.png', fit: BoxFit.cover);
-        }
+        }*/
 
         final name = (profile != null)
             ? '${profile.firstName} ${profile.lastName}'.trim()
@@ -262,7 +262,7 @@ class _Header extends StatelessWidget {
                 ],
               ),
               clipBehavior: Clip.antiAlias,
-              child: Image.network(encoded),
+              child:avatarWidget()   //Image.network(encoded),
 //               child:  KeyImageView(
 //   imageKey: "24bdb363-f93b-454a-afed-366600e67d0f - car - a8a0fd3531ed46d0900857eee419f06e - CAP5849644838479962527.jpg", // "uuid - car - uuid - CAP....jpg"
 //   height: 120,

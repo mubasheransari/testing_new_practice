@@ -371,7 +371,7 @@ class _LocationVendorsMapScreenState extends State<LocationVendorsMapScreen> {
                         children: [
                           SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
                           SizedBox(width: 8),
-                          Text('Loading...', style: TextStyle(fontWeight: FontWeight.w600)),
+                          Text('Loading...', style: TextStyle(fontWeight: FontWeight.w600, fontFamily: 'ClashGrotesk')),
                         ],
                       ),
                     ),
@@ -415,7 +415,7 @@ class _BottomCards extends StatelessWidget {
           child: Text(
             error!,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.redAccent),
+            style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.redAccent, fontFamily: 'ClashGrotesk'),
           ),
         ),
       );
@@ -434,7 +434,7 @@ class _BottomCards extends StatelessWidget {
           alignment: Alignment.center,
           child: Text(
             loading ? 'Loading vendors...' : 'No vendors found',
-            style: const TextStyle(fontWeight: FontWeight.w800),
+            style: const TextStyle(fontWeight: FontWeight.w800, fontFamily: 'ClashGrotesk'),
           ),
         ),
       );
@@ -509,10 +509,11 @@ class _VendorPopupCard extends StatelessWidget {
                 Expanded(
                   child: Text(
                     vendor.shopName,
-                    maxLines: 1,
+                    maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: 18,
+                       fontFamily: 'ClashGrotesk',
+                      fontSize: 14,
                       fontWeight: FontWeight.w900,
                       color: Color(0xFF111827),
                     ),
@@ -527,9 +528,10 @@ class _VendorPopupCard extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               (vendor.services?.trim().isNotEmpty == true) ? vendor.services!.trim() : 'Vehicle inspection service',
-              maxLines: 1,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
+                 fontFamily: 'ClashGrotesk',
                 fontSize: 13.5,
                 color: Color(0xFF9CA3AF),
                 fontWeight: FontWeight.w600,
@@ -541,6 +543,7 @@ class _VendorPopupCard extends StatelessWidget {
                 Text(
                   'Closed',
                   style: TextStyle(
+                       fontFamily: 'ClashGrotesk',
                     fontSize: 13.5,
                     color: Color(0xFFEF4444),
                     fontWeight: FontWeight.w700,
@@ -549,6 +552,7 @@ class _VendorPopupCard extends StatelessWidget {
                 Text(
                   ' - Opens 08:00',
                   style: TextStyle(
+                       fontFamily: 'ClashGrotesk',
                     fontSize: 13.5,
                     color: Color(0xFF111827),
                     fontWeight: FontWeight.w700,
@@ -578,6 +582,7 @@ class _VendorPopupCard extends StatelessWidget {
                   child: Text(
                     '"Fast car inspection service\nand excellent customer service."',
                     style: TextStyle(
+                         fontFamily: 'ClashGrotesk',
                       fontSize: 12.5,
                       color: const Color(0xFF9CA3AF).withOpacity(.95),
                       fontWeight: FontWeight.w600,
@@ -628,6 +633,7 @@ Widget _ratingPillSmall(double rating) {
         Text(
           rating.toStringAsFixed(1),
           style: const TextStyle(
+               fontFamily: 'ClashGrotesk',
             fontWeight: FontWeight.w900,
             fontSize: 13.5,
             color: Color(0xFF111827),
@@ -749,7 +755,7 @@ Widget _ratingPill(double rating) {
       const SizedBox(width: 4),
       Text(
         rating.toStringAsFixed(1),
-        style: const TextStyle(fontWeight: FontWeight.w800, letterSpacing: .2),
+        style: const TextStyle(fontWeight: FontWeight.w800, letterSpacing: .2,   fontFamily: 'ClashGrotesk',),
       ),
     ]),
   );

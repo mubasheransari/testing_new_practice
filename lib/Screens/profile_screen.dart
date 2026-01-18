@@ -9,19 +9,6 @@ import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 
 
-import 'dart:io';
-
-import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:image_picker/image_picker.dart';
-
-import 'package:ios_tiretest_ai/Bloc/auth_bloc.dart';
-import 'package:ios_tiretest_ai/Data/token_store.dart';
-import 'package:ios_tiretest_ai/Screens/auth_screen.dart';
-
-import '../Bloc/auth_event.dart';
-import '../Bloc/auth_state.dart';
-
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
 
