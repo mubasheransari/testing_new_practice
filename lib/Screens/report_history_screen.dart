@@ -853,6 +853,10 @@ class _ReportCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final statusColor = _statusColor(statusSummary);
+final displayVehicleText = (vehicleText ?? '')
+    .split('•')
+    .first
+    .trim();
 
     return Container(
       decoration: BoxDecoration(
@@ -913,18 +917,48 @@ class _ReportCard extends StatelessWidget {
                   ),
                   SizedBox(height: 4 * s),
                   Row(
-                    children: [
-                      Icon(Icons.directions_car_filled_rounded, size: 16 * s, color: const Color(0xFF6B7280)),
-                      SizedBox(width: 6 * s),
-                      Flexible(
-                        child: Text(
-                          'Vehicle: $vehicleText',
-                          style: TextStyle(color: const Color(0xFF6B7280), fontSize: 12.5 * s),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
+  children: [
+    InkWell(
+      onTap: () {
+        print("PRINT ::: $vehicleText");
+      },
+      child: Icon(
+        Icons.directions_car_filled_rounded,
+        size: 16 * s,
+        color: const Color(0xFF6B7280),
+      ),
+    ),
+    SizedBox(width: 6 * s),
+    Flexible(
+      child: Text(
+        'Vehicle: ${displayVehicleText}',
+        style: TextStyle(
+          color: const Color(0xFF6B7280),
+          fontSize: 12.5 * s,
+        ),
+        overflow: TextOverflow.ellipsis,
+      ),
+    ),
+  ],
+),
+
+                  // Row(
+                  //   children: [
+                  //     InkWell(
+                  //       onTap: (){
+                  //         print("PRINT ::: $vehicleText");
+                  //       },
+                  //       child: Icon(Icons.directions_car_filled_rounded, size: 16 * s, color: const Color(0xFF6B7280))),
+                  //     SizedBox(width: 6 * s),
+                  //     Flexible(
+                  //       child: Text(
+                  //         'Vehicle: ${vehicleText}',
+                  //         style: TextStyle(color: const Color(0xFF6B7280), fontSize: 12.5 * s),
+                  //         overflow: TextOverflow.ellipsis,
+                  //       ),
+                  //     ),
+                  //   ],
+                  // ),
                   SizedBox(height: 4 * s),
                   Row(
                     children: [
