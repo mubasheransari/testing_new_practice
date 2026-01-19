@@ -192,29 +192,40 @@ Expanded(
       ),
       children: [
         // ✅ icon
-        WidgetSpan(
-          alignment: PlaceholderAlignment.middle,
-          child: Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: Icon(
-              g.icon,
-              size: 22 * s,
-              color: g.iconColor,
-            ),
-          ),
-        ),
+        // WidgetSpan(
+        //   alignment: PlaceholderAlignment.middle,
+        //   child: Padding(
+        //     padding: const EdgeInsets.only(right: 8),
+        //     child: Icon(
+        //       g.icon,
+        //       size: 22 * s,
+        //       color: g.iconColor,
+        //     ),
+        //   ),
+        // ),
 
         // ✅ greeting text
         TextSpan(
           text: '${g.text},\n',
           style: TextStyle(
             fontFamily: 'ClashGrotesk',
-            fontSize: 21 * s,
+            fontSize: 20 * s,
             fontWeight: FontWeight.w700,
             height: 1.2,
-            color: Colors.black,
+            color: Colors.black87,
           ),
         ),
+        //    WidgetSpan(
+        //   alignment: PlaceholderAlignment.middle,
+        //   child: Padding(
+        //     padding: const EdgeInsets.only(right: 8),
+        //     child: Icon(
+        //       g.icon,
+        //       size: 22 * s,
+        //       color: g.iconColor,
+        //     ),
+        //   ),
+        // ),
 
         // ✅ gradient name
         WidgetSpan(

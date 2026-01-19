@@ -490,10 +490,15 @@ class _VendorPopupCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
               child: SizedBox(
                 height: 118,
+                width: MediaQuery.of(context).size.width,
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    _imgOrPlaceholder(img),
+                           ClipRRect(
+                  borderRadius: const BorderRadius.only(topLeft: Radius.circular(5), topRight: Radius.circular(5)),
+                  child:        Image.network('https://images.stockcake.com/public/e/6/0/e6043409-056d-4c51-9bce-d49aad63dad0_large/tire-shop-interior-stockcake.jpg',fit:  BoxFit.cover,), //_imgOrPlaceholder(img),
+                ),
+                //  Image.network('https://images.stockcake.com/public/e/6/0/e6043409-056d-4c51-9bce-d49aad63dad0_large/tire-shop-interior-stockcake.jpg',fit: BoxFit.contain,), // _imgOrPlaceholder(img),
                     Positioned(
                       left: 10,
                       top: 10,
@@ -644,7 +649,6 @@ Widget _ratingPillSmall(double rating) {
   );
 }
 
-// -------------------------- Your existing vendor card --------------------------
 class _VendorCard extends StatelessWidget {
   const _VendorCard({required this.v});
   final ShopVendor v;
@@ -658,7 +662,13 @@ class _VendorCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(9),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(.06), blurRadius: 16, offset: const Offset(0, 8))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(.06),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          )
+        ],
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -666,12 +676,19 @@ class _VendorCard extends StatelessWidget {
         children: [
           SizedBox(
             height: 122,
+            width: MediaQuery.of(context).size.width,
             child: Stack(
               fit: StackFit.expand,
               children: [
                 ClipRRect(
-                  borderRadius: const BorderRadius.only(topLeft: Radius.circular(5), topRight: Radius.circular(5)),
-                  child: _imgOrPlaceholder(img),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(9),
+                    topRight: Radius.circular(9),
+                  ),
+                  child: Image.network(
+                    'https://images.stockcake.com/public/e/6/0/e6043409-056d-4c51-9bce-d49aad63dad0_large/tire-shop-interior-stockcake.jpg',
+                    fit: BoxFit.cover,
+                  ), 
                 ),
                 Positioned(left: 10, top: 10, child: _ratingPill(v.rating)),
               ],
@@ -680,35 +697,49 @@ class _VendorCard extends StatelessWidget {
           Expanded(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(
-                  v.shopName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, fontFamily: 'ClashGrotesk'),
-                ),
-                const SizedBox(height: 6),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 10,
-                      height: 10,
-                      margin: const EdgeInsets.only(top: 3),
-                      decoration: const BoxDecoration(color: Color(0xFF3B82F6), shape: BoxShape.circle),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    v.shopName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                      fontFamily: 'ClashGrotesk',
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        v.displayAddress,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 13, color: Color(0xFF6C7A91), fontFamily: 'ClashGrotesk'),
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 10,
+                        height: 10,
+                        margin: const EdgeInsets.only(top: 3),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF3B82F6),
+                          shape: BoxShape.circle,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ]),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          v.displayAddress,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: Color(0xFF6C7A91),
+                            fontFamily: 'ClashGrotesk',
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -716,6 +747,81 @@ class _VendorCard extends StatelessWidget {
     );
   }
 }
+
+
+// -------------------------- Your existing vendor card --------------------------
+// class _VendorCard extends StatelessWidget {
+//   const _VendorCard({required this.v});
+//   final ShopVendor v;
+
+//   @override
+//   Widget build(BuildContext context) {
+//     final img = v.shopImageUrl;
+
+//     return Container(
+//       width: 250,
+//       decoration: BoxDecoration(
+//         color: Colors.white,
+//         borderRadius: BorderRadius.circular(9),
+//         boxShadow: [BoxShadow(color: Colors.black.withOpacity(.06), blurRadius: 16, offset: const Offset(0, 8))],
+//       ),
+//       clipBehavior: Clip.antiAlias,
+//       child: Column(
+//         crossAxisAlignment: CrossAxisAlignment.start,
+//         children: [
+//           SizedBox(
+//             height: 122,
+//             width: MediaQuery.of(context).size.width,
+//             child: Stack(
+//               fit: StackFit.expand,
+//               children: [
+//                 ClipRRect(
+//                   borderRadius: const BorderRadius.only(topLeft: Radius.circular(25), topRight: Radius.circular(5)),
+//                   child:        Image.network('https://images.stockcake.com/public/e/6/0/e6043409-056d-4c51-9bce-d49aad63dad0_large/tire-shop-interior-stockcake.jpg'), //_imgOrPlaceholder(img),
+//                 ),
+//                 Positioned(left: 20, top: 10, child: _ratingPill(v.rating)),
+//               ],
+//             ),
+//           ),
+//           Expanded(
+//             child: Padding(
+//               padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+//               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+//                 Text(
+//                   v.shopName,
+//                   maxLines: 1,
+//                   overflow: TextOverflow.ellipsis,
+//                   style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, fontFamily: 'ClashGrotesk'),
+//                 ),
+//                 const SizedBox(height: 6),
+//                 Row(
+//                   crossAxisAlignment: CrossAxisAlignment.start,
+//                   children: [
+//                     Container(
+//                       width: 10,
+//                       height: 10,
+//                       margin: const EdgeInsets.only(top: 3),
+//                       decoration: const BoxDecoration(color: Color(0xFF3B82F6), shape: BoxShape.circle),
+//                     ),
+//                     const SizedBox(width: 8),
+//                     Expanded(
+//                       child: Text(
+//                         v.displayAddress,
+//                         maxLines: 2,
+//                         overflow: TextOverflow.ellipsis,
+//                         style: const TextStyle(fontSize: 13, color: Color(0xFF6C7A91), fontFamily: 'ClashGrotesk'),
+//                       ),
+//                     ),
+//                   ],
+//                 ),
+//               ]),
+//             ),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+// }
 
 // -------------------------- Utils --------------------------
 Widget _imgOrPlaceholder(String? url) {
