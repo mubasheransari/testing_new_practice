@@ -57,23 +57,43 @@ class NotificationsScreen extends StatelessWidget {
       body: Column(
         children: [
                 Padding(
-                  padding: const EdgeInsets.only(top:65.0),
+                   padding: const EdgeInsets.only(top:65.0),
                   child: SizedBox(
-                    height: 34 * s,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Text(
-                          'Notifications',
-                        style: TextStyle(
-                         fontFamily: 'ClashGrotesk',
-                         fontSize: 24 * s,
-                         fontWeight: FontWeight.w900,
-                         color: Color(0xFF111111))
-                        ),
-                      ],
-                    ),
-                  ),
+  height: 34 * s,
+  child: Stack(
+    alignment: Alignment.center,
+    children: [
+      // Left back button
+
+      Padding(
+        padding: const EdgeInsets.only(left:8.0),
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: IconButton(
+            onPressed: () => Navigator.pop(context),
+            icon: const Icon(Icons.arrow_back_ios),
+          ),
+        ),
+      ),
+
+      // Center title (dynamic text)
+      Center(
+        child: Text(
+          'Notifications', // <- replace with your dynamic value
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontFamily: 'ClashGrotesk',
+            fontSize: 24 * s,
+            fontWeight: FontWeight.w900,
+            color: const Color(0xFF111111),
+          ),
+        ),
+      ),
+    ],
+  ),
+)
+
                 ),
                 SizedBox(height: 7 * s),
           BlocBuilder<AuthBloc, AuthState>(
