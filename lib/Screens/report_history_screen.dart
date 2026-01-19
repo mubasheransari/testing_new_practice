@@ -1057,17 +1057,17 @@ class _DownloadDialog extends StatelessWidget {
                 Text(
                   'Get a detailed PDF of your wheel inspection. You can also share it directly.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: const Color(0xFF6B7280), fontSize: 13.5 * s, height: 1.35),
+                  style: TextStyle(color: const Color(0xFF6B7280), fontSize: 13.5 * s, height: 1.35,fontFamily: 'ClashGrotesk',fontWeight: FontWeight.w800),
                 ),
                 SizedBox(height: 16 * s),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
                     onPressed: onDownload,
-                    icon: const Icon(Icons.download_rounded),
+                    icon: const Icon(Icons.download_rounded,size: 25,),
                     label: Text(
                       'Download PDF',
-                      style: TextStyle(fontFamily: 'ClashGrotesk', fontWeight: FontWeight.w800, fontSize: 16 * s),
+                      style: TextStyle(fontFamily: 'ClashGrotesk', fontWeight: FontWeight.w800, fontSize: 15 * s),
                     ),
                     style: ElevatedButton.styleFrom(
                       padding: EdgeInsets.symmetric(vertical: 14 * s),
@@ -1078,14 +1078,31 @@ class _DownloadDialog extends StatelessWidget {
                   ),
                 ),
                 SizedBox(height: 8 * s),
-                TextButton.icon(
-                  onPressed: onShare,
-                  icon: const Icon(Icons.ios_share_rounded),
-                  label: Text(
-                    'Share Report',
-                    style: TextStyle(fontFamily: 'ClashGrotesk', fontWeight: FontWeight.w800, color: const Color(0xFF4F7BFF)),
+                    SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                 onPressed: onShare,
+                    icon: const Icon(Icons.ios_share_rounded,size: 23,),
+                    label: Text(
+                      'Share Report',
+                      style: TextStyle(fontFamily: 'ClashGrotesk', fontWeight: FontWeight.w800, fontSize: 15 * s),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      padding: EdgeInsets.symmetric(vertical: 14 * s),
+                      foregroundColor: Colors.white,
+                      backgroundColor: const Color(0xFF4F7BFF),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14 * s)),
+                    ),
                   ),
                 ),
+                // TextButton.icon(
+                //   onPressed: onShare,
+                //   icon: const Icon(Icons.ios_share_rounded),
+                //   label: Text(
+                //     'Share Report',
+                //     style: TextStyle(fontFamily: 'ClashGrotesk', fontWeight: FontWeight.w800, color: const Color(0xFF4F7BFF)),
+                //   ),
+                // ),
               ],
             ),
           ),
