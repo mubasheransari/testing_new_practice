@@ -10,6 +10,7 @@ import 'package:ios_tiretest_ai/Screens/notifications_screen.dart';
 import 'package:ios_tiretest_ai/Screens/scanner_screen.dart';
 import 'package:ios_tiretest_ai/Screens/verhicle_form_preferences_screen.dart';
 import 'package:ios_tiretest_ai/Widgets/gradient_text_widget.dart';
+import 'package:ios_tiretest_ai/Widgets/gretting_data.dart';
 
 const kBg = Color(0xFFF6F7FA);
 
@@ -90,6 +91,8 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+
+        final g = getGreeting();
     return BlocBuilder<AuthBloc, AuthState>(
       // ✅ rebuild when profile OR notification count changes
       buildWhen: (p, c) =>
@@ -167,61 +170,76 @@ class _Header extends StatelessWidget {
           return Image.asset('assets/avatar.png', fit: BoxFit.cover);
         }*/
 
+        // ${profile.lastName}
+
         final name = (profile != null)
-            ? '${profile.firstName} ${profile.lastName}'.trim()
+            ? '${profile.firstName}'.trim()
             : 'User';
 
         final unread = state.notificationUnreadCount;
 
-        final encoded = base64Encode(
-  utf8.encode(
-    "24bdb363-f93b-454a-afed-366600e67d0f - car - a8a0fd3531ed46d0900857eee419f06e - CAP5849644838479962527.jpg",
-  ),
-);
 
         return Row(
           children: [
-            Expanded(
-              child: RichText(
-                text: TextSpan(
-                  style: TextStyle(
-                    fontFamily: 'ClashGrotesk',
-                    fontSize: 14 * s,
-                    color: const Color(0xFF6A6F7B),
-                    height: 1.2,
-                  ),
-                  children: [
-                    TextSpan(
-                      text: 'Good morning,\n',
-                      style: TextStyle(
-                        fontFamily: 'ClashGrotesk',
-                        fontSize: 21 * s,
-                        fontWeight: FontWeight.w700,
-                        height: 1.2,
-                      ),
-                    ),
-                    WidgetSpan(
-                      alignment: PlaceholderAlignment.baseline,
-                      baseline: TextBaseline.alphabetic,
-                      child: GradientText(
-                        name,
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF00C6FF), Color(0xFF7F53FD)],
-                        ),
-                        style: TextStyle(
-                          fontFamily: 'ClashGrotesk',
-                          fontSize: 28 * s,
-                          fontWeight: FontWeight.bold,
-                          height: 1,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+Expanded(
+  child: RichText(
+    text: TextSpan(
+      style: TextStyle(
+        fontFamily: 'ClashGrotesk',
+        fontSize: 14 * s,
+        color: const Color(0xFF6A6F7B),
+        height: 1.2,
+      ),
+      children: [
+        // ✅ icon
+        WidgetSpan(
+          alignment: PlaceholderAlignment.middle,
+          child: Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: Icon(
+              g.icon,
+              size: 22 * s,
+              color: g.iconColor,
             ),
+          ),
+        ),
 
-            SizedBox(width: 12 * s),
+        // ✅ greeting text
+        TextSpan(
+          text: '${g.text},\n',
+          style: TextStyle(
+            fontFamily: 'ClashGrotesk',
+            fontSize: 21 * s,
+            fontWeight: FontWeight.w700,
+            height: 1.2,
+            color: Colors.black,
+          ),
+        ),
+
+        // ✅ gradient name
+        WidgetSpan(
+          alignment: PlaceholderAlignment.baseline,
+          baseline: TextBaseline.alphabetic,
+          child: GradientText(
+            name,
+            gradient: const LinearGradient(
+              colors: [Color(0xFF00C6FF), Color(0xFF7F53FD)],
+            ),
+            style: TextStyle(
+              fontFamily: 'ClashGrotesk',
+              fontSize: 22 * s,
+              fontWeight: FontWeight.bold,
+              height: 1,
+            ),
+          ),
+        ),
+      ],
+    ),
+  ),
+),
+
+
+            SizedBox(width: 12 * s,height: 22,),
 
             // ✅ Notification Bell (before avatar)
             _NotificationBell(
