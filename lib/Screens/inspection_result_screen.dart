@@ -1,7 +1,11 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:get_storage/get_storage.dart';
+import 'package:ios_tiretest_ai/Bloc/auth_bloc.dart';
+import 'package:ios_tiretest_ai/Bloc/auth_event.dart';
 
-class InspectionResultScreen extends StatelessWidget {
+class InspectionResultScreen extends StatefulWidget {
   const InspectionResultScreen({
     super.key,
     required this.frontPath,
@@ -14,18 +18,32 @@ class InspectionResultScreen extends StatelessWidget {
   final TyreUploadResponse? response;
 
   @override
+  State<InspectionResultScreen> createState() => _InspectionResultScreenState();
+}
+
+class _InspectionResultScreenState extends State<InspectionResultScreen> {
+  @override
+  void initState() {
+    super.initState();
+    var userid = context.read<AuthBloc>().state.profile!.userId.toString();
+    context.read<AuthBloc>().add(FetchTyreHistoryRequested(userId: userid));
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final s = MediaQuery.sizeOf(context).width / 393; // base like iPhone
-    final data = response?.data;
+    final s = MediaQuery.sizeOf(context).width / 393; 
+    final data = widget.response?.data;
 
     // images
-    final frontImg = (data?.frontWheelUrl != null && data!.frontWheelUrl!.isNotEmpty)
+    final frontImg =
+        (data?.frontWheelUrl != null && data!.frontWheelUrl!.isNotEmpty)
         ? NetworkImage(data.frontWheelUrl!)
-        : FileImage(File(frontPath)) as ImageProvider;
+        : FileImage(File(widget.frontPath)) as ImageProvider;
 
-    final backImg = (data?.backWheelUrl != null && data!.backWheelUrl!.isNotEmpty)
+    final backImg =
+        (data?.backWheelUrl != null && data!.backWheelUrl!.isNotEmpty)
         ? NetworkImage(data.backWheelUrl!)
-        : FileImage(File(backPath)) as ImageProvider;
+        : FileImage(File(widget.backPath)) as ImageProvider;
 
     final extraImg = const AssetImage('assets/bike_wheel.png');
 
@@ -39,7 +57,8 @@ class InspectionResultScreen extends StatelessWidget {
     final damageCheck = data?.damageCheck ?? 'No cracks';
     final damageStatus = data?.damageStatus ?? 'Safe';
 
-    final summary = response?.message ??
+    final summary =
+        widget.response?.message ??
         'Your wheel is in good condition with optimal tread depth and balanced pressure. '
             'No major wear or cracks detected.';
 
@@ -50,7 +69,11 @@ class InspectionResultScreen extends StatelessWidget {
         backgroundColor: Colors.white,
         scrolledUnderElevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 22, color: Colors.black),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            size: 22,
+            color: Colors.black,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         centerTitle: true,
@@ -68,7 +91,7 @@ class InspectionResultScreen extends StatelessWidget {
         padding: EdgeInsets.fromLTRB(16 * s, 10 * s, 16 * s, 28 * s),
         children: [
           // top images
-        /*  Row(
+          /*  Row(
             children: [
               _PhotoCard(
                 s: s,
@@ -105,8 +128,7 @@ class InspectionResultScreen extends StatelessWidget {
                 flex: 14,
                 child: _BigMetricCard(
                   s: s,
-                  iconBg: const 
-                  LinearGradient(
+                  iconBg: const LinearGradient(
                     colors: [Color(0xFF4F7BFF), Color(0xFFA6C8FF)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
@@ -154,11 +176,7 @@ class InspectionResultScreen extends StatelessWidget {
           SizedBox(height: 18 * s),
 
           // report summary card
-          _ReportSummaryCard(
-            s: s,
-            title: 'Report Summary:',
-            summary: summary,
-          ),
+          _ReportSummaryCard(s: s, title: 'Report Summary:', summary: summary),
           SizedBox(height: 18 * s),
 
           // actions (keep your buttons)
@@ -174,7 +192,10 @@ class InspectionResultScreen extends StatelessWidget {
                     padding: EdgeInsets.symmetric(vertical: 14 * s),
                     backgroundColor: Colors.white,
                   ),
-                  icon: const Icon(Icons.share_rounded, color: Color(0xFF4F7BFF)),
+                  icon: const Icon(
+                    Icons.share_rounded,
+                    color: Color(0xFF4F7BFF),
+                  ),
                   label: Text(
                     'Share Report',
                     style: TextStyle(
@@ -263,7 +284,7 @@ class _PhotoCard extends StatelessWidget {
           Container(
             height: 28 * s,
             alignment: Alignment.center,
-                      decoration: BoxDecoration(
+            decoration: BoxDecoration(
               gradient: const LinearGradient(
                 colors: [Color(0xFF4F7BFF), Color(0xFF5FD1FF)],
                 begin: Alignment.topLeft,
@@ -498,7 +519,11 @@ class _ReportSummaryCard extends StatelessWidget {
                 ),
               ],
             ),
-            child: Icon(Icons.receipt_long_rounded, color: Colors.white, size: 26 * s),
+            child: Icon(
+              Icons.receipt_long_rounded,
+              color: Colors.white,
+              size: 26 * s,
+            ),
           ),
           SizedBox(width: 14 * s),
           Expanded(
@@ -516,7 +541,11 @@ class _ReportSummaryCard extends StatelessWidget {
                       ),
                     ),
                     const Spacer(),
-                    Icon(Icons.chevron_right_rounded, color: Colors.black, size: 24 * s),
+                    Icon(
+                      Icons.chevron_right_rounded,
+                      color: Colors.black,
+                      size: 24 * s,
+                    ),
                   ],
                 ),
                 SizedBox(height: 6 * s),
@@ -577,4 +606,3 @@ class TyreData {
     this.damageStatus,
   });
 }
-

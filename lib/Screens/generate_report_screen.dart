@@ -10,7 +10,7 @@ import 'package:ios_tiretest_ai/models/tyre_upload_response.dart' as m;
 
 
 
-class InspectionResultScreen extends StatelessWidget {
+class InspectionResultScreen extends StatefulWidget {
   const InspectionResultScreen({
     super.key,
     required this.frontLeftPath,
@@ -39,13 +39,25 @@ class InspectionResultScreen extends StatelessWidget {
   final Map<String, dynamic>? fourWheelerRaw;
 
   @override
+  State<InspectionResultScreen> createState() => _InspectionResultScreenState();
+}
+
+class _InspectionResultScreenState extends State<InspectionResultScreen> {
+
+    @override
+  void initState() {
+    super.initState();
+    var userid = context.read<AuthBloc>().state.profile!.userId.toString();
+    context.read<AuthBloc>().add(FetchTyreHistoryRequested(userId: userid));
+  }
+  @override
   Widget build(BuildContext context) {
     final s = MediaQuery.sizeOf(context).width / 393;
 
     // ✅ 1) prefer raw api json, fallback to response?.toJson(), fallback to response?.data
-    final raw = fourWheelerRaw ?? _safeToJson(response) ?? {};
+    final raw = widget.fourWheelerRaw ?? _safeToJson(widget.response) ?? {};
     final data = _tryReadMap(raw, ['data', 'result', 'payload']) ??
-        _safeToJson((response as dynamic?)?.data) ??
+        _safeToJson((widget.response as dynamic?)?.data) ??
         {};
 
     // ✅ URL extraction stays same
@@ -89,10 +101,10 @@ class InspectionResultScreen extends StatelessWidget {
       'back_right_image_url',
     ]);
 
-    final flImg = _imgProvider(localPath: frontLeftPath, url: flUrl);
-    final frImg = _imgProvider(localPath: frontRightPath, url: frUrl);
-    final blImg = _imgProvider(localPath: backLeftPath, url: blUrl);
-    final brImg = _imgProvider(localPath: backRightPath, url: brUrl);
+    final flImg = _imgProvider(localPath: widget.frontLeftPath, url: flUrl);
+    final frImg = _imgProvider(localPath: widget.frontRightPath, url: frUrl);
+    final blImg = _imgProvider(localPath: widget.backLeftPath, url: blUrl);
+    final brImg = _imgProvider(localPath: widget.backRightPath, url: brUrl);
 
     // ✅ 2) Extract TEXT from raw/data using deep search
     // You can add more keys here if backend uses different names
@@ -301,9 +313,6 @@ class InspectionResultScreen extends StatelessWidget {
   }
 
   // ==========================
-  // ✅ helpers
-  // ==========================
-
   ImageProvider _imgProvider({required String localPath, String? url}) {
     final u = (url ?? '').trim();
     if (u.isNotEmpty && (u.startsWith('http://') || u.startsWith('https://'))) {
@@ -1057,19 +1066,19 @@ class _GenerateReportScreenState extends State<GenerateReportScreen>
 
               Container(color: Colors.black.withOpacity(.40)),
 
-              SafeArea(
-                child: Align(
-                  alignment: Alignment.topLeft,
-                  child: IconButton(
-                    icon: const Icon(
-                      Icons.chevron_left_rounded,
-                      color: Colors.white,
-                      size: 32,
-                    ),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ),
-              ),
+              // SafeArea(
+              //   child: Align(
+              //     alignment: Alignment.topLeft,
+              //     child: IconButton(
+              //       icon: const Icon(
+              //         Icons.chevron_left_rounded,
+              //         color: Colors.white,
+              //         size: 32,
+              //       ),
+              //       onPressed: () => Navigator.pop(context),
+              //     ),
+              //   ),
+              // ),
 
               SafeArea(
                 child: Column(

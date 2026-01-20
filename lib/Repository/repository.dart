@@ -11,7 +11,6 @@ import 'package:http_parser/http_parser.dart';
 import 'package:ios_tiretest_ai/models/four_wheeler_uploads_request.dart';
 import 'package:ios_tiretest_ai/models/reset_password_request.dart';
 import 'package:ios_tiretest_ai/models/reset_password_response.dart';
-import 'package:ios_tiretest_ai/models/shop_vendor.dart' hide ShopVendorModel;
 import 'package:ios_tiretest_ai/models/tyre_record.dart';
 import 'package:ios_tiretest_ai/models/update_user_details_model.dart';
 import 'package:mime/mime.dart';
