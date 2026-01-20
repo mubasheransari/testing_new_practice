@@ -4,13 +4,14 @@ import 'dart:io';
 import 'package:get_storage/get_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:ios_tiretest_ai/Data/token_store.dart';
+import 'package:ios_tiretest_ai/Models/shop_vendor.dart';
 import 'package:ios_tiretest_ai/models/add_verhicle_preferences_model.dart';
 import 'package:ios_tiretest_ai/models/auth_models.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:ios_tiretest_ai/models/four_wheeler_uploads_request.dart';
 import 'package:ios_tiretest_ai/models/reset_password_request.dart';
 import 'package:ios_tiretest_ai/models/reset_password_response.dart';
-import 'package:ios_tiretest_ai/models/shop_vendor.dart';
+import 'package:ios_tiretest_ai/models/shop_vendor.dart' hide ShopVendorModel;
 import 'package:ios_tiretest_ai/models/tyre_record.dart';
 import 'package:ios_tiretest_ai/models/update_user_details_model.dart';
 import 'package:mime/mime.dart';
@@ -67,7 +68,7 @@ Future<Result<List<NotificationItem>>> fetchNotifications({
     required String tireBrand,
     required String tireDimension,
   });
-  Future<Result<List<ShopVendor>>> fetchNearbyShops({
+  Future<Result<List<ShopVendorModel>>> fetchNearbyShops({
   required double latitude,
   required double longitude,
 });
@@ -752,7 +753,7 @@ Future<UpdateUserDetailsResponse> updateUserDetails({
   }
 
   @override
-Future<Result<List<ShopVendor>>> fetchNearbyShops({
+Future<Result<List<ShopVendorModel>>> fetchNearbyShops({
   required double latitude,
   required double longitude,
 }) async {
@@ -805,7 +806,7 @@ Future<Result<List<ShopVendor>>> fetchNearbyShops({
         if (decoded is Map && decoded['data'] is List) {
           final list = (decoded['data'] as List)
               .whereType<Map>()
-              .map((e) => ShopVendor.fromJson(Map<String, dynamic>.from(e)))
+              .map((e) => ShopVendorModel.fromJson(Map<String, dynamic>.from(e)))
               .toList();
           return Result.ok(list);
         }
@@ -818,7 +819,7 @@ Future<Result<List<ShopVendor>>> fetchNearbyShops({
 
       final list = decoded
           .whereType<Map>()
-          .map((e) => ShopVendor.fromJson(Map<String, dynamic>.from(e)))
+          .map((e) => ShopVendorModel.fromJson(Map<String, dynamic>.from(e)))
           .toList();
 
       return Result.ok(list);

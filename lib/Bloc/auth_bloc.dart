@@ -3,10 +3,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_event.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_state.dart';
+import 'package:ios_tiretest_ai/Models/shop_vendor.dart';
 import 'package:ios_tiretest_ai/models/four_wheeler_uploads_request.dart';
 import 'package:ios_tiretest_ai/models/notification_models.dart';
 import 'package:ios_tiretest_ai/models/reset_password_request.dart';
-import 'package:ios_tiretest_ai/models/shop_vendor.dart';
+import 'package:ios_tiretest_ai/models/shop_vendor.dart' hide ShopVendorModel;
 import 'package:ios_tiretest_ai/models/tyre_record.dart';
 import 'package:ios_tiretest_ai/models/tyre_upload_request.dart';
 import 'package:ios_tiretest_ai/Repository/repository.dart';
@@ -225,7 +226,7 @@ Future<void> _onNotificationMarkSeenByIds(
     if (r.isSuccess) {
       emit(state.copyWith(
         shopsStatus: ShopsStatus.success,
-        shops: r.data ?? const <ShopVendor>[],
+        shops: r.data ??  <ShopVendorModel>[],
         shopsError: null,
       ));
     } else {

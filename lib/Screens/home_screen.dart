@@ -216,7 +216,7 @@ Expanded(
           ),
         ),
         //    WidgetSpan(
-        //   alignment: PlaceholderAlignment.middle,
+        //   alignment: PlaceholderAlignment.middle, 
         //   child: Padding(
         //     padding: const EdgeInsets.only(right: 8),
         //     child: Icon(

@@ -1,16 +1,15 @@
 import 'package:equatable/equatable.dart';
+import 'package:ios_tiretest_ai/Models/shop_vendor.dart';
 import 'package:ios_tiretest_ai/models/add_verhicle_preferences_model.dart';
 import 'package:ios_tiretest_ai/models/auth_models.dart';
 import 'package:ios_tiretest_ai/models/reset_password_response.dart';
-import 'package:ios_tiretest_ai/models/shop_vendor.dart';
+import 'package:ios_tiretest_ai/models/shop_vendor.dart' hide ShopVendorModel;
 import 'package:ios_tiretest_ai/models/tyre_record.dart';
 import 'package:ios_tiretest_ai/models/tyre_upload_response.dart';
 import 'package:ios_tiretest_ai/models/update_user_details_model.dart';
 import 'package:ios_tiretest_ai/models/user_profile.dart';
-
 import 'package:ios_tiretest_ai/models/notification_models.dart';
 
-import 'package:equatable/equatable.dart';
 
 
 
@@ -40,7 +39,7 @@ final bool notificationListening; // optional UI info
   // final int notificationUnreadCount;
   final Set<String> notificationSeenIds;
   final ShopsStatus shopsStatus;
-  final List<ShopVendor> shops;
+  final List<ShopVendorModel> shops;
   final String? shopsError;
 
   final TyreHistoryStatus tyreHistoryStatus;
@@ -92,7 +91,7 @@ this.notificationListening = false,
 
     this.notificationSeenIds = const <String>{},
     this.shopsStatus = ShopsStatus.initial,
-    this.shops = const <ShopVendor>[],
+    this.shops = const <ShopVendorModel>[],
     this.shopsError,
 
     this.tyreHistoryStatus = TyreHistoryStatus.initial,
@@ -149,8 +148,8 @@ String? notificationError,
 bool? notificationListening,
 
 
-    ShopsStatus? shopsStatus,
-    List<ShopVendor>? shops,
+    ShopsStatus? shopsStatus, 
+List<ShopVendorModel>? shops,
     String? shopsError,
 
     TyreHistoryStatus? tyreHistoryStatus,
