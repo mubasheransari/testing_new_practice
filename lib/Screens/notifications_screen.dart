@@ -27,75 +27,54 @@ class NotificationsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-     final s = MediaQuery.sizeOf(context).width / 393;
-    // On open: fetch once (silent) to ensure latest
-    context.read<AuthBloc>().add(const NotificationFetchRequested(page: 1, limit: 50, silent: true));
+    final s = MediaQuery.sizeOf(context).width / 393;
+    context.read<AuthBloc>().add(
+      const NotificationFetchRequested(page: 1, limit: 50, silent: true),
+    );
 
     return Scaffold(
-          backgroundColor: Color(0xFFF6F7FB),
-      // backgroundColor: const Color(0xFFF6F7FA),
-      // appBar: AppBar(
-      //   title: const Text(
-      //     "Notifications",
-      //     style: TextStyle(fontFamily: 'ClashGrotesk', fontWeight: FontWeight.w800),
-      //   ),
-      //   actions: [
-      //     TextButton(
-      //       onPressed: () {
-      //         context.read<AuthBloc>().add(const NotificationMarkAllRead());
-      //       },
-      //       child: const Text(
-      //         "Mark all read",
-      //         style: TextStyle(
-      //           fontFamily: 'ClashGrotesk',
-      //           fontWeight: FontWeight.w700,
-      //         ),
-      //       ),
-      //     ),
-      //   ],
-      // ),
+      backgroundColor: Color(0xFFF6F7FB),
+
       body: Column(
         children: [
-                Padding(
-                   padding: const EdgeInsets.only(top:65.0),
-                  child: SizedBox(
-  height: 34 * s,
-  child: Stack(
-    alignment: Alignment.center,
-    children: [
-      // Left back button
+          Padding(
+            padding: const EdgeInsets.only(top: 65.0),
+            child: SizedBox(
+              height: 34 * s,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  // Left back button
+                  Padding(
+                    padding: const EdgeInsets.only(left: 8.0),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.arrow_back_ios),
+                      ),
+                    ),
+                  ),
 
-      Padding(
-        padding: const EdgeInsets.only(left:8.0),
-        child: Align(
-          alignment: Alignment.centerLeft,
-          child: IconButton(
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back_ios),
+                  // Center title (dynamic text)
+                  Center(
+                    child: Text(
+                      'Notifications', // <- replace with your dynamic value
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontFamily: 'ClashGrotesk',
+                        fontSize: 24 * s,
+                        fontWeight: FontWeight.w900,
+                        color: const Color(0xFF111111),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-        ),
-      ),
-
-      // Center title (dynamic text)
-      Center(
-        child: Text(
-          'Notifications', // <- replace with your dynamic value
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            fontFamily: 'ClashGrotesk',
-            fontSize: 24 * s,
-            fontWeight: FontWeight.w900,
-            color: const Color(0xFF111111),
-          ),
-        ),
-      ),
-    ],
-  ),
-)
-
-                ),
-                SizedBox(height: 7 * s),
+          SizedBox(height: 7 * s),
           BlocBuilder<AuthBloc, AuthState>(
             buildWhen: (p, c) =>
                 p.notifications != c.notifications ||
@@ -104,7 +83,7 @@ class NotificationsScreen extends StatelessWidget {
             builder: (context, state) {
               final list = state.notifications;
               final readIds = _readIds();
-          
+
               if ((state.notificationError ?? '').isNotEmpty) {
                 return Center(
                   child: Padding(
@@ -117,16 +96,19 @@ class NotificationsScreen extends StatelessWidget {
                   ),
                 );
               }
-          
+
               if (list.isEmpty) {
                 return const Center(
                   child: Text(
                     "No notifications yet.",
-                    style: TextStyle(fontFamily: 'ClashGrotesk', fontWeight: FontWeight.w700),
+                    style: TextStyle(
+                      fontFamily: 'ClashGrotesk',
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 );
               }
-          
+
               return ListView.separated(
                 shrinkWrap: true,
                 padding: const EdgeInsets.fromLTRB(14, 12, 14, 18),
@@ -135,24 +117,28 @@ class NotificationsScreen extends StatelessWidget {
                 itemBuilder: (context, i) {
                   final n = list[i];
                   final isRead = readIds.contains(n.id);
-          
+
                   final dt = n.sentAt ?? n.createdAt;
                   final subtitle = _fmtDate(dt);
-          
+
                   return _NotificationTile(
                     item: n,
                     isRead: isRead,
                     subtitle: subtitle,
                     onTap: () {
                       // ✅ mark read locally -> decreases counter
-                      context.read<AuthBloc>().add(NotificationMarkSeenByIds([n.id]));
-          
+                      context.read<AuthBloc>().add(
+                        NotificationMarkSeenByIds([n.id]),
+                      );
+
                       // ✅ show details bottom sheet (optional)
                       showModalBottomSheet(
                         context: context,
                         backgroundColor: Colors.white,
                         shape: const RoundedRectangleBorder(
-                          borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+                          borderRadius: BorderRadius.vertical(
+                            top: Radius.circular(18),
+                          ),
                         ),
                         builder: (_) => _NotificationDetails(item: n),
                       );
@@ -195,7 +181,9 @@ class _NotificationTile extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: isRead ? const Color(0xFFE9E9EF) : const Color(0xFF7F53FD).withOpacity(.25),
+              color: isRead
+                  ? const Color(0xFFE9E9EF)
+                  : const Color(0xFF7F53FD).withOpacity(.25),
             ),
             boxShadow: [
               BoxShadow(
@@ -215,7 +203,9 @@ class _NotificationTile extends StatelessWidget {
                 width: 10,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: isRead ? const Color(0xFFBDBDBD) : const Color(0xFF7F53FD),
+                  color: isRead
+                      ? const Color(0xFFBDBDBD)
+                      : const Color(0xFF7F53FD),
                 ),
               ),
               const SizedBox(width: 12),
@@ -267,9 +257,13 @@ class _NotificationTile extends StatelessWidget {
               const SizedBox(width: 10),
 
               Icon(
-                isRead ? Icons.mark_email_read_outlined : Icons.mark_email_unread_outlined,
+                isRead
+                    ? Icons.mark_email_read_outlined
+                    : Icons.mark_email_unread_outlined,
                 size: 22,
-                color: isRead ? const Color(0xFF9CA3AF) : const Color(0xFF7F53FD),
+                color: isRead
+                    ? const Color(0xFF9CA3AF)
+                    : const Color(0xFF7F53FD),
               ),
             ],
           ),
@@ -327,7 +321,10 @@ class _NotificationDetails extends StatelessWidget {
               onPressed: () => Navigator.pop(context),
               child: const Text(
                 "Close",
-                style: TextStyle(fontFamily: 'ClashGrotesk', fontWeight: FontWeight.w800),
+                style: TextStyle(
+                  fontFamily: 'ClashGrotesk',
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ),
           ),

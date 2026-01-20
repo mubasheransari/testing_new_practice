@@ -34,13 +34,11 @@ class _LocationVendorsMapScreenState extends State<LocationVendorsMapScreen> {
 
   BitmapDescriptor? _markerIcon;
 
-  // --- Tooltip sizing constants (USED ONLY FOR POSITIONING) ---
-  static const double _tooltipCardW = 292.0; // keep as your original positioning width
+  static const double _tooltipCardW = 292.0;
   static const double _tooltipCardH = 235.0; // keep as your original positioning height
   static const double _tooltipGap = 14.0; // small gap between marker and card
 
-  // --- Marker lift (to align screenCoordinate with visible marker top) ---
-  static const double _markerLiftPx = 62.0; // tune for your custom marker (62dp asset)
+  static const double _markerLiftPx = 62.0; 
 
   static const _mapStyleJson = '''
   [
@@ -158,18 +156,10 @@ class _LocationVendorsMapScreenState extends State<LocationVendorsMapScreen> {
       // To create space above, move camera DOWN (positive dy scroll)
       await _gm!.animateCamera(CameraUpdate.scrollBy(0, need));
     } else {
-      // Also handle the other case: marker is very low due to bottom cards,
-      // and the tooltip is being visually forced down by lack of space.
-      // Move camera UP so marker is higher and tooltip sits above clearly.
-      //
-      // We want the marker Y to be at least (tooltipCardH + gap + minTop) from the top.
       final desiredMarkerY = _tooltipCardH + _tooltipGap + minTop + _markerLiftPx;
 
       if (rawAnchor.dy < desiredMarkerY) {
-        // Already okay (marker is higher), do nothing
       } else {
-        // If marker is too low, lift camera UP so marker shifts up and tooltip is clearly above
-        // target marker Y near mid-screen:
         final targetY = (MediaQuery.of(context).size.height * 0.55);
         final dy = rawAnchor.dy - targetY;
 
@@ -178,8 +168,6 @@ class _LocationVendorsMapScreenState extends State<LocationVendorsMapScreen> {
         }
       }
     }
-
-    // Refresh anchor after camera movement
     await _updateAnchor();
   }
 
