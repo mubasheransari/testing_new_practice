@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_bloc.dart';
 import 'package:ios_tiretest_ai/Data/token_store.dart';
 import 'package:ios_tiretest_ai/Screens/auth_screen.dart';
+import 'package:ios_tiretest_ai/Widgets/logout_confirm_dialog.dart';
 import '../Bloc/auth_event.dart';
 import '../Bloc/auth_state.dart';
 import 'dart:io';
@@ -257,11 +258,19 @@ class ProfilePage extends StatelessWidget {
 
                 InkWell(
                   onTap: () async {
-                    await TokenStore().clear();
+                    final ok = await LogoutConfirmDialog.show(context);
+if (ok) {
+await TokenStore().clear();
                     Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
                       MaterialPageRoute(builder: (_) => const AuthScreen()),
                       (route) => false,
                     );
+}
+                    // await TokenStore().clear();
+                    // Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+                    //   MaterialPageRoute(builder: (_) => const AuthScreen()),
+                    //   (route) => false,
+                    // );
                   },
                   child: _menuRow(
                     s: s,

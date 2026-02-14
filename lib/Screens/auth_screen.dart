@@ -6,6 +6,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_bloc.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_event.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_state.dart';
+import 'package:ios_tiretest_ai/Screens/otp_verification.dart';
 import 'package:ios_tiretest_ai/Screens/splash_screen.dart';
 import 'dart:convert';
 import 'package:get_storage/get_storage.dart';
@@ -258,6 +259,10 @@ class _AuthScreenState extends State<AuthScreen> {
         if (state.error != null && state.error!.isNotEmpty) {
           ScaffoldMessenger.of(context)
               .showSnackBar(SnackBar(content: Text(state.error!)));
+              if(state.error! == "OTP sent successfully!"){
+Navigator.push(context, MaterialPageRoute(builder: (context)=> OtpVerificationScreen(targetText: '')));
+              }
+
         }
 
         // login success
@@ -270,20 +275,31 @@ class _AuthScreenState extends State<AuthScreen> {
           );
         }
 
+   
+
         // ✅ signup success (ONLY HERE switch tab)
         if (state.signupStatus == AuthStatus.success) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Signup successful. Please login.')),
-          );
+          // if(state.error == ""){
 
-          // ✅ switch to login after success
-          setState(() => tab = 0);
+          // }
+          print("IMRAN KHAN PTI ${state.error}");
+             print("IMRAN KHAN PTI ${state.error}");
+                print("IMRAN KHAN PTI ${state.error}");
+                   print("IMRAN KHAN PTI ${state.error}");
 
-          // ✅ optional: clear signup fields
-          _nameCtrl.clear();
-          _signupEmailCtrl.clear();
-          _signupPassCtrl.clear();
-          _confirmCtrl.clear();
+
+          // ScaffoldMessenger.of(context).showSnackBar(
+          //   const SnackBar(content: Text('Signup successful. Please login.')),
+          // );
+
+          // // ✅ switch to login after success
+          // setState(() => tab = 0);
+
+          // // ✅ optional: clear signup fields
+          // _nameCtrl.clear();
+          // _signupEmailCtrl.clear();
+          // _signupPassCtrl.clear();
+          // _confirmCtrl.clear();
         }
       },
       builder: (context, state) {

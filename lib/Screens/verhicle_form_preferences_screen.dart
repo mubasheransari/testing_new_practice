@@ -24,7 +24,6 @@ class _VehicleFormPreferencesScreenState
   final _brandCtrl = TextEditingController(text: 'BMW');
   final _modelCtrl = TextEditingController(text: 'i7');
   final _plateCtrl = TextEditingController(text: '8383092');
-  bool _isOwn = true;
   final _tireBrandCtrl = TextEditingController(text: 'YOKOHAMA');
   final _tireDimensionCtrl = TextEditingController(text: '17');
   final box = GetStorage();
