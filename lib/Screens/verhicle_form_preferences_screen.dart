@@ -213,8 +213,6 @@ class _VehicleFormPreferencesScreenState
     );
   }
 }
-
-
 class _HeaderTitle extends StatelessWidget {
   const _HeaderTitle({required this.s});
   final double s;
@@ -222,8 +220,17 @@ class _HeaderTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(width: 5,),
+        // ✅ Stylish Back Button
+        Padding(
+          padding: EdgeInsets.only(top: 2 * s),
+          child: _BackButtonPill(s: s),
+        ),
+
+        SizedBox(width: 10 * s),
+
+        // ✅ Title + Subtitle
         Expanded(
           child: RichText(
             text: TextSpan(
@@ -258,6 +265,92 @@ class _HeaderTitle extends StatelessWidget {
     );
   }
 }
+
+class _BackButtonPill extends StatelessWidget {
+  const _BackButtonPill({required this.s});
+  final double s;
+
+  @override
+  Widget build(BuildContext context) {
+    final canPop = Navigator.of(context).canPop();
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: canPop ? () => Navigator.of(context).pop() : null,
+        borderRadius: BorderRadius.circular(999),
+        child: Ink(
+          width: 42 * s,
+          height: 42 * s,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: const Color(0xFFE5E7EB)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(.08),
+                blurRadius: 14,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Center(
+            child: Icon(
+              Icons.arrow_back_rounded,
+              size: 22 * s,
+              color: const Color(0xFF111827),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
+// class _HeaderTitle extends StatelessWidget {
+//   const _HeaderTitle({required this.s});
+//   final double s;
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Row(
+//       children: [
+//         SizedBox(width: 5,),
+//         Expanded(
+//           child: RichText(
+//             text: TextSpan(
+//               style: TextStyle(
+//                 fontFamily: 'ClashGrotesk',
+//                 fontSize: 13 * s,
+//                 color: const Color(0xFF6A6F7B),
+//                 height: 1.3,
+//               ),
+//               children: [
+//                 TextSpan(
+//                   text: 'Vehicle Preference\n',
+//                   style: TextStyle(
+//                     fontSize: 24 * s,
+//                     fontWeight: FontWeight.w800,
+//                     color: const Color(0xFF111827),
+//                   ),
+//                 ),
+//                 TextSpan(
+//                   text: 'Add your vehicle details',
+//                   style: TextStyle(
+//                     fontSize: 13 * s,
+//                     fontWeight: FontWeight.w700,
+//                     color: const Color(0xFF6A6F7B),
+//                   ),
+//                 ),
+//               ],
+//             ),
+//           ),
+//         ),
+//       ],
+//     );
+//   }
+// }
 
 
 class _VehicleCard extends StatelessWidget {
