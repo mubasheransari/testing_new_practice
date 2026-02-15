@@ -12,6 +12,7 @@ import 'package:ios_tiretest_ai/models/tyre_upload_request.dart';
 import 'package:ios_tiretest_ai/Repository/repository.dart';
 import 'package:ios_tiretest_ai/models/update_user_details_model.dart' show UpdateUserDetailsRequest;
 import 'package:ios_tiretest_ai/models/user_profile.dart';
+import 'package:ios_tiretest_ai/models/verify_otp_model.dart';
 import '../models/auth_models.dart';
 import 'package:bloc/bloc.dart';
 import 'dart:async';
@@ -42,6 +43,8 @@ int _computeUnread(List<NotificationItem> list, Set<String> readIds) {
 }
 
   AuthBloc(this.repo) : super(const AuthState()) {
+on<VerifyOtpRequested>(_onVerifyOtp);
+on<OtpIssuedNow>(_onOtpIssuedNow);
 
     on<NotificationFetchRequested>(_onNotificationFetch);
     on<NotificationStartListening>(_onNotificationStart);
@@ -65,6 +68,77 @@ int _computeUnread(List<NotificationItem> list, Set<String> readIds) {
     on<ChangePasswordRequested>(_onChangePassword);
     on<ClearChangePasswordError>((e, emit) => emit(state.copyWith(changePasswordError: null)));
   }
+
+  Future<void> _onOtpIssuedNow(OtpIssuedNow e, Emitter<AuthState> emit) async {
+  emit(state.copyWith(
+    otpIssuedAt: DateTime.now(),
+    verifyOtpStatus: VerifyOtpStatus.initial,
+    verifyOtpError: null,
+    verifyOtpResponse: null,
+    otpExpirySeconds: 600, // 10 min
+  ));
+}
+
+Future<void> _onVerifyOtp(VerifyOtpRequested e, Emitter<AuthState> emit) async {
+  if (state.verifyOtpStatus == VerifyOtpStatus.verifying) return;
+
+  // ✅ 10 minutes expiry check
+  final issued = state.otpIssuedAt;
+  if (issued != null) {
+    final elapsed = DateTime.now().difference(issued).inSeconds;
+    if (elapsed > (state.otpExpirySeconds)) {
+      emit(state.copyWith(
+        verifyOtpStatus: VerifyOtpStatus.failure,
+        verifyOtpError: "OTP expired. Please resend OTP.",
+      ));
+      return;
+    }
+  }
+
+  if (e.email.trim().isEmpty) {
+    emit(state.copyWith(
+      verifyOtpStatus: VerifyOtpStatus.failure,
+      verifyOtpError: "Email is required",
+    ));
+    return;
+  }
+
+  if (e.otp <= 0) {
+    emit(state.copyWith(
+      verifyOtpStatus: VerifyOtpStatus.failure,
+      verifyOtpError: "Invalid OTP",
+    ));
+    return;
+  }
+
+  emit(state.copyWith(
+    verifyOtpStatus: VerifyOtpStatus.verifying,
+    verifyOtpError: null,
+    verifyOtpResponse: null,
+  ));
+
+  final r = await repo.verifyOtp(
+    request: VerifyOtpRequest(email: e.email.trim(), otp: e.otp),
+    token: e.token, // optional
+  );
+
+  if (r.isSuccess) {
+    emit(state.copyWith(
+      verifyOtpStatus: VerifyOtpStatus.success,
+      verifyOtpResponse: r.data,
+      verifyOtpError: null,
+    ));
+
+    // ✅ after verify success, load profile (optional)
+    add(const FetchProfileRequested());
+  } else {
+    emit(state.copyWith(
+      verifyOtpStatus: VerifyOtpStatus.failure,
+      verifyOtpError: r.failure?.message ?? "OTP verification failed",
+    ));
+  }
+}
+
 
     Future<void> _onAppStarted(AppStarted e, Emitter<AuthState> emit) async {
     final tok = await repo.getSavedToken();

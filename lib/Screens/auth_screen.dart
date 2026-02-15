@@ -259,9 +259,24 @@ class _AuthScreenState extends State<AuthScreen> {
         if (state.error != null && state.error!.isNotEmpty) {
           ScaffoldMessenger.of(context)
               .showSnackBar(SnackBar(content: Text(state.error!)));
-              if(state.error! == "OTP sent successfully!"){
-Navigator.push(context, MaterialPageRoute(builder: (context)=> OtpVerificationScreen(targetText: '')));
-              }
+              print("SIGNUP PRINT ${state.error!}");
+                 print("SIGNUP PRINT ${state.error!}");
+                    print("SIGNUP PRINT ${state.error!}");
+//               if(state.error! == "OTP sent successfully!"){
+// Navigator.push(context, MaterialPageRoute(builder: (context)=> OtpVerificationScreen(targetText: '')));
+//               }
+if (state.error == "Signup successful. OTP sent successfully!") {
+  context.read<AuthBloc>().add(const OtpIssuedNow());
+
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => OtpVerificationScreen(
+        targetText: _signupEmailCtrl.text.trim(), // show email
+      ),
+    ),
+  );
+}
 
         }
 

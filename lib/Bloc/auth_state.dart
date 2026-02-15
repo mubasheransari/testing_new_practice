@@ -10,10 +10,11 @@ import 'package:ios_tiretest_ai/models/tyre_upload_response.dart';
 import 'package:ios_tiretest_ai/models/update_user_details_model.dart';
 import 'package:ios_tiretest_ai/models/user_profile.dart';
 import 'package:ios_tiretest_ai/models/notification_models.dart';
+import 'package:ios_tiretest_ai/models/verify_otp_model.dart';
 
 
 
-
+enum VerifyOtpStatus { initial, verifying, success, failure }
 enum AuthStatus { initial, loading, success, failure }
 enum TwoWheelerStatus { initial, uploading, success, failure }
 enum FourWheelerStatus { initial, uploading, success, failure }
@@ -28,6 +29,14 @@ enum NotificationStatus { initial, loading, success, failure }
 enum ChangePasswordStatus { initial, loading, success, failure }
 
 class AuthState extends Equatable {
+  final VerifyOtpStatus verifyOtpStatus;
+final VerifyOtpResponse? verifyOtpResponse;
+final String? verifyOtpError;
+
+// expiry info
+final DateTime? otpIssuedAt; // when otp flow started (10 mins validity)
+final int otpExpirySeconds;  // 600
+
   
   final List<NotificationItem> notifications;
 final int notificationUnreadCount;
@@ -83,6 +92,12 @@ final bool notificationListening; // optional UI info
   final String recordsVehicleType;
 
   const AuthState({
+    this.verifyOtpStatus = VerifyOtpStatus.initial,
+this.verifyOtpResponse,
+this.verifyOtpError,
+this.otpIssuedAt,
+this.otpExpirySeconds = 600,
+
 
     this.notifications = const <NotificationItem>[],
 this.notificationUnreadCount = 0,
@@ -144,6 +159,12 @@ this.notificationListening = false,
   }
 
   AuthState copyWith({
+    VerifyOtpStatus? verifyOtpStatus,
+VerifyOtpResponse? verifyOtpResponse,
+String? verifyOtpError,
+DateTime? otpIssuedAt,
+int? otpExpirySeconds,
+
 List<NotificationItem>? notifications,
 int? notificationUnreadCount,
 String? notificationError,
@@ -192,6 +213,12 @@ List<ShopVendorModel>? shops,
     String? recordsVehicleType,
   }) {
     return AuthState(
+      verifyOtpStatus: verifyOtpStatus ?? this.verifyOtpStatus,
+verifyOtpResponse: verifyOtpResponse ?? this.verifyOtpResponse,
+verifyOtpError: verifyOtpError ?? this.verifyOtpError,
+otpIssuedAt: otpIssuedAt ?? this.otpIssuedAt,
+otpExpirySeconds: otpExpirySeconds ?? this.otpExpirySeconds,
+
     notifications: notifications ?? this.notifications,
 notificationUnreadCount: notificationUnreadCount ?? this.notificationUnreadCount,
 notificationError: notificationError ?? this.notificationError,
@@ -250,6 +277,11 @@ notificationListening: notificationListening ?? this.notificationListening,
 notificationUnreadCount,
 notificationError,
 notificationListening,
+verifyOtpStatus,
+verifyOtpResponse,
+verifyOtpError,
+otpIssuedAt,
+otpExpirySeconds,
 
 
         shopsStatus,

@@ -427,3 +427,23 @@ class NotificationMarkSeenByIds extends AuthEvent {
   @override
   List<Object?> get props => [ids];
 }
+
+
+class VerifyOtpRequested extends AuthEvent {
+  final String email;
+  final int otp;
+  final String? token; // optional if needed
+
+  const VerifyOtpRequested({
+    required this.email,
+    required this.otp,
+    this.token,
+  });
+
+  @override
+  List<Object?> get props => [email, otp, token];
+}
+
+class OtpIssuedNow extends AuthEvent {
+  const OtpIssuedNow();
+}
