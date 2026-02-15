@@ -278,6 +278,19 @@ if (state.error == "Signup successful. OTP sent successfully!") {
   );
 }
 
+if (state.error == "Email not verified. Please verify OTP first.") {
+  context.read<AuthBloc>().add(const OtpIssuedNow());
+
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => OtpVerificationScreen(
+        targetText: _signupEmailCtrl.text.trim(), // show email
+      ),
+    ),
+  );
+}
+
         }
 
         // login success
