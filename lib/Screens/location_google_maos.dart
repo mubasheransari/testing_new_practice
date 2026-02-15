@@ -4,25 +4,14 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'dart:ui' as ui;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:ios_tiretest_ai/Models/shop_vendor.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 import '../Bloc/auth_bloc.dart';
 import '../Bloc/auth_event.dart';
 import '../Bloc/auth_state.dart';
 import 'dart:async';
 import 'package:geolocator/geolocator.dart';
 
-import 'dart:async';
-import 'dart:ui' as ui;
-
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:geolocator/geolocator.dart';
-
-// ✅ your actual imports
-// import 'package:your_app/bloc/auth_bloc.dart';
-// import 'package:your_app/bloc/auth_state.dart';
-// import 'package:your_app/models/shop_vendor_model.dart';
 
 class LocationVendorsMapScreen extends StatefulWidget {
   const LocationVendorsMapScreen({super.key, this.showFirstTooltipOnLoad = true});
@@ -36,7 +25,6 @@ class _LocationVendorsMapScreenState extends State<LocationVendorsMapScreen>
     with TickerProviderStateMixin {
   GoogleMapController? _gm;
 
-  // ✅ current location (LOCKED: never changes unless you explicitly refresh location)
   LatLng? _myLatLng;
   Offset? _myScreenPx;
   late final Future<void> _locationFuture;
@@ -46,7 +34,6 @@ class _LocationVendorsMapScreenState extends State<LocationVendorsMapScreen>
   final Set<Marker> _vendorMarkers = {};
   BitmapDescriptor? _vendorMarkerIcon;
 
-  // ✅ tooltip state
   MarkerId? _selected;
   Offset? _selectedScreenPx;
 
@@ -55,17 +42,14 @@ class _LocationVendorsMapScreenState extends State<LocationVendorsMapScreen>
   static const double _tooltipGap = 14.0;
   static const double _markerLiftPx = 62.0;
 
-  // ✅ current marker design + fade animation
   late final AnimationController _fadeCtrl;
   late final Animation<double> _fadeAnim;
 
   static const double _meMarkerSize = 34;
   static const double _meLiftPx = 12;
 
-  // ✅ bottom overlay reserved space so "center" looks correct above cards
   static const double _bottomOverlayHeight = 195 + 17 + 18;
 
-  // ✅ camera move throttling (keeps marker pinned correctly while panning)
   Timer? _camTick;
 
   static const _mapStyleJson = '''
@@ -350,7 +334,6 @@ class _LocationVendorsMapScreenState extends State<LocationVendorsMapScreen>
                       ),
                     ),
 
-                    // ✅ bottom cards (your old design remains)
                     Positioned(
                       left: 4,
                       right: 0,
@@ -422,9 +405,7 @@ class _LocationVendorsMapScreenState extends State<LocationVendorsMapScreen>
   }
 }
 
-// ===========================
-// ✅ Current location marker (same design) + fade + text
-// ===========================
+
 class _FadingYouAreHereMarker extends StatelessWidget {
   const _FadingYouAreHereMarker({
     required this.mapSize,
@@ -542,8 +523,7 @@ class _TooltipPositioner extends StatelessWidget {
   }
 }
 
-// ✅ keep your existing _BottomCards / _VendorCard / _VendorPopupCard / rating pills etc.
-// (no changes needed there — same as your old design)
+
 
 Future<BitmapDescriptor> markerFromAssetAtDp(
   BuildContext context,
@@ -677,6 +657,155 @@ class _BottomCards extends StatelessWidget {
   }
 }
 
+
+
+class _VendorPopupCard extends StatelessWidget {
+  const _VendorPopupCard({required this.vendor});
+  final ShopVendorModel vendor;
+
+  Future<void> _dial(BuildContext context) async {
+    // ✅ change field name if your model uses something else (phone / phoneNumber / contact)
+    final raw = (vendor.phoneNumber ?? '').toString().trim();
+
+    if (raw.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Phone number not available')),
+      );
+      return;
+    }
+
+    // ✅ keep digits + leading +
+    final phone = raw.replaceAll(RegExp(r'[^0-9+]'), '');
+    final uri = Uri(scheme: 'tel', path: phone);
+
+    final ok = await canLaunchUrl(uri);
+    if (!ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cannot open dialer on this device')),
+      );
+      return;
+    }
+
+    await launchUrl(
+      uri,
+      mode: LaunchMode.externalApplication, // ✅ opens system dialer
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        width: 230,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(.12),
+              blurRadius: 18,
+              offset: const Offset(0, 10),
+            )
+          ],
+        ),
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: SizedBox(
+                height: 118,
+                width: MediaQuery.of(context).size.width,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    ClipRRect(
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(5),
+                        topRight: Radius.circular(5),
+                      ),
+                      child: Image.network(
+                        'https://images.stockcake.com/public/e/6/0/e6043409-056d-4c51-9bce-d49aad63dad0_large/tire-shop-interior-stockcake.jpg',
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    Positioned(left: 10, top: 10, child: _ratingPillSmall(vendor.rating)),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    vendor.shopName,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontFamily: 'ClashGrotesk',
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF111827),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+
+                // ✅ tap to open dial pad
+                _circleBlueIcon(
+                  icon: Icons.call_rounded,
+                  onTap: () => _dial(context),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              (vendor.services?.trim().isNotEmpty == true)
+                  ? vendor.services!.trim()
+                  : 'Vehicle inspection service',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontFamily: 'ClashGrotesk',
+                fontSize: 13.5,
+                color: Color(0xFF9CA3AF),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  static Widget _circleBlueIcon({
+    required IconData icon,
+    VoidCallback? onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: Ink(
+          width: 34,
+          height: 34,
+          decoration: const BoxDecoration(
+            color: Color(0xFF3B82F6),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, size: 18, color: Colors.white),
+        ),
+      ),
+    );
+  }
+}
+
+/*
 class _VendorPopupCard extends StatelessWidget {
   const _VendorPopupCard({required this.vendor});
   final ShopVendorModel vendor;
@@ -735,8 +864,8 @@ class _VendorPopupCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 10),
                 _circleBlueIcon(Icons.call_rounded),
-                const SizedBox(width: 10),
-                _circleBlueIcon(Icons.navigation_rounded),
+                // const SizedBox(width: 10),
+                // _circleBlueIcon(Icons.navigation_rounded),
               ],
             ),
             const SizedBox(height: 6),
@@ -765,7 +894,7 @@ class _VendorPopupCard extends StatelessWidget {
       child: Icon(icon, size: 18, color: Colors.white),
     );
   }
-}
+}*/
 
 Widget _ratingPillSmall(double rating) {
   return Container(

@@ -34,8 +34,30 @@
         android:name="android.hardware.location.gps"
         android:required="false" />
 
-    <!-- ========= Application ========= -->
+    <!-- ========= Queries (Android 11+ package visibility) ========= -->
+    <queries>
 
+        <!-- Flutter engine PROCESS_TEXT support -->
+        <intent>
+            <action android:name="android.intent.action.PROCESS_TEXT" />
+            <data android:mimeType="text/plain" />
+        </intent>
+
+        <!-- ✅ Dialer support for tel: links -->
+        <intent>
+            <action android:name="android.intent.action.DIAL" />
+            <data android:scheme="tel" />
+        </intent>
+
+        <!-- Some devices resolve tel: with VIEW -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="tel" />
+        </intent>
+
+    </queries>
+
+    <!-- ========= Application ========= -->
     <application
         android:name="${applicationName}"
         android:label="Tiretest.ai"
@@ -61,14 +83,17 @@
             <meta-data
                 android:name="io.flutter.embedding.android.NormalTheme"
                 android:resource="@style/NormalTheme" />
+
+            <!-- (optional) you already had this -->
             <meta-data
                 android:name="io.flutter.embedding.android.EnableImpeller"
-                android:value="false" />    
+                android:value="false" />
 
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
         </activity>
 
         <!-- Used by Flutter to register plugins -->
@@ -76,13 +101,5 @@
             android:name="flutterEmbedding"
             android:value="2" />
     </application>
-
-    <!-- ========= Queries for PROCESS_TEXT (Flutter engine) ========= -->
-    <queries>
-        <intent>
-            <action android:name="android.intent.action.PROCESS_TEXT" />
-            <data android:mimeType="text/plain" />
-        </intent>
-    </queries>
 
 </manifest>

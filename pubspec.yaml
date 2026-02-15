@@ -56,6 +56,7 @@ dependencies:
   intl:
   open_filex: ^4.4.0
   geolocator:
+  url_launcher: ^6.3.0
 
 
 
