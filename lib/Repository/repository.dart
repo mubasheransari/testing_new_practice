@@ -14,6 +14,7 @@ import 'package:ios_tiretest_ai/models/reset_password_response.dart';
 import 'package:ios_tiretest_ai/models/response_four_wheeler.dart';
 import 'package:ios_tiretest_ai/models/tyre_record.dart';
 import 'package:ios_tiretest_ai/models/update_user_details_model.dart';
+import 'package:ios_tiretest_ai/models/verify_email_response.dart';
 import 'package:ios_tiretest_ai/models/verify_otp_model.dart';
 import 'package:mime/mime.dart';
 import 'package:ios_tiretest_ai/models/tyre_upload_request.dart';
@@ -44,6 +45,10 @@ class Result<T> {
 }
 
 abstract class AuthRepository {
+    Future<Result<VerifyEmailResponse>> verifyEmail({
+    required String email,
+    String? token,
+  });
 Future<Result<List<NotificationItem>>> fetchNotifications({
   int page = 1,
   int limit = 50,
@@ -172,6 +177,91 @@ class AuthRepositoryHttp implements AuthRepository {
 
     return inFile;
   }
+
+  @override
+Future<Result<VerifyEmailResponse>> verifyEmail({
+  required String email,
+  String? token,
+}) async {
+  final uri = Uri.parse(ApiConfig.verifyEmail);
+
+  final saved = await getSavedToken();
+  final tok = (token ?? saved ?? '').trim();
+
+  final headers = <String, String>{
+    ..._jsonHeaders(),
+    if (tok.isNotEmpty) HttpHeaders.authorizationHeader: "Bearer $tok",
+  };
+
+  final body = {"email": email.trim()};
+
+  // ignore: avoid_print
+  print("==[VERIFY-EMAIL]=> POST ${ApiConfig.verifyEmail}");
+  // ignore: avoid_print
+  print("Body: $body");
+
+  try {
+    final res = await http
+        .post(uri, headers: headers, body: jsonEncode(body))
+        .timeout(timeout);
+
+    final status = res.statusCode;
+
+    // ignore: avoid_print
+    print("<= [VERIFY-EMAIL] $status");
+    // ignore: avoid_print
+    print("<= Body: ${res.body}");
+
+    if (status >= 200 && status < 300) {
+      if (res.body.trim().isEmpty) {
+        return Result.fail(const Failure(
+          code: "parse",
+          message: "Empty response from server",
+        ));
+      }
+
+      final decoded = jsonDecode(res.body);
+      if (decoded is! Map<String, dynamic>) {
+        return Result.fail(const Failure(code: "parse", message: "Invalid response format"));
+      }
+
+      final resp = VerifyEmailResponse.fromJson(decoded);
+
+      if (resp.userId.trim().isEmpty) {
+        String msg = decoded["message"]?.toString() ?? "Email verification failed";
+        return Result.fail(Failure(code: "validation", message: msg, statusCode: status));
+      }
+
+      return Result.ok(resp);
+    }
+
+    // extract error message
+    String msg = "Request failed ($status)";
+    try {
+      final decoded = jsonDecode(res.body);
+      if (decoded is Map) {
+        if (decoded["message"] != null) msg = decoded["message"].toString();
+        else if (decoded["error"] != null) msg = decoded["error"].toString();
+        else if (decoded["detail"] != null) msg = decoded["detail"].toString();
+      } else if (res.body.trim().isNotEmpty) {
+        msg = res.body.length > 200 ? res.body.substring(0, 200) : res.body;
+      }
+    } catch (_) {
+      if (res.body.trim().isNotEmpty) {
+        msg = res.body.length > 200 ? res.body.substring(0, 200) : res.body;
+      }
+    }
+
+    return Result.fail(Failure(code: "server", message: msg, statusCode: status));
+  } on SocketException {
+    return Result.fail(const Failure(code: "network", message: "No internet connection"));
+  } on TimeoutException {
+    return Result.fail(const Failure(code: "timeout", message: "Request timed out"));
+  } catch (e) {
+    return Result.fail(Failure(code: "unknown", message: e.toString()));
+  }
+}
+
 
   @override
 Future<Result<VerifyOtpResponse>> verifyOtp({
@@ -1066,6 +1156,9 @@ Future<Result<List<TyreRecord>>> fetchUserRecords({
 }
 
 class ApiConfig {
+  static const String verifyEmail =
+    "http://54.162.208.215/backend/api/verifyemail";
+
   static const login = 'http://54.162.208.215/backend/api/login';
   static const signup = 'http://54.162.208.215/backend/api/signup';
   static const String vehiclePreferences =

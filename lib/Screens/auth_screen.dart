@@ -6,6 +6,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_bloc.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_event.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_state.dart';
+import 'package:ios_tiretest_ai/Screens/forgot_password_email_screen.dart';
 import 'package:ios_tiretest_ai/Screens/otp_verification.dart';
 import 'package:ios_tiretest_ai/Screens/splash_screen.dart';
 import 'dart:convert';
@@ -419,20 +420,28 @@ if (state.error == "Email not verified. Please verify OTP first.") {
                                         Row(
                                           mainAxisAlignment: MainAxisAlignment.end,
                                           children: [
-                                            Padding(
-                                              padding: const EdgeInsets.only(left: 8.0),
-                                              child: TextButton(
-                                                onPressed: () {},
-                                                child: const Text(
-                                                  'Forgot password',
-                                                  style: TextStyle(
-                                                    fontFamily: 'ClashGrotesk',
-                                                    fontSize: 14.5,
-                                                    fontWeight: FontWeight.w700,
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
+                                          Padding(
+  padding: const EdgeInsets.only(left: 8.0),
+  child: TextButton(
+    onPressed: () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const ForgotPasswordEmailScreen(),
+        ),
+      );
+    },
+    child: const Text(
+      'Forgot password',
+      style: TextStyle(
+        fontFamily: 'ClashGrotesk',
+        fontSize: 14.5,
+        fontWeight: FontWeight.w700,
+      ),
+    ),
+  ),
+),
+
                                           ],
                                         ),
                                         SizedBox(

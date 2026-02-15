@@ -447,3 +447,32 @@ class VerifyOtpRequested extends AuthEvent {
 class OtpIssuedNow extends AuthEvent {
   const OtpIssuedNow();
 }
+
+class ForgotPasswordVerifyEmailRequested extends AuthEvent {
+  final String email;
+  const ForgotPasswordVerifyEmailRequested({required this.email});
+
+  @override
+  List<Object?> get props => [email];
+}
+
+/// ✅ Step-2: Reset Password using userId
+class ForgotPasswordResetRequested extends AuthEvent {
+  final String userId;
+  final String newPassword;
+  final String confirmPassword;
+
+  const ForgotPasswordResetRequested({
+    required this.userId,
+    required this.newPassword,
+    required this.confirmPassword,
+  });
+
+  @override
+  List<Object?> get props => [userId, newPassword, confirmPassword];
+}
+
+/// ✅ Clear forgot states (optional but recommended)
+class ForgotPasswordClearRequested extends AuthEvent {
+  const ForgotPasswordClearRequested();
+}
