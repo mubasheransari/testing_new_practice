@@ -11,6 +11,7 @@ import 'package:http_parser/http_parser.dart';
 import 'package:ios_tiretest_ai/models/four_wheeler_uploads_request.dart';
 import 'package:ios_tiretest_ai/models/reset_password_request.dart';
 import 'package:ios_tiretest_ai/models/reset_password_response.dart';
+import 'package:ios_tiretest_ai/models/response_four_wheeler.dart';
 import 'package:ios_tiretest_ai/models/tyre_record.dart';
 import 'package:ios_tiretest_ai/models/update_user_details_model.dart';
 import 'package:mime/mime.dart';
@@ -72,7 +73,7 @@ Future<Result<List<NotificationItem>>> fetchNotifications({
   required double longitude,
 });
 
-  Future<Result<TyreUploadResponse>> uploadFourWheeler(FourWheelerUploadRequest req);
+  Future<Result<ResponseFourWheeler>> uploadFourWheeler(FourWheelerUploadRequest req);
 
    Future<Result<List<TyreRecord>>> fetchUserRecords({
     required String userId,
@@ -343,217 +344,222 @@ Future<UpdateUserDetailsResponse> updateUserDetails({
     return e.message ?? "Request failed.";
   }
 
-  @override
-  Future<Result<TyreUploadResponse>> uploadFourWheeler(
-    FourWheelerUploadRequest req,
-  ) async {
-    final url = ApiConfig.fourWheelerUrl;
-    final masked = req.token.length > 9
-        ? '${req.token.substring(0, 4)}…${req.token.substring(req.token.length - 4)}'
-        : '***';
+@override
+Future<Result<ResponseFourWheeler>> uploadFourWheeler(
+  FourWheelerUploadRequest req,
+) async {
+  final url = ApiConfig.fourWheelerUrl;
 
-    // ✅ sanitize fields
-    final vinValue = req.vin.trim().isEmpty ? "UNKNOWN" : req.vin.trim();
-    final vehicleTypeValue =
-        req.vehicleType.trim().isEmpty ? "car" : req.vehicleType.trim();
+  final masked = req.token.length > 9
+      ? '${req.token.substring(0, 4)}…${req.token.substring(req.token.length - 4)}'
+      : '***';
 
-    // ✅ check file exists + log sizes (raw)
+  // ✅ sanitize fields
+  final vinValue = req.vin.trim().isEmpty ? "UNKNOWN" : req.vin.trim();
+  final vehicleTypeValue =
+      req.vehicleType.trim().isEmpty ? "car" : req.vehicleType.trim();
+
+  // ✅ check files exist + log raw sizes
+  try {
+    final paths = [
+      req.frontLeftPath,
+      req.frontRightPath,
+      req.backLeftPath,
+      req.backRightPath,
+    ];
+
+    int total = 0;
+    for (final path in paths) {
+      final f = File(path);
+      if (!await f.exists()) {
+        return Result.fail(Failure(
+          code: 'file',
+          message: 'File not found: $path',
+        ));
+      }
+      final bytes = await f.length();
+      total += bytes;
+      // ignore: avoid_print
+      print(
+          'FILE ${p.basename(path)}: ${(bytes / 1024 / 1024).toStringAsFixed(2)} MB');
+    }
+    // ignore: avoid_print
+    print('TOTAL UPLOAD (RAW): ${(total / 1024 / 1024).toStringAsFixed(2)} MB');
+  } catch (_) {}
+
+  const bool enableCompression = true;
+
+  try {
+    // ✅ compress safely (keep your existing implementation)
+    final fl = enableCompression
+        ? await _compressSafe(req.frontLeftPath)
+        : File(req.frontLeftPath);
+    final fr = enableCompression
+        ? await _compressSafe(req.frontRightPath)
+        : File(req.frontRightPath);
+    final bl = enableCompression
+        ? await _compressSafe(req.backLeftPath)
+        : File(req.backLeftPath);
+    final br = enableCompression
+        ? await _compressSafe(req.backRightPath)
+        : File(req.backRightPath);
+
+    // ✅ log sizes after compression
     try {
-      final paths = [
-        req.frontLeftPath,
-        req.frontRightPath,
-        req.backLeftPath,
-        req.backRightPath,
-      ];
-
+      final files = [fl, fr, bl, br];
       int total = 0;
-      for (final path in paths) {
-        final f = File(path);
-        if (!await f.exists()) {
-          return Result.fail(Failure(
-            code: 'file',
-            message: 'File not found: $path',
-          ));
-        }
+      for (final f in files) {
         final bytes = await f.length();
         total += bytes;
         // ignore: avoid_print
-        print('FILE ${p.basename(path)}: ${(bytes / 1024 / 1024).toStringAsFixed(2)} MB');
+        print(
+            'CMP FILE ${p.basename(f.path)}: ${(bytes / 1024 / 1024).toStringAsFixed(2)} MB');
       }
       // ignore: avoid_print
-      print('TOTAL UPLOAD (RAW): ${(total / 1024 / 1024).toStringAsFixed(2)} MB');
+      print(
+          'TOTAL UPLOAD (COMPRESSED): ${(total / 1024 / 1024).toStringAsFixed(2)} MB');
     } catch (_) {}
 
-    const bool enableCompression = true;
+    // ✅ Build multipart request
+    final uri = Uri.parse(url);
+    final request = http.MultipartRequest('POST', uri);
 
-    try {
-      // ✅ compress safely (fixes jpg/jpeg assertion)
-      final fl = enableCompression ? await _compressSafe(req.frontLeftPath) : File(req.frontLeftPath);
-      final fr = enableCompression ? await _compressSafe(req.frontRightPath) : File(req.frontRightPath);
-      final bl = enableCompression ? await _compressSafe(req.backLeftPath) : File(req.backLeftPath);
-      final br = enableCompression ? await _compressSafe(req.backRightPath) : File(req.backRightPath);
+    // ✅ headers
+    request.headers.addAll({
+      HttpHeaders.authorizationHeader: 'Bearer ${req.token}',
+      HttpHeaders.acceptHeader: 'application/json',
+    });
 
-      // ✅ log sizes after compression
+    // ✅ fields (same as dio form)
+    request.fields.addAll({
+      'user_id': req.userId.trim(),
+      'vehicle_id': req.vehicleId.trim(),
+      'vehicle_type': vehicleTypeValue,
+      'vin': vinValue,
+
+      'front_left_tyre_id': req.frontLeftTyreId.trim(),
+      'front_right_tyre_id': req.frontRightTyreId.trim(),
+      'back_left_tyre_id': req.backLeftTyreId.trim(),
+      'back_right_tyre_id': req.backRightTyreId.trim(),
+    });
+
+    // ✅ files
+    request.files.addAll([
+      await http.MultipartFile.fromPath(
+        'front_left',
+        fl.path,
+        filename: p.basename(fl.path),
+      ),
+      await http.MultipartFile.fromPath(
+        'front_right',
+        fr.path,
+        filename: p.basename(fr.path),
+      ),
+      await http.MultipartFile.fromPath(
+        'back_left',
+        bl.path,
+        filename: p.basename(bl.path),
+      ),
+      await http.MultipartFile.fromPath(
+        'back_right',
+        br.path,
+        filename: p.basename(br.path),
+      ),
+    ]);
+
+    // ignore: avoid_print
+    print('==[UPLOAD-4W][HTTP]=> POST $url');
+    // ignore: avoid_print
+    print('Headers: {Authorization: Bearer $masked, Accept: application/json}');
+    // ignore: avoid_print
+    print(
+        'Fields: {user_id:${req.userId}, vehicle_id:${req.vehicleId}, vehicle_type:$vehicleTypeValue, vin:$vinValue, '
+        'front_left_tyre_id:${req.frontLeftTyreId}, front_right_tyre_id:${req.frontRightTyreId}, '
+        'back_left_tyre_id:${req.backLeftTyreId}, back_right_tyre_id:${req.backRightTyreId}}');
+    // ignore: avoid_print
+    print(
+        'Files: FL=${fl.path} | FR=${fr.path} | BL=${bl.path} | BR=${br.path}');
+
+    // ✅ send (http has no progress callback)
+    final streamed = await request.send().timeout(
+          const Duration(seconds: 200),
+        );
+
+    final status = streamed.statusCode;
+
+    // ✅ read full response body
+    final body = await streamed.stream.bytesToString();
+
+    // ignore: avoid_print
+    print('<= [UPLOAD-4W][HTTP] $status');
+    // ignore: avoid_print
+    print('<= Body: $body');
+
+    // ✅ parse JSON (some APIs return plain text on error)
+    Map<String, dynamic> parsed = const {};
+    if (body.trim().isNotEmpty) {
       try {
-        final files = [fl, fr, bl, br];
-        int total = 0;
-        for (final f in files) {
-          final bytes = await f.length();
-          total += bytes;
-          // ignore: avoid_print
-          print('CMP FILE ${p.basename(f.path)}: ${(bytes / 1024 / 1024).toStringAsFixed(2)} MB');
-        }
-        // ignore: avoid_print
-        print('TOTAL UPLOAD (COMPRESSED): ${(total / 1024 / 1024).toStringAsFixed(2)} MB');
-      } catch (_) {}
-
-      final dio = Dio(
-        BaseOptions(
-          headers: {
-            HttpHeaders.authorizationHeader: 'Bearer ${req.token}',
-            HttpHeaders.acceptHeader: 'application/json',
-          },
-          validateStatus: (_) => true,
-          responseType: ResponseType.plain,
-          connectTimeout: const Duration(seconds: 20),
-          sendTimeout: const Duration(seconds: 200),
-          receiveTimeout: const Duration(seconds: 200),
-        ),
-      );
-
-      // ✅ IMPORTANT: always send filenames with correct extension
-      final form = FormData.fromMap({
-        'user_id': req.userId.trim(),
-        'vehicle_id': req.vehicleId.trim(),
-        'vehicle_type': vehicleTypeValue,
-        'vin': vinValue,
-
-        'front_left_tyre_id': req.frontLeftTyreId.trim(),
-        'front_right_tyre_id': req.frontRightTyreId.trim(),
-        'back_left_tyre_id': req.backLeftTyreId.trim(),
-        'back_right_tyre_id': req.backRightTyreId.trim(),
-
-        'front_left': await MultipartFile.fromFile(
-          fl.path,
-          filename: p.basename(fl.path),
-        ),
-        'front_right': await MultipartFile.fromFile(
-          fr.path,
-          filename: p.basename(fr.path),
-        ),
-        'back_left': await MultipartFile.fromFile(
-          bl.path,
-          filename: p.basename(bl.path),
-        ),
-        'back_right': await MultipartFile.fromFile(
-          br.path,
-          filename: p.basename(br.path),
-        ),
-      });
-
-      // ignore: avoid_print
-      print('==[UPLOAD-4W]=> POST $url');
-      // ignore: avoid_print
-      print('Headers: {Authorization: Bearer $masked, Accept: application/json}');
-      // ignore: avoid_print
-      print('Fields: {user_id:${req.userId}, vehicle_id:${req.vehicleId}, vehicle_type:$vehicleTypeValue, vin:$vinValue, '
-          'front_left_tyre_id:${req.frontLeftTyreId}, front_right_tyre_id:${req.frontRightTyreId}, '
-          'back_left_tyre_id:${req.backLeftTyreId}, back_right_tyre_id:${req.backRightTyreId}}');
-      // ignore: avoid_print
-      print('Files: FL=${fl.path} | FR=${fr.path} | BL=${bl.path} | BR=${br.path}');
-      // ignore: avoid_print
-      print('⏳ Sending... sendTimeout=200s receiveTimeout=200s');
-
-      final res = await dio.post(
-        url,
-        data: form,
-        onSendProgress: (sent, total) {
-          if (total <= 0) return;
-          final pct = (sent / total) * 100;
-          // ignore: avoid_print
-          print('⬆️ Upload: ${pct.toStringAsFixed(1)}% ($sent/$total bytes)');
-        },
-      );
-
-      // ignore: avoid_print
-      print('<= [UPLOAD-4W] ${res.statusCode}');
-      // ignore: avoid_print
-      print('<= Body: ${res.data}');
-
-      final status = res.statusCode ?? 0;
-
-      if (status == 200 || status == 201) {
-        final data = res.data;
-
-        Map<String, dynamic> parsed;
-        if (data is Map<String, dynamic>) {
-          parsed = data;
-        } else if (data is String) {
-          parsed = jsonDecode(data) as Map<String, dynamic>;
+        final decoded = jsonDecode(body);
+        if (decoded is Map<String, dynamic>) {
+          parsed = decoded;
         } else {
-          return Result.fail(const Failure(code: 'parse', message: 'Invalid response format'));
+          // if backend returns a list or something unexpected
+          return Result.fail(const Failure(
+            code: 'parse',
+            message: 'Invalid JSON response (expected object)',
+          ));
         }
+      } catch (_) {
+        // not JSON
+        parsed = const {};
+      }
+    }
 
-        final resp = TyreUploadResponse.fromJson(parsed);
+    // ✅ success
+    if (status == 200 || status == 201) {
+      // If backend returns JSON object
+      if (parsed.isNotEmpty) {
+        final resp = ResponseFourWheeler.fromJson(parsed);
         return Result.ok(resp);
       }
 
-      String msg = 'Server error ($status)';
-      try {
-        final data = res.data;
-        if (data is Map) {
-          if (data['message'] != null) msg = data['message'].toString();
-          else if (data['error'] != null) msg = data['error'].toString();
-          else if (data['detail'] != null) msg = data['detail'].toString();
-        } else if (data is String && data.trim().isNotEmpty) {
-          msg = data.length > 200 ? data.substring(0, 200) : data;
-        }
-      } catch (_) {}
-
-      return Result.fail(Failure(code: 'server', message: msg, statusCode: status));
-    } on DioException catch (e) {
-      if (e.type == DioExceptionType.connectionTimeout ||
-          e.type == DioExceptionType.sendTimeout ||
-          e.type == DioExceptionType.receiveTimeout) {
-        // ignore: avoid_print
-        print('⏱️ [UPLOAD-4W] TIMEOUT: ${e.type}  message=${e.message}');
-        return Result.fail(const Failure(code: 'timeout', message: 'Request timed out'));
-      }
-
-      if (e.type == DioExceptionType.connectionError) {
-        return Result.fail(const Failure(code: 'network', message: 'Network error / server unreachable'));
-      }
-
-      final status = e.response?.statusCode;
-      final data = e.response?.data;
-
-      String msg = 'Request failed';
-      try {
-        if (data is Map) {
-          if (data['message'] != null) msg = data['message'].toString();
-          else if (data['error'] != null) msg = data['error'].toString();
-          else if (data['detail'] != null) msg = data['detail'].toString();
-          else msg = data.toString();
-        } else if (data is String && data.trim().isNotEmpty) {
-          msg = data.length > 200 ? data.substring(0, 200) : data;
-        } else if (e.message != null) {
-          msg = e.message!;
-        }
-      } catch (_) {
-        msg = e.message ?? msg;
-      }
-
-      // ignore: avoid_print
-      print('❌ [UPLOAD-4W] DioException status=$status data=$data message=${e.message}');
-      return Result.fail(Failure(code: 'server', message: msg, statusCode: status));
-    } catch (e) {
-      return Result.fail(Failure(code: 'unknown', message: e.toString()));
+      // If backend returns non-json success (rare)
+      return Result.fail(const Failure(
+        code: 'parse',
+        message: 'Success response is not valid JSON',
+      ));
     }
-  }
 
-  // ============================================================
-  // rest of your code remains SAME below
-  // ============================================================
+    // ✅ error message extraction
+    String msg = 'Server error ($status)';
+    try {
+      if (parsed['message'] != null) msg = parsed['message'].toString();
+      else if (parsed['error'] != null) msg = parsed['error'].toString();
+      else if (parsed['detail'] != null) msg = parsed['detail'].toString();
+      else if (body.trim().isNotEmpty) msg = body.length > 200 ? body.substring(0, 200) : body;
+    } catch (_) {
+      if (body.trim().isNotEmpty) {
+        msg = body.length > 200 ? body.substring(0, 200) : body;
+      }
+    }
+
+    return Result.fail(Failure(code: 'server', message: msg, statusCode: status));
+  } on SocketException {
+    return Result.fail(const Failure(
+      code: 'network',
+      message: 'Network error / server unreachable',
+    ));
+  } on HttpException catch (e) {
+    return Result.fail(Failure(code: 'server', message: e.message));
+  } on FormatException {
+    return Result.fail(const Failure(code: 'parse', message: 'Invalid JSON response'));
+  } on TimeoutException {
+    return Result.fail(const Failure(code: 'timeout', message: 'Request timed out'));
+  } catch (e) {
+    return Result.fail(Failure(code: 'unknown', message: e.toString()));
+  }
+}
+
 
   @override
   Future<Result<LoginResponse>> login(LoginRequest req) async {

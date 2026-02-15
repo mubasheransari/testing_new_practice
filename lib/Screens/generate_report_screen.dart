@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_bloc.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_event.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_state.dart';
+import 'package:ios_tiretest_ai/models/response_four_wheeler.dart' as m;
 import 'dart:io';
 import 'dart:convert';
 import 'package:ios_tiretest_ai/models/tyre_upload_response.dart' as m;
@@ -938,7 +939,7 @@ class _GenerateReportScreenState extends State<GenerateReportScreen>
   bool _navigated = false;
 
   // ✅ store response to pass to result screen
-  m.TyreUploadResponse? _apiResponse;
+  m.ResponseFourWheeler? _apiResponse;
 
   @override
   void initState() {

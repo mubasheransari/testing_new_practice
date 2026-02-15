@@ -3,6 +3,7 @@ import 'package:ios_tiretest_ai/Models/shop_vendor.dart';
 import 'package:ios_tiretest_ai/models/add_verhicle_preferences_model.dart';
 import 'package:ios_tiretest_ai/models/auth_models.dart';
 import 'package:ios_tiretest_ai/models/reset_password_response.dart';
+import 'package:ios_tiretest_ai/models/response_four_wheeler.dart';
 import 'package:ios_tiretest_ai/models/shop_vendor.dart' hide ShopVendorModel;
 import 'package:ios_tiretest_ai/models/tyre_record.dart';
 import 'package:ios_tiretest_ai/models/tyre_upload_response.dart';
@@ -27,6 +28,7 @@ enum NotificationStatus { initial, loading, success, failure }
 enum ChangePasswordStatus { initial, loading, success, failure }
 
 class AuthState extends Equatable {
+  
   final List<NotificationItem> notifications;
 final int notificationUnreadCount;
 final String? notificationError;
@@ -61,7 +63,7 @@ final bool notificationListening; // optional UI info
   final TyreUploadResponse? twoWheelerResponse;
 
   final FourWheelerStatus fourWheelerStatus;
-  final TyreUploadResponse? fourWheelerResponse;
+  final ResponseFourWheeler? fourWheelerResponse;
   final String? fourWheelerError;
 
   final ProfileStatus profileStatus;
@@ -170,7 +172,7 @@ List<ShopVendorModel>? shops,
     TyreUploadResponse? twoWheelerResponse,
 
     FourWheelerStatus? fourWheelerStatus,
-    TyreUploadResponse? fourWheelerResponse,
+    ResponseFourWheeler? fourWheelerResponse,
     String? fourWheelerError,
 
     ProfileStatus? profileStatus,

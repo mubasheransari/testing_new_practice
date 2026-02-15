@@ -323,107 +323,90 @@ Future<void> _onNotificationMarkSeenByIds(
     }
   }
 
-  Future<void> _onFourWheelerUpload(
-    UploadFourWheelerRequested e,
-    Emitter<AuthState> emit,
-  ) async {
-    final box = GetStorage();
-    final token = (box.read<String>('auth_token') ?? '').trim();
+ Future<void> _onFourWheelerUpload(
+  UploadFourWheelerRequested e,
+  Emitter<AuthState> emit,
+) async {
+  final box = GetStorage();
+  final token = (box.read<String>('auth_token') ?? '').trim();
 
-    if (state.fourWheelerStatus == FourWheelerStatus.uploading) return;
+  if (state.fourWheelerStatus == FourWheelerStatus.uploading) return;
 
-    if (token.isEmpty) {
-      emit(state.copyWith(
-        fourWheelerStatus: FourWheelerStatus.failure,
-        fourWheelerError: 'Missing auth token. Please log in again.',
-      ));
-      return;
-    }
-
-    if (state.profile?.userId == null) {
-      emit(state.copyWith(
-        fourWheelerStatus: FourWheelerStatus.failure,
-        fourWheelerError: 'User profile not loaded. Please login again.',
-      ));
-      return;
-    }
-
-    if (e.vehicleId.trim().isEmpty) {
-      emit(state.copyWith(
-        fourWheelerStatus: FourWheelerStatus.failure,
-        fourWheelerError: 'Missing vehicle_id.',
-      ));
-      return;
-    }
-
-    if (!File(e.frontLeftPath).existsSync()) {
-      emit(state.copyWith(
-        fourWheelerStatus: FourWheelerStatus.failure,
-        fourWheelerError: 'Front-left image not found: ${e.frontLeftPath}',
-      ));
-      return;
-    }
-    if (!File(e.frontRightPath).existsSync()) {
-      emit(state.copyWith(
-        fourWheelerStatus: FourWheelerStatus.failure,
-        fourWheelerError: 'Front-right image not found: ${e.frontRightPath}',
-      ));
-      return;
-    }
-    if (!File(e.backLeftPath).existsSync()) {
-      emit(state.copyWith(
-        fourWheelerStatus: FourWheelerStatus.failure,
-        fourWheelerError: 'Back-left image not found: ${e.backLeftPath}',
-      ));
-      return;
-    }
-    if (!File(e.backRightPath).existsSync()) {
-      emit(state.copyWith(
-        fourWheelerStatus: FourWheelerStatus.failure,
-        fourWheelerError: 'Back-right image not found: ${e.backRightPath}',
-      ));
-      return;
-    }
-
+  if (token.isEmpty) {
     emit(state.copyWith(
-      fourWheelerStatus: FourWheelerStatus.uploading,
+      fourWheelerStatus: FourWheelerStatus.failure,
+      fourWheelerError: 'Missing auth token. Please log in again.',
+    ));
+    return;
+  }
+
+  if (state.profile?.userId == null) {
+    emit(state.copyWith(
+      fourWheelerStatus: FourWheelerStatus.failure,
+      fourWheelerError: 'User profile not loaded. Please login again.',
+    ));
+    return;
+  }
+
+  if (e.vehicleId.trim().isEmpty) {
+    emit(state.copyWith(
+      fourWheelerStatus: FourWheelerStatus.failure,
+      fourWheelerError: 'Missing vehicle_id.',
+    ));
+    return;
+  }
+
+  if (!File(e.frontLeftPath).existsSync() ||
+      !File(e.frontRightPath).existsSync() ||
+      !File(e.backLeftPath).existsSync() ||
+      !File(e.backRightPath).existsSync()) {
+    emit(state.copyWith(
+      fourWheelerStatus: FourWheelerStatus.failure,
+      fourWheelerError: 'One or more images not found.',
+    ));
+    return;
+  }
+
+  emit(state.copyWith(
+    fourWheelerStatus: FourWheelerStatus.uploading,
+    fourWheelerError: null,
+    fourWheelerResponse: null,
+  ));
+
+  final req = FourWheelerUploadRequest(
+    userId: state.profile!.userId.toString(),
+    token: token,
+    vehicleId: e.vehicleId,
+    vehicleType: e.vehicleType,
+    vin: e.vin,
+    frontLeftTyreId: e.frontLeftTyreId,
+    frontRightTyreId: e.frontRightTyreId,
+    backLeftTyreId: e.backLeftTyreId,
+    backRightTyreId: e.backRightTyreId,
+    frontLeftPath: e.frontLeftPath,
+    frontRightPath: e.frontRightPath,
+    backLeftPath: e.backLeftPath,
+    backRightPath: e.backRightPath,
+  );
+
+  final r = await repo.uploadFourWheeler(req);
+
+  if (r.isSuccess) {
+    emit(state.copyWith(
+      fourWheelerStatus: FourWheelerStatus.success,
+      fourWheelerResponse: r.data,
       fourWheelerError: null,
     ));
-
-    final req = FourWheelerUploadRequest(
-      userId: state.profile!.userId.toString(),
-      token: token,
-      vehicleId: e.vehicleId,
-      vehicleType: e.vehicleType,
-      vin: e.vin,
-      frontLeftTyreId: e.frontLeftTyreId,
-      frontRightTyreId: e.frontRightTyreId,
-      backLeftTyreId: e.backLeftTyreId,
-      backRightTyreId: e.backRightTyreId,
-      frontLeftPath: e.frontLeftPath,
-      frontRightPath: e.frontRightPath,
-      backLeftPath: e.backLeftPath,
-      backRightPath: e.backRightPath,
-    );
-
-    final r = await repo.uploadFourWheeler(req);
-
-    if (r.isSuccess) {
-      emit(state.copyWith(
-        fourWheelerStatus: FourWheelerStatus.success,
-        fourWheelerResponse: r.data,
-        fourWheelerError: null,
-      ));
-    } else {
-      final sc = r.failure?.statusCode;
-      final msg = r.failure?.message ??
-          'Upload failed${sc != null ? ' ($sc)' : ''}';
-      emit(state.copyWith(
-        fourWheelerStatus: FourWheelerStatus.failure,
-        fourWheelerError: msg,
-      ));
-    }
+  } else {
+    final sc = r.failure?.statusCode;
+    final msg = r.failure?.message ?? 'Upload failed${sc != null ? ' ($sc)' : ''}';
+    emit(state.copyWith(
+      fourWheelerStatus: FourWheelerStatus.failure,
+      fourWheelerError: msg,
+    ));
   }
+}
+
 
   Future<void> _onFetchProfile(
     FetchProfileRequested e,
