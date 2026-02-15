@@ -4,6 +4,7 @@ import 'package:get_storage/get_storage.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_event.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_state.dart';
 import 'package:ios_tiretest_ai/Models/shop_vendor.dart';
+import 'package:ios_tiretest_ai/models/ad_models.dart';
 import 'package:ios_tiretest_ai/models/four_wheeler_uploads_request.dart';
 import 'package:ios_tiretest_ai/models/notification_models.dart';
 import 'package:ios_tiretest_ai/models/reset_password_request.dart';
@@ -22,6 +23,8 @@ import 'dart:async';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   AuthBloc(this.repo) : super(const AuthState()) {
+    on<AdsFetchRequested>(_onAdsFetch);
+on<AdsSelectRequested>(_onAdsSelect);
     // ✅ OTP
     on<OtpIssuedNow>(_onOtpIssuedNow);
     on<VerifyOtpRequested>(_onVerifyOtp);
@@ -135,6 +138,60 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       ));
     }
   }
+
+  Future<void> _onAdsFetch(AdsFetchRequested e, Emitter<AuthState> emit) async {
+  if (!e.silent) {
+    emit(state.copyWith(adsError: null));
+  }
+
+  emit(state.copyWith(adsStatus: AdsStatus.loading, adsError: null));
+
+  final r = await repo.fetchCustomAds(token: e.token);
+
+  if (!r.isSuccess) {
+    emit(state.copyWith(
+      adsStatus: AdsStatus.failure,
+      adsError: r.failure?.message ?? "Failed to load ads",
+      ads: const <AdItem>[],
+      selectedAd: null,
+    ));
+    return;
+  }
+
+  final list = r.data ?? const <AdItem>[];
+
+  // ✅ pick first active ad
+  final first = list.isNotEmpty ? list.first : null;
+
+  emit(state.copyWith(
+    adsStatus: AdsStatus.success,
+    ads: list,
+    selectedAd: first,
+    adsError: null,
+  ));
+}
+
+Future<void> _onAdsSelect(AdsSelectRequested e, Emitter<AuthState> emit) async {
+  final found = state.ads.firstWhere(
+    (x) => x.id == e.adId,
+    orElse: () => state.selectedAd ?? (state.ads.isNotEmpty ? state.ads.first : AdItem(
+      id: '',
+      name: '',
+      latitude: 0,
+      longitude: 0,
+      credits: 0,
+      creditsUsed: 0,
+      status: 'inactive',
+      createdAt: null,
+      audience: '',
+      media: '',
+      radius: 0,
+    )),
+  );
+
+  emit(state.copyWith(selectedAd: found.id.isEmpty ? null : found));
+}
+
 
   // ============================================================
   // ✅ Forgot Password - Step 2: Reset Password with userId

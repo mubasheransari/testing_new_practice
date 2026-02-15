@@ -476,3 +476,21 @@ class ForgotPasswordResetRequested extends AuthEvent {
 class ForgotPasswordClearRequested extends AuthEvent {
   const ForgotPasswordClearRequested();
 }
+
+
+class AdsFetchRequested extends AuthEvent {
+  final bool silent;
+  final String? token;
+  const AdsFetchRequested({this.silent = false, this.token});
+
+  @override
+  List<Object?> get props => [silent, token];
+}
+
+class AdsSelectRequested extends AuthEvent {
+  final String adId; // choose which ad to play (optional)
+  const AdsSelectRequested(this.adId);
+
+  @override
+  List<Object?> get props => [adId];
+}

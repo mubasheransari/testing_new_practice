@@ -5,6 +5,7 @@ import 'package:get_storage/get_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:ios_tiretest_ai/Data/token_store.dart';
 import 'package:ios_tiretest_ai/Models/shop_vendor.dart';
+import 'package:ios_tiretest_ai/models/ad_models.dart';
 import 'package:ios_tiretest_ai/models/add_verhicle_preferences_model.dart';
 import 'package:ios_tiretest_ai/models/auth_models.dart';
 import 'package:http_parser/http_parser.dart';
@@ -45,6 +46,7 @@ class Result<T> {
 }
 
 abstract class AuthRepository {
+    Future<Result<List<AdItem>>> fetchCustomAds({String? token});
     Future<Result<VerifyEmailResponse>> verifyEmail({
     required String email,
     String? token,
@@ -177,6 +179,46 @@ class AuthRepositoryHttp implements AuthRepository {
 
     return inFile;
   }
+
+
+
+@override
+Future<Result<List<AdItem>>> fetchCustomAds({String? token}) async {
+  final uri = Uri.parse(ApiConfig.customAds);
+
+  final saved = await getSavedToken();
+  final tok = (token ?? saved ?? '').trim();
+
+  final headers = <String, String>{
+    ..._jsonHeaders(),
+    if (tok.isNotEmpty) HttpHeaders.authorizationHeader: "Bearer $tok",
+  };
+
+  try {
+    final res = await http.get(uri, headers: headers).timeout(timeout);
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      final decoded = jsonDecode(res.body);
+      if (decoded is! Map<String, dynamic>) {
+        return Result.fail(const Failure(code: "parse", message: "Invalid ads response"));
+      }
+      final ads = AdsResponse.fromJson(decoded).data;
+
+      // keep only active + having media
+      final filtered = ads.where((a) => a.isActive && a.media.trim().isNotEmpty).toList();
+      return Result.ok(filtered);
+    }
+
+    return Result.fail(_serverFail(res));
+  } on SocketException {
+    return Result.fail(const Failure(code: "network", message: "No internet connection"));
+  } on TimeoutException {
+    return Result.fail(const Failure(code: "timeout", message: "Request timed out"));
+  } catch (e) {
+    return Result.fail(Failure(code: "unknown", message: e.toString()));
+  }
+}
+
 
   @override
 Future<Result<VerifyEmailResponse>> verifyEmail({
@@ -1176,6 +1218,7 @@ class ApiConfig {
 
   static const String verifyOtp =
       "http://54.162.208.215/backend/api/verifyotp";
+      static const String customAds = "http://54.162.208.215/backend/api/customads";
 
 }
 

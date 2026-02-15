@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:ios_tiretest_ai/Models/shop_vendor.dart';
+import 'package:ios_tiretest_ai/models/ad_models.dart';
 import 'package:ios_tiretest_ai/models/add_verhicle_preferences_model.dart';
 import 'package:ios_tiretest_ai/models/auth_models.dart';
 import 'package:ios_tiretest_ai/models/reset_password_response.dart';
@@ -29,6 +30,10 @@ import 'package:ios_tiretest_ai/models/user_profile.dart';
 import 'package:ios_tiretest_ai/models/verify_email_response.dart';
 import 'package:ios_tiretest_ai/models/verify_otp_model.dart';
 
+
+enum AdsStatus { initial, loading, success, failure }
+
+
 enum ForgotEmailStatus { initial, loading, success, failure }
 enum ForgotResetStatus { initial, loading, success, failure }
 
@@ -47,6 +52,10 @@ enum NotificationStatus { initial, loading, success, failure }
 enum ChangePasswordStatus { initial, loading, success, failure }
 
 class AuthState extends Equatable {
+  final AdsStatus adsStatus;
+final List<AdItem> ads;
+final AdItem? selectedAd;
+final String? adsError;
   // =========================
   // ✅ OTP
   // =========================
@@ -144,6 +153,10 @@ class AuthState extends Equatable {
   final String recordsVehicleType;
 
   const AuthState({
+      this.adsStatus = AdsStatus.initial,
+  this.ads = const <AdItem>[],
+  this.selectedAd,
+  this.adsError,
     // OTP
     this.verifyOtpStatus = VerifyOtpStatus.initial,
     this.verifyOtpResponse,
@@ -226,6 +239,10 @@ class AuthState extends Equatable {
   }
 
   AuthState copyWith({
+      AdsStatus? adsStatus,
+  List<AdItem>? ads,
+  AdItem? selectedAd,
+  String? adsError,
     // OTP
     VerifyOtpStatus? verifyOtpStatus,
     VerifyOtpResponse? verifyOtpResponse,
@@ -298,6 +315,10 @@ class AuthState extends Equatable {
     String? recordsVehicleType,
   }) {
     return AuthState(
+          adsStatus: adsStatus ?? this.adsStatus,
+    ads: ads ?? this.ads,
+    selectedAd: selectedAd ?? this.selectedAd,
+    adsError: adsError ?? this.adsError,
       // OTP
       verifyOtpStatus: verifyOtpStatus ?? this.verifyOtpStatus,
       verifyOtpResponse: verifyOtpResponse ?? this.verifyOtpResponse,
@@ -379,6 +400,10 @@ class AuthState extends Equatable {
 
   @override
   List<Object?> get props => [
+      adsStatus,
+  ads,
+  selectedAd,
+  adsError,
         // Notifications
         notifications,
         notificationUnreadCount,

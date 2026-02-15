@@ -8,6 +8,7 @@ import 'package:ios_tiretest_ai/models/response_four_wheeler.dart' as m;
 import 'dart:io';
 import 'dart:convert';
 import 'package:ios_tiretest_ai/models/tyre_upload_response.dart' as m;
+import 'package:video_player/video_player.dart';
 
 
 
@@ -873,8 +874,587 @@ class _ReportSummaryCard extends StatelessWidget {
   }
 }
 
+class GenerateReportScreen extends StatefulWidget {
+  const GenerateReportScreen({
+    super.key,
+
+    required this.frontLeftPath,
+    required this.frontRightPath,
+    required this.backLeftPath,
+    required this.backRightPath,
+
+    required this.userId,
+    required this.vehicleId,
+    required this.token,
+
+    required this.vin,
+    required this.frontLeftTyreId,
+    required this.frontRightTyreId,
+    required this.backLeftTyreId,
+    required this.backRightTyreId,
+
+    this.vehicleType = 'car',
+  });
+
+  final String frontLeftPath;
+  final String frontRightPath;
+  final String backLeftPath;
+  final String backRightPath;
+
+  final String userId;
+  final String vehicleId;
+  final String token;
+
+  final String vin;
+
+  final String frontLeftTyreId;
+  final String frontRightTyreId;
+  final String backLeftTyreId;
+  final String backRightTyreId;
+
+  final String vehicleType;
+
+  @override
+  State<GenerateReportScreen> createState() => _GenerateReportScreenState();
+}
+
+class _GenerateReportScreenState extends State<GenerateReportScreen> {
+  bool _fired = false;
+  bool _navigated = false;
+
+  m.ResponseFourWheeler? _apiResponse;
+
+  VideoPlayerController? _videoCtrl;
+  String _currentUrl = '';
+
+  @override
+  void initState() {
+    super.initState();
+
+    // 1) fetch ads immediately (silent)
+    context.read<AuthBloc>().add(AdsFetchRequested(token: widget.token, silent: true));
+
+    // 2) fire your four-wheeler upload immediately
+    _startUpload();
+  }
+
+  void _startUpload() {
+    if (_fired) return;
+    _fired = true;
+
+    context.read<AuthBloc>().add(
+      UploadFourWheelerRequested(
+        vehicleId: widget.vehicleId,
+        vehicleType: widget.vehicleType,
+        vin: widget.vin,
+        frontLeftTyreId: widget.frontLeftTyreId,
+        frontRightTyreId: widget.frontRightTyreId,
+        backLeftTyreId: widget.backLeftTyreId,
+        backRightTyreId: widget.backRightTyreId,
+        frontLeftPath: widget.frontLeftPath,
+        frontRightPath: widget.frontRightPath,
+        backLeftPath: widget.backLeftPath,
+        backRightPath: widget.backRightPath,
+      ),
+    );
+  }
+
+  Future<void> _playVideo(String url) async {
+    final u = url.trim();
+    if (u.isEmpty) return;
+    if (_currentUrl == u && _videoCtrl != null) return;
+
+    _currentUrl = u;
+
+    try {
+      final old = _videoCtrl;
+
+      final ctrl = VideoPlayerController.networkUrl(Uri.parse(u));
+
+      // Optional: better iOS behavior (remove if you don't want)
+      // await ctrl.setVolume(1.0);
+
+      await ctrl.initialize();
+      await ctrl.setLooping(true);
+      await ctrl.play();
+
+      if (!mounted) {
+        await ctrl.dispose();
+        return;
+      }
+
+      setState(() => _videoCtrl = ctrl);
+      await old?.dispose();
+    } catch (_) {
+      // If ad fails, we keep fallback black screen
+    }
+  }
+
+  void _navigateToResult() {
+    if (!mounted || _navigated) return;
+    _navigated = true;
+
+    final vc = _videoCtrl;
+    _videoCtrl = null;
+    vc?.dispose();
+
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => InspectionResultScreen(
+          frontLeftPath: widget.frontLeftPath,
+          frontRightPath: widget.frontRightPath,
+          backLeftPath: widget.backLeftPath,
+          backRightPath: widget.backRightPath,
+          vehicleId: widget.vehicleId,
+          userId: widget.userId,
+          token: widget.token,
+          response: _apiResponse,
+        ),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    final vc = _videoCtrl;
+    _videoCtrl = null;
+    vc?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: MultiBlocListener(
+        listeners: [
+          // ✅ listen for Ads and play video
+          BlocListener<AuthBloc, AuthState>(
+            listenWhen: (p, c) =>
+                p.selectedAd?.media != c.selectedAd?.media ||
+                p.adsStatus != c.adsStatus,
+            listener: (context, state) {
+              final media = state.selectedAd?.media ?? '';
+              if (media.trim().isNotEmpty) {
+                _playVideo(media);
+              }
+            },
+          ),
+
+          // ✅ listen for four-wheeler result and navigate immediately
+          BlocListener<AuthBloc, AuthState>(
+            listenWhen: (p, c) => p.fourWheelerStatus != c.fourWheelerStatus,
+            listener: (context, state) {
+              if (state.fourWheelerStatus == FourWheelerStatus.success) {
+                _apiResponse = state.fourWheelerResponse;
+                _navigateToResult();
+              }
+              if (state.fourWheelerStatus == FourWheelerStatus.failure) {
+                // If you want ZERO UI, remove this SnackBar.
+                // ScaffoldMessenger.of(context).showSnackBar(
+                //   SnackBar(content: Text(state.fourWheelerError ?? 'Upload failed')),
+                // );
+              }
+            },
+          ),
+        ],
+        child: _FullscreenVideoOnly(controller: _videoCtrl),
+      ),
+    );
+  }
+}
+
+class _FullscreenVideoOnly extends StatelessWidget {
+  const _FullscreenVideoOnly({required this.controller});
+  final VideoPlayerController? controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = controller;
+
+    // Video not ready yet -> pure black screen (no text, no loader)
+    if (c == null || !c.value.isInitialized) {
+      return const ColoredBox(color: Colors.black);
+    }
+
+    return SizedBox.expand(
+      child: FittedBox(
+        fit: BoxFit.cover,
+        child: SizedBox(
+          width: c.value.size.width,
+          height: c.value.size.height,
+          child: VideoPlayer(c),
+        ),
+      ),
+    );
+  }
+}
+
+/*
+class GenerateReportScreen extends StatefulWidget {
+  const GenerateReportScreen({
+    super.key,
+    required this.frontLeftPath,
+    required this.frontRightPath,
+    required this.backLeftPath,
+    required this.backRightPath,
+    required this.userId,
+    required this.vehicleId,
+    required this.token,
+    required this.vin,
+    required this.frontLeftTyreId,
+    required this.frontRightTyreId,
+    required this.backLeftTyreId,
+    required this.backRightTyreId,
+    this.vehicleType = 'car',
+  });
+
+  final String frontLeftPath;
+  final String frontRightPath;
+  final String backLeftPath;
+  final String backRightPath;
+
+  final String userId;
+  final String vehicleId;
+  final String token;
+
+  final String vin;
+
+  final String frontLeftTyreId;
+  final String frontRightTyreId;
+  final String backLeftTyreId;
+  final String backRightTyreId;
+
+  final String vehicleType;
+
+  @override
+  State<GenerateReportScreen> createState() => _GenerateReportScreenState();
+}
+
+class _GenerateReportScreenState extends State<GenerateReportScreen>
+    with SingleTickerProviderStateMixin {
+  int _counter = 5;
+  Timer? _timer;
+
+  late final AnimationController _progressCtrl;
+  late final Animation<double> _progress;
+
+  bool _fired = false;
+  bool _countdownDone = false;
+  bool _apiDone = false;
+  bool _navigated = false;
+
+  m.ResponseFourWheeler? _apiResponse;
+
+  VideoPlayerController? _videoCtrl;
+  String _currentMediaUrl = '';
+
+  @override
+  void initState() {
+    super.initState();
+
+    _progressCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 5),
+    );
+    _progress = CurvedAnimation(parent: _progressCtrl, curve: Curves.easeInOutCubic);
+    _progressCtrl.forward();
+
+    // ✅ fetch ads immediately (uses token)
+    context.read<AuthBloc>().add(AdsFetchRequested(token: widget.token, silent: true));
+
+    _startCountdownAndUpload();
+  }
+
+  void _startCountdownAndUpload() {
+    if (_fired) return;
+    _fired = true;
+
+    // ✅ call 4-wheeler upload immediately
+    context.read<AuthBloc>().add(
+      UploadFourWheelerRequested(
+        vehicleId: widget.vehicleId,
+        vehicleType: widget.vehicleType,
+        vin: widget.vin,
+        frontLeftTyreId: widget.frontLeftTyreId,
+        frontRightTyreId: widget.frontRightTyreId,
+        backLeftTyreId: widget.backLeftTyreId,
+        backRightTyreId: widget.backRightTyreId,
+        frontLeftPath: widget.frontLeftPath,
+        frontRightPath: widget.frontRightPath,
+        backLeftPath: widget.backLeftPath,
+        backRightPath: widget.backRightPath,
+      ),
+    );
+
+    _timer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) return;
+      setState(() => _counter--);
+
+      if (_counter <= 0) {
+        t.cancel();
+        _countdownDone = true;
+        _tryNavigate();
+      }
+    });
+  }
+
+  void _tryNavigate() {
+    if (!mounted || _navigated) return;
+
+    // ✅ navigate only when both done (as your existing logic)
+    if (_countdownDone && _apiDone) {
+      _navigated = true;
+      _disposeVideo();
+
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => InspectionResultScreen(
+            frontLeftPath: widget.frontLeftPath,
+            frontRightPath: widget.frontRightPath,
+            backLeftPath: widget.backLeftPath,
+            backRightPath: widget.backRightPath,
+            vehicleId: widget.vehicleId,
+            userId: widget.userId,
+            token: widget.token,
+            response: _apiResponse,
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _playAd(String url) async {
+    final u = url.trim();
+    if (u.isEmpty) return;
+    if (_currentMediaUrl == u && _videoCtrl != null) return;
+
+    _currentMediaUrl = u;
+
+    try {
+      final old = _videoCtrl;
+      _videoCtrl = VideoPlayerController.networkUrl(Uri.parse(u));
+
+      await _videoCtrl!.initialize();
+      await _videoCtrl!.setLooping(true);
+      await _videoCtrl!.play();
+
+      setState(() {});
+      await old?.dispose();
+    } catch (_) {
+      // if video fails, keep fallback UI
+    }
+  }
+
+  void _disposeVideo() {
+    final v = _videoCtrl;
+    _videoCtrl = null;
+    v?.dispose();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _progressCtrl.dispose();
+    _disposeVideo();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = MediaQuery.sizeOf(context).width / 390.0;
+    final bottom = MediaQuery.paddingOf(context).bottom;
+
+    return Scaffold(
+      body: MultiBlocListener(
+        listeners: [
+          BlocListener<AuthBloc, AuthState>(
+            listenWhen: (p, c) => p.fourWheelerStatus != c.fourWheelerStatus,
+            listener: (context, state) {
+              if (state.fourWheelerStatus == FourWheelerStatus.failure) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(state.fourWheelerError ?? 'Upload failed')),
+                );
+              }
+              if (state.fourWheelerStatus == FourWheelerStatus.success) {
+                _apiDone = true;
+                _apiResponse = state.fourWheelerResponse;
+                _tryNavigate();
+              }
+            },
+          ),
+
+          // ✅ when ad arrives, play it
+          BlocListener<AuthBloc, AuthState>(
+            listenWhen: (p, c) =>
+                p.selectedAd?.media != c.selectedAd?.media ||
+                p.adsStatus != c.adsStatus,
+            listener: (context, state) {
+              final media = state.selectedAd?.media ?? '';
+              if (media.trim().isNotEmpty) {
+                _playAd(media);
+              }
+            },
+          ),
+        ],
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // ✅ VIDEO BACKGROUND
+            _AdVideoBackground(controller: _videoCtrl),
+
+            // ✅ dark overlay for text readability
+            Container(color: Colors.black.withOpacity(.35)),
+
+            SafeArea(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const SizedBox(height: 190),
+                  Text(
+                    'Generating Report in',
+                    style: TextStyle(
+                      fontFamily: 'ClashGrotesk',
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 22 * s,
+                      height: 1.2,
+                    ),
+                  ),
+                  SizedBox(height: 14 * s),
+                  _concentricCounter(s: s, valueText: '${_counter.clamp(0, 9)}'),
+                  const Spacer(),
+                ],
+              ),
+            ),
+
+            Positioned(
+              left: 16 * s,
+              bottom: 16 * s + bottom,
+              child: _BottomLeftProgressPill(scale: s, progress: _progress),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _concentricCounter({required double s, required String valueText}) {
+    final base = 260.0 * s;
+    final rings = <double>[1.0, .76, .55];
+
+    return SizedBox(
+      width: base,
+      height: base,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          for (final r in rings)
+            Container(
+              width: base * r,
+              height: base * r,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFF3B82F6).withOpacity(0.20 * r + .05),
+              ),
+            ),
+          Container(
+            width: base * .42,
+            height: base * .42,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: Color(0xFF2563EB),
+            ),
+          ),
+          Text(
+            valueText,
+            style: TextStyle(
+              fontFamily: 'ClashGrotesk',
+              color: Colors.white,
+              fontWeight: FontWeight.w800,
+              fontSize: 84 * s,
+              height: 1.0,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}*/
+
+class _AdVideoBackground extends StatelessWidget {
+  const _AdVideoBackground({required this.controller});
+  final VideoPlayerController? controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = controller;
+    if (c == null || !c.value.isInitialized) {
+      // fallback
+      return Container(
+        color: Colors.black,
+        child: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    return FittedBox(
+      fit: BoxFit.cover,
+      child: SizedBox(
+        width: c.value.size.width,
+        height: c.value.size.height,
+        child: VideoPlayer(c),
+      ),
+    );
+  }
+}
+
+class _BottomLeftProgressPill extends StatelessWidget {
+  const _BottomLeftProgressPill({required this.scale, required this.progress});
+
+  final double scale;
+  final Animation<double> progress;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 160 * scale,
+      height: 46 * scale,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(999),
+        child: Stack(
+          children: [
+            Container(color: Colors.white.withOpacity(.22)),
+            AnimatedBuilder(
+              animation: progress,
+              builder: (_, __) {
+                return FractionallySizedBox(
+                  widthFactor: progress.value.clamp(0, 1),
+                  child: Container(color: Colors.white.withOpacity(.35)),
+                );
+              },
+            ),
+            Center(
+              child: Text(
+                'Generating…',
+                style: TextStyle(
+                  fontFamily: 'ClashGrotesk',
+                  color: Colors.white,
+                  fontSize: 14 * scale,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 
+
+/*
 class GenerateReportScreen extends StatefulWidget {
   const GenerateReportScreen({
     super.key,
@@ -1183,47 +1763,47 @@ class _GenerateReportScreenState extends State<GenerateReportScreen>
       ),
     );
   }
-}
+}*/
 
-class _BottomLeftProgressPill extends StatelessWidget {
-  const _BottomLeftProgressPill({required this.scale, required this.progress});
+// class _BottomLeftProgressPill extends StatelessWidget {
+//   const _BottomLeftProgressPill({required this.scale, required this.progress});
 
-  final double scale;
-  final Animation<double> progress;
+//   final double scale;
+//   final Animation<double> progress;
 
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 160 * scale,
-      height: 46 * scale,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(999),
-        child: Stack(
-          children: [
-            Container(color: Colors.white.withOpacity(.22)),
-            AnimatedBuilder(
-              animation: progress,
-              builder: (_, __) {
-                return FractionallySizedBox(
-                  widthFactor: progress.value.clamp(0, 1),
-                  child: Container(color: Colors.white.withOpacity(.35)),
-                );
-              },
-            ),
-            Center(
-              child: Text(
-                'Generating…',
-                style: TextStyle(
-                  fontFamily: 'ClashGrotesk',
-                  color: Colors.white,
-                  fontSize: 14 * scale,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
+//   @override
+//   Widget build(BuildContext context) {
+//     return SizedBox(
+//       width: 160 * scale,
+//       height: 46 * scale,
+//       child: ClipRRect(
+//         borderRadius: BorderRadius.circular(999),
+//         child: Stack(
+//           children: [
+//             Container(color: Colors.white.withOpacity(.22)),
+//             AnimatedBuilder(
+//               animation: progress,
+//               builder: (_, __) {
+//                 return FractionallySizedBox(
+//                   widthFactor: progress.value.clamp(0, 1),
+//                   child: Container(color: Colors.white.withOpacity(.35)),
+//                 );
+//               },
+//             ),
+//             Center(
+//               child: Text(
+//                 'Generating…',
+//                 style: TextStyle(
+//                   fontFamily: 'ClashGrotesk',
+//                   color: Colors.white,
+//                   fontSize: 14 * scale,
+//                   fontWeight: FontWeight.w800,
+//                 ),
+//               ),
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+// }
