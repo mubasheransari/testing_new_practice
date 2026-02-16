@@ -280,13 +280,15 @@ if (state.error == "Signup successful. OTP sent successfully!") {
 }
 
 if (state.error == "Email not verified. Please verify OTP first.") {
+
   context.read<AuthBloc>().add(const OtpIssuedNow());
+   context.read<AuthBloc>().add(ForgotPasswordVerifyEmailRequested(email:_loginEmailCtrl.text.trim()));
 
   Navigator.push(
     context,
     MaterialPageRoute(
       builder: (_) => OtpVerificationScreen(
-        targetText: _signupEmailCtrl.text.trim(), // show email
+        targetText: _loginEmailCtrl.text.trim(), 
       ),
     ),
   );

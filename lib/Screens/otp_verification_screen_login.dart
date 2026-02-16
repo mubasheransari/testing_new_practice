@@ -7,8 +7,8 @@ import 'package:ios_tiretest_ai/Bloc/auth_event.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_state.dart';
 import 'package:ios_tiretest_ai/Screens/splash_screen.dart';
 
-class OtpVerificationScreen extends StatefulWidget {
-  const OtpVerificationScreen({
+class OtpVerificationScreenLogin extends StatefulWidget {
+  const OtpVerificationScreenLogin({
     super.key,
     required this.targetText, // ✅ email here
     this.title = 'OTP Verification',
@@ -26,10 +26,10 @@ class OtpVerificationScreen extends StatefulWidget {
   final int expiryMinutes;
 
   @override
-  State<OtpVerificationScreen> createState() => _OtpVerificationScreenState();
+  State<OtpVerificationScreenLogin> createState() => _OtpVerificationScreenLoginState();
 }
 
-class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
+class _OtpVerificationScreenLoginState extends State<OtpVerificationScreenLogin> {
   late final List<TextEditingController> _ctrls;
   late final List<FocusNode> _nodes;
 
