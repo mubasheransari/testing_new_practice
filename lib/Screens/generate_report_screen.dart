@@ -10,14 +10,7 @@ import 'dart:convert';
 import 'package:ios_tiretest_ai/models/tyre_upload_response.dart' as m;
 import 'package:video_player/video_player.dart';
 
-import 'dart:convert';
-import 'dart:io';
 
-import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:ios_tiretest_ai/Bloc/auth_bloc.dart';
-import 'package:ios_tiretest_ai/Bloc/auth_event.dart';
-import 'package:ios_tiretest_ai/models/tyre_record.dart';
 
 class InspectionResultScreen extends StatefulWidget {
   const InspectionResultScreen({
@@ -63,47 +56,60 @@ class _InspectionResultScreenState extends State<InspectionResultScreen> {
   Widget build(BuildContext context) {
     final s = MediaQuery.sizeOf(context).width / 393;
 
-    final raw = widget.fourWheelerRaw ?? _safeToJson(widget.response) ?? const <String, dynamic>{};
+    final raw =
+        widget.fourWheelerRaw ?? _safeToJson(widget.response) ?? const <String, dynamic>{};
 
-    // API shape: { data: {...} } (from your screenshot)
+    // API shape: { data: {...} }
     final data = _tryReadMap(raw, const ['data', 'result', 'payload']) ?? raw;
 
     // ---- wheel images (api may return url/base64 or you already have local paths)
-    final flImg = _imgProvider(localPath: widget.frontLeftPath, apiValue: _pickAny(data, const [
-      'Front Left wheel',
-      'frontLeftWheelUrl',
-      'front_left_wheel_url',
-      'frontLeftUrl',
-      'front_left_image_url',
-      'front_left_image',
-    ]));
+    final flImg = _imgProvider(
+      localPath: widget.frontLeftPath,
+      apiValue: _pickAny(data, const [
+        'Front Left wheel',
+        'frontLeftWheelUrl',
+        'front_left_wheel_url',
+        'frontLeftUrl',
+        'front_left_image_url',
+        'front_left_image',
+      ]),
+    );
 
-    final frImg = _imgProvider(localPath: widget.frontRightPath, apiValue: _pickAny(data, const [
-      'Front Right wheel',
-      'frontRightWheelUrl',
-      'front_right_wheel_url',
-      'frontRightUrl',
-      'front_right_image_url',
-      'front_right_image',
-    ]));
+    final frImg = _imgProvider(
+      localPath: widget.frontRightPath,
+      apiValue: _pickAny(data, const [
+        'Front Right wheel',
+        'frontRightWheelUrl',
+        'front_right_wheel_url',
+        'frontRightUrl',
+        'front_right_image_url',
+        'front_right_image',
+      ]),
+    );
 
-    final blImg = _imgProvider(localPath: widget.backLeftPath, apiValue: _pickAny(data, const [
-      'Back Left wheel',
-      'backLeftWheelUrl',
-      'back_left_wheel_url',
-      'backLeftUrl',
-      'back_left_image_url',
-      'back_left_image',
-    ]));
+    final blImg = _imgProvider(
+      localPath: widget.backLeftPath,
+      apiValue: _pickAny(data, const [
+        'Back Left wheel',
+        'backLeftWheelUrl',
+        'back_left_wheel_url',
+        'backLeftUrl',
+        'back_left_image_url',
+        'back_left_image',
+      ]),
+    );
 
-    final brImg = _imgProvider(localPath: widget.backRightPath, apiValue: _pickAny(data, const [
-      'Back Right wheel',
-      'backRightWheelUrl',
-      'back_right_wheel_url',
-      'backRightUrl',
-      'back_right_image_url',
-      'back_right_image',
-    ]));
+    final brImg = _imgProvider(
+      localPath: widget.backRightPath,
+      apiValue: _pickAny(data, const [
+        'Back Right wheel',
+        'backRightWheelUrl',
+        'back_right_wheel_url',
+        'backRightUrl',
+        'back_right_image_url',
+        'back_right_image',
+      ]),
+    );
 
     // ---- per-tyre details
     final tyres = <_TyreUi>[
@@ -112,15 +118,6 @@ class _InspectionResultScreenState extends State<InspectionResultScreen> {
       _buildTyreUi(data, label: 'Back Left', keyPrefix: 'Back Left'),
       _buildTyreUi(data, label: 'Back Right', keyPrefix: 'Back Right'),
     ];
-
-    // Combined general summary (optional) if you still want:
-    final overallSummary = _asNonEmptyString(_pickAny(raw, const [
-          'message',
-          'summary',
-          'reportSummary',
-          'report_summary',
-        ])) ??
-        'Inspection generated successfully.';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF2F6FB),
@@ -146,7 +143,6 @@ class _InspectionResultScreenState extends State<InspectionResultScreen> {
       body: ListView(
         padding: EdgeInsets.fromLTRB(16 * s, 12 * s, 16 * s, 20 * s),
         children: [
-          // ✅ 4 images (top)
           _TopFourImagesRow(
             s: s,
             fl: flImg,
@@ -156,7 +152,6 @@ class _InspectionResultScreenState extends State<InspectionResultScreen> {
           ),
           SizedBox(height: 14 * s),
 
-          // ✅ Cards like your design: left big + right 2 stacked
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -166,77 +161,48 @@ class _InspectionResultScreenState extends State<InspectionResultScreen> {
                   s: s,
                   icon: Icons.blur_circular_rounded,
                   title: 'Tread Depth',
-                  // show average-ish summary (but data is per tyre below)
                   value: _bestTreadValue(tyres),
                   status: _bestTreadStatus(tyres),
                 ),
               ),
               SizedBox(width: 12 * s),
-              Expanded(
-                flex: 10,
-                child: Column(
-                  children: [
-                    _MetricCardSmall(
-                      s: s,
-                      title: 'Tire Pressure',
-                      value: _bestPressureValue(tyres),
-                      status: _bestPressureStatus(tyres),
-                    ),
-                    SizedBox(height: 10 * s),
-                    _MetricCardSmall(
-                      s: s,
-                      title: 'Damage Check',
-                      value: _bestDamageValue(tyres),
-                      status: _bestDamageStatus(tyres),
-                    ),
-                  ],
-                ),
-              ),
+              // Expanded(
+              //   flex: 10,
+              //   child: Column(
+              //     children: [
+              //       _MetricCardSmall(
+              //         s: s,
+              //         title: 'Tire Pressure',
+              //         value: _bestPressureValue(tyres),
+              //         status: _bestPressureStatus(tyres),
+              //       ),
+              //       SizedBox(height: 10 * s),
+              //       _MetricCardSmall(
+              //         s: s,
+              //         title: 'Damage Check',
+              //         value: _bestDamageValue(tyres),
+              //         status: _bestDamageStatus(tyres),
+              //       ),
+              //     ],
+              //   ),
+              // ),
             ],
           ),
 
           SizedBox(height: 14 * s),
 
-          // ✅ Report Summary section (overall + each tyre summary one-by-one)
+          // ✅ Summary section now contains FULL tyre blocks including tire pressure full details
           _SectionCard(
             s: s,
             title: 'Report Summary:',
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Text(
-                //   overallSummary,
-                //   style: TextStyle(
-                //     fontFamily: 'ClashGrotesk',
-                //     fontWeight: FontWeight.w600,
-                //     fontSize: 13.3 * s,
-                //     height: 1.35,
-                //     color: const Color(0xFF374151),
-                //   ),
-                // ),
-                SizedBox(height: 12 * s),
-                       ...tyres.map((t) => _TyreDetailCard(s: s, tyre: t)).toList(),
-                // ...tyres.map((t) => _TyreSummaryTile(s: s, tyre: t)).toList(),
+                SizedBox(height: 4 * s),
+                ...tyres.map((t) => _TyreSummaryFullBlock(s: s, tyre: t)).toList(),
               ],
             ),
           ),
-
-      /*    SizedBox(height: 14 * s),
-
-          // ✅ Per-tyre details (pressure/status/summary per tyre)
-          Text(
-            'Tyre Details',
-            style: TextStyle(
-              fontFamily: 'ClashGrotesk',
-              fontWeight: FontWeight.w900,
-              fontSize: 16 * s,
-              color: const Color(0xFF111827),
-            ),
-          ),
-          SizedBox(height: 10 * s),
-          ...tyres.map((t) => _TyreDetailCard(s: s, tyre: t)).toList(),
-
-          SizedBox(height: 18 * s),*/
         ],
       ),
     );
@@ -245,8 +211,11 @@ class _InspectionResultScreenState extends State<InspectionResultScreen> {
   // -----------------------------
   // Build per-tyre UI from API map
   // -----------------------------
-  _TyreUi _buildTyreUi(Map<String, dynamic> data, {required String label, required String keyPrefix}) {
-    // Tread depth
+  _TyreUi _buildTyreUi(
+    Map<String, dynamic> data, {
+    required String label,
+    required String keyPrefix,
+  }) {
     final treadDepth = _asNonEmptyString(_pickAny(data, [
       '$keyPrefix Tread depth',
       '$keyPrefix Tread Depth',
@@ -254,7 +223,6 @@ class _InspectionResultScreenState extends State<InspectionResultScreen> {
       '${keyPrefix.toLowerCase().replaceAll(' ', '_')}_tread_depth',
     ]));
 
-    // Tyre status (Safe/Unsafe etc)
     final tyreStatus = _asNonEmptyString(_pickAny(data, [
       '$keyPrefix Tyre status',
       '$keyPrefix Tire status',
@@ -278,23 +246,8 @@ class _InspectionResultScreenState extends State<InspectionResultScreen> {
       '$keyPrefix tyre pressure',
     ]);
 
-    String? pressureStatus;
-    String? pressureReason;
-    String? pressureConfidence;
-    String? pressureValue; // if API ever returns psi/number, we will show it
+    final pressure = _parsePressure(pressureObj);
 
-    if (pressureObj is Map) {
-      final m = Map<String, dynamic>.from(pressureObj);
-      pressureStatus = _asNonEmptyString(m['status']);
-      pressureReason = _asNonEmptyString(m['reason']);
-      pressureConfidence = _asNonEmptyString(m['confidence']);
-      pressureValue = _asNonEmptyString(m['value']) ?? _asNonEmptyString(m['psi']);
-    } else {
-      // sometimes backend might send as string
-      pressureStatus = _asNonEmptyString(pressureObj);
-    }
-
-    // Per-tyre summary
     final summary = _asNonEmptyString(_pickAny(data, [
       '$keyPrefix Summary',
       '$keyPrefix summary',
@@ -308,11 +261,39 @@ class _InspectionResultScreenState extends State<InspectionResultScreen> {
       tyreStatus: tyreStatus ?? '—',
       damageValue: damageValue ?? '—',
       damageStatus: tyreStatus ?? '—',
-      pressureValue: pressureValue ?? '—',
-      pressureStatus: pressureStatus ?? '—',
-      pressureReason: pressureReason ?? '',
-      pressureConfidence: pressureConfidence ?? '',
+      pressure: pressure,
       summary: summary ?? '—',
+    );
+  }
+
+  _PressureUi _parsePressure(dynamic pressureObj) {
+    // default empty
+    String value = '—';
+    String status = '—';
+    String reason = '';
+    String confidence = '';
+
+    if (pressureObj is Map) {
+      final m = Map<String, dynamic>.from(pressureObj);
+      status = _asNonEmptyString(m['status']) ?? '—';
+      reason = _asNonEmptyString(m['reason']) ?? '';
+      confidence = _asNonEmptyString(m['confidence']) ?? '';
+
+      // if backend ever returns numeric value/psi
+      value = _asNonEmptyString(m['value']) ??
+          _asNonEmptyString(m['psi']) ??
+          _asNonEmptyString(m['pressure']) ??
+          '—';
+    } else {
+      // sometimes backend might send as string
+      status = _asNonEmptyString(pressureObj) ?? '—';
+    }
+
+    return _PressureUi(
+      value: value,
+      status: status,
+      reason: reason,
+      confidence: confidence,
     );
   }
 
@@ -320,13 +301,11 @@ class _InspectionResultScreenState extends State<InspectionResultScreen> {
   // Helpers
   // -----------------------------
   ImageProvider _imgProvider({required String localPath, dynamic apiValue}) {
-    // 1) if api value is url
     final apiStr = _asNonEmptyString(apiValue);
     if (apiStr != null) {
       if (apiStr.startsWith('http://') || apiStr.startsWith('https://')) {
         return NetworkImage(apiStr);
       }
-      // 2) if api value is base64 data url
       if (apiStr.startsWith('data:image')) {
         try {
           final base64Part = apiStr.split(',').last;
@@ -334,10 +313,7 @@ class _InspectionResultScreenState extends State<InspectionResultScreen> {
           return MemoryImage(bytes);
         } catch (_) {}
       }
-      // 3) sometimes api returns filename only (not useful) -> fallback local
     }
-
-    // fallback local file
     return FileImage(File(localPath));
   }
 
@@ -385,9 +361,8 @@ class _InspectionResultScreenState extends State<InspectionResultScreen> {
     return s;
   }
 
-  // --------- small "summary" values for top cards ----------
+  // --------- top cards ----------
   String _bestTreadValue(List<_TyreUi> tyres) {
-    // show front-left tread depth if available else first non-empty
     final t = tyres.map((e) => e.treadDepth).firstWhere((x) => x.trim() != '—', orElse: () => '—');
     return 'Value: $t';
   }
@@ -398,13 +373,15 @@ class _InspectionResultScreenState extends State<InspectionResultScreen> {
   }
 
   String _bestPressureValue(List<_TyreUi> tyres) {
-    // if PSI exists show it else —
-    final v = tyres.map((e) => e.pressureValue).firstWhere((x) => x.trim() != '—', orElse: () => '—');
+    final v =
+        tyres.map((e) => e.pressure.value).firstWhere((x) => x.trim() != '—', orElse: () => '—');
     return v == '—' ? 'Value: —' : 'Value: $v';
   }
 
   String _bestPressureStatus(List<_TyreUi> tyres) {
-    final t = tyres.map((e) => e.pressureStatus).firstWhere((x) => x.trim() != '—', orElse: () => '—');
+    final t = tyres
+        .map((e) => e.pressure.status)
+        .firstWhere((x) => x.trim() != '—', orElse: () => '—');
     return 'Status: $t';
   }
 
@@ -420,7 +397,7 @@ class _InspectionResultScreenState extends State<InspectionResultScreen> {
 }
 
 // =============================
-// UI widgets (design like image)
+// UI widgets (same design)
 // =============================
 
 class _TopFourImagesRow extends StatelessWidget {
@@ -498,7 +475,7 @@ class _WheelImageCard extends StatelessWidget {
             label,
             style: TextStyle(
               fontFamily: 'ClashGrotesk',
-              fontSize: 12.5 * s,
+              fontSize: 10.5 * s,
               fontWeight: FontWeight.w900,
               color: Colors.white,
             ),
@@ -716,19 +693,20 @@ class _SectionCard extends StatelessWidget {
   }
 }
 
-class _TyreSummaryTile extends StatelessWidget {
-  const _TyreSummaryTile({required this.s, required this.tyre});
+/// ✅ NEW: summary block that includes FULL pressure details + all data required
+class _TyreSummaryFullBlock extends StatelessWidget {
+  const _TyreSummaryFullBlock({required this.s, required this.tyre});
   final double s;
   final _TyreUi tyre;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: EdgeInsets.only(bottom: 10 * s),
-      padding: EdgeInsets.all(12 * s),
+      margin: EdgeInsets.only(bottom: 12 * s),
+      padding: EdgeInsets.all(14 * s),
       decoration: BoxDecoration(
         color: const Color(0xFFF4F8FF),
-        borderRadius: BorderRadius.circular(14 * s),
+        borderRadius: BorderRadius.circular(16 * s),
         border: Border.all(color: const Color(0xFFE5EEFF)),
       ),
       child: Column(
@@ -739,228 +717,157 @@ class _TyreSummaryTile extends StatelessWidget {
             style: TextStyle(
               fontFamily: 'ClashGrotesk',
               fontWeight: FontWeight.w900,
-              fontSize: 14.5 * s,
+              fontSize: 15 * s,
               color: const Color(0xFF111827),
             ),
           ),
-          SizedBox(height: 6 * s),
-          Text(
-            tyre.summary,
-            style: TextStyle(
-              fontFamily: 'ClashGrotesk',
-              fontWeight: FontWeight.w600,
-              fontSize: 13 * s,
-              height: 1.35,
-              color: const Color(0xFF374151),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
+          SizedBox(height: 10 * s),
 
-class _TyreDetailCard extends StatelessWidget {
-  const _TyreDetailCard({required this.s, required this.tyre});
-  final double s;
-  final _TyreUi tyre;
+          _line(s, 'Tread Depth', 'Value: ${tyre.treadDepth}'),
+          _line(s, 'Tyre Status', tyre.tyreStatus),
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: EdgeInsets.only(bottom: 12 * s),
-      padding: EdgeInsets.all(14 * s),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18 * s),
-        border: Border.all(color: const Color(0xFFEAF1FF)),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(.05), blurRadius: 14, offset: const Offset(0, 8))],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 10 * s,
-                height: 10 * s,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    colors: [Color(0xFF2DA3FF), Color(0xFF6D63FF)],
-                  ),
-                ),
-              ),
-              SizedBox(width: 10 * s),
-              Text(
-                tyre.label,
-                style: TextStyle(
-                  fontFamily: 'ClashGrotesk',
-                  fontWeight: FontWeight.w900,
-                  fontSize: 15.5 * s,
-                  color: const Color(0xFF111827),
-                ),
-              ),
-            ],
-          ),
+          SizedBox(height: 10 * s),
+          _line(s, 'Damage (Wear Patterns)', tyre.damageValue),
+          _line(s, 'Damage Status', tyre.damageStatus),
+
           SizedBox(height: 12 * s),
 
-          _kv(s, 'Tread Depth', 'Value: ${tyre.treadDepth}', 'Status: ${tyre.tyreStatus}'),
-          SizedBox(height: 10 * s),
-          _kv(s, 'Damage Check', 'Value: ${tyre.damageValue}', 'Status: ${tyre.damageStatus}'),
-          SizedBox(height: 10 * s),
-
-          // ✅ Pressure per tyre (status/reason/confidence)
-          _pressureBlock(s, tyre),
-
-          SizedBox(height: 10 * s),
-          Text(
-            'Summary',
-            style: TextStyle(
-              fontFamily: 'ClashGrotesk',
-              fontWeight: FontWeight.w900,
-              fontSize: 13.5 * s,
-              color: const Color(0xFF111827),
+          // ✅ FULL tire pressure details
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.all(12 * s),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF2DA3FF), Color(0xFF6D63FF)],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+              ),
+              borderRadius: BorderRadius.circular(14 * s),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Tire Pressure',
+                  style: TextStyle(
+                    fontFamily: 'ClashGrotesk',
+                    fontWeight: FontWeight.w900,
+                    fontSize: 14 * s,
+                    color: Colors.white,
+                  ),
+                ),
+                SizedBox(height: 8 * s),
+                Text(
+                  tyre.pressure.value == '—' ? 'Value: —' : 'Value: ${tyre.pressure.value}',
+                  style: TextStyle(
+                    fontFamily: 'ClashGrotesk',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13 * s,
+                    color: Colors.white,
+                  ),
+                ),
+                SizedBox(height: 6 * s),
+                Text(
+                  'Status: ${tyre.pressure.status}',
+                  style: TextStyle(
+                    fontFamily: 'ClashGrotesk',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13 * s,
+                    color: Colors.white.withOpacity(.95),
+                  ),
+                ),
+                if (tyre.pressure.reason.trim().isNotEmpty) ...[
+                  SizedBox(height: 6 * s),
+                  Text(
+                    'Reason: ${tyre.pressure.reason}',
+                    style: TextStyle(
+                      fontFamily: 'ClashGrotesk',
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12.5 * s,
+                      height: 1.25,
+                      color: Colors.white.withOpacity(.92),
+                    ),
+                  ),
+                ],
+                if (tyre.pressure.confidence.trim().isNotEmpty) ...[
+                  SizedBox(height: 6 * s),
+                  Text(
+                    'Confidence: ${tyre.pressure.confidence}',
+                    style: TextStyle(
+                      fontFamily: 'ClashGrotesk',
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12.5 * s,
+                      color: Colors.white.withOpacity(.95),
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
-          SizedBox(height: 6 * s),
-          Text(
-            tyre.summary,
-            style: TextStyle(
-              fontFamily: 'ClashGrotesk',
-              fontWeight: FontWeight.w600,
-              fontSize: 13 * s,
-              height: 1.35,
-              color: const Color(0xFF374151),
-            ),
-          ),
+
+          // SizedBox(height: 12 * s),
+          // Text(
+          //   'Summary',
+          //   style: TextStyle(
+          //     fontFamily: 'ClashGrotesk',
+          //     fontWeight: FontWeight.w900,
+          //     fontSize: 13.5 * s,
+          //     color: const Color(0xFF111827),
+          //   ),
+          // ),
+          // SizedBox(height: 6 * s),
+          // Text(
+          //   tyre.summary,
+          //   style: TextStyle(
+          //     fontFamily: 'ClashGrotesk',
+          //     fontWeight: FontWeight.w600,
+          //     fontSize: 13 * s,
+          //     height: 1.35,
+          //     color: const Color(0xFF374151),
+          //   ),
+          // ),
         ],
       ),
     );
   }
 
-  Widget _kv(double s, String title, String value, String status) {
-    return Container(
-      padding: EdgeInsets.all(12 * s),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF4F8FF),
-        borderRadius: BorderRadius.circular(14 * s),
-        border: Border.all(color: const Color(0xFFE5EEFF)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: TextStyle(
-              fontFamily: 'ClashGrotesk',
-              fontWeight: FontWeight.w900,
-              fontSize: 14.5 * s,
-              color: const Color(0xFF111827),
-            ),
+  Widget _line(double s, String title, String value) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 6 * s),
+      child: RichText(
+        text: TextSpan(
+          style: TextStyle(
+            fontFamily: 'ClashGrotesk',
+            fontSize: 13 * s,
+            height: 1.25,
+            color: const Color(0xFF111827),
           ),
-          SizedBox(height: 8 * s),
-          Text(
-            value,
-            style: TextStyle(
-              fontFamily: 'ClashGrotesk',
-              fontWeight: FontWeight.w700,
-              fontSize: 13 * s,
-              color: const Color(0xFF111827),
-            ),
-          ),
-          SizedBox(height: 6 * s),
-          Text(
-            status,
-            style: TextStyle(
-              fontFamily: 'ClashGrotesk',
-              fontWeight: FontWeight.w700,
-              fontSize: 13 * s,
-              color: const Color(0xFF6B7280),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _pressureBlock(double s, _TyreUi tyre) {
-    return Container(
-      padding: EdgeInsets.all(12 * s),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF2DA3FF), Color(0xFF6D63FF)],
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-        ),
-        borderRadius: BorderRadius.circular(14 * s),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Tire Pressure',
-            style: TextStyle(
-              fontFamily: 'ClashGrotesk',
-              fontWeight: FontWeight.w900,
-              fontSize: 14.5 * s,
-              color: Colors.white,
-            ),
-          ),
-          SizedBox(height: 8 * s),
-          Text(
-            tyre.pressureValue == '—' ? 'Value: —' : 'Value: ${tyre.pressureValue}',
-            style: TextStyle(
-              fontFamily: 'ClashGrotesk',
-              fontWeight: FontWeight.w700,
-              fontSize: 13 * s,
-              color: Colors.white,
-            ),
-          ),
-          SizedBox(height: 6 * s),
-          Text(
-            'Status: ${tyre.pressureStatus}',
-            style: TextStyle(
-              fontFamily: 'ClashGrotesk',
-              fontWeight: FontWeight.w700,
-              fontSize: 13 * s,
-              color: Colors.white.withOpacity(.95),
-            ),
-          ),
-          if (tyre.pressureReason.trim().isNotEmpty) ...[
-            SizedBox(height: 6 * s),
-            Text(
-              'Reason: ${tyre.pressureReason}',
+          children: [
+            TextSpan(
+              text: '$title: ',
               style: TextStyle(
-                fontFamily: 'ClashGrotesk',
+                fontWeight: FontWeight.w900,
+                color: const Color(0xFF111827),
+              ),
+            ),
+            TextSpan(
+              text: value,
+              style: TextStyle(
                 fontWeight: FontWeight.w600,
-                fontSize: 12.5 * s,
-                height: 1.25,
-                color: Colors.white.withOpacity(.92),
+                color: const Color(0xFF374151),
               ),
             ),
           ],
-          if (tyre.pressureConfidence.trim().isNotEmpty) ...[
-            SizedBox(height: 6 * s),
-            Text(
-              'Confidence: ${tyre.pressureConfidence}',
-              style: TextStyle(
-                fontFamily: 'ClashGrotesk',
-                fontWeight: FontWeight.w700,
-                fontSize: 12.5 * s,
-                color: Colors.white.withOpacity(.95),
-              ),
-            ),
-          ],
-        ],
+        ),
       ),
     );
   }
 }
 
 // =============================
-// Data holder
+// Data holders
 // =============================
+
 class _TyreUi {
   _TyreUi({
     required this.label,
@@ -968,10 +875,7 @@ class _TyreUi {
     required this.tyreStatus,
     required this.damageValue,
     required this.damageStatus,
-    required this.pressureValue,
-    required this.pressureStatus,
-    required this.pressureReason,
-    required this.pressureConfidence,
+    required this.pressure,
     required this.summary,
   });
 
@@ -983,14 +887,24 @@ class _TyreUi {
   final String damageValue;
   final String damageStatus;
 
-  final String pressureValue;
-  final String pressureStatus;
-  final String pressureReason;
-  final String pressureConfidence;
+  final _PressureUi pressure;
 
   final String summary;
 }
 
+class _PressureUi {
+  const _PressureUi({
+    required this.value,
+    required this.status,
+    required this.reason,
+    required this.confidence,
+  });
+
+  final String value;
+  final String status;
+  final String reason;
+  final String confidence;
+}
 
 
 /*
