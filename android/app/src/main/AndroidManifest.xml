@@ -49,6 +49,11 @@
             <data android:scheme="tel" />
         </intent>
 
+        <intent>
+            <action android:name="android.intent.action.SENDTO" />
+            <data android:scheme="smsto" />
+        </intent>
+
         <!-- Some devices resolve tel: with VIEW -->
         <intent>
             <action android:name="android.intent.action.VIEW" />

@@ -3,7 +3,24 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_bloc.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_state.dart';
 import 'package:ios_tiretest_ai/Models/shop_vendor.dart';
+import 'package:url_launcher/url_launcher.dart';
+Future<void> _makePhoneCall(String phone) async {
+  final uri = Uri(scheme: 'tel', path: phone);
+  if (await canLaunchUrl(uri)) {
+    await launchUrl(uri);
+  } else {
+    debugPrint('❌ Could not launch dialer');
+  }
+}
 
+Future<void> _sendSms(String phone) async {
+  final uri = Uri(scheme: 'sms', path: phone);
+  if (await canLaunchUrl(uri)) {
+    await launchUrl(uri);
+  } else {
+    debugPrint('❌ Could not launch SMS');
+  }
+}
 
 class SponsoredVendorsScreen extends StatelessWidget {
   const SponsoredVendorsScreen({super.key});
@@ -352,9 +369,19 @@ class _VendorCard extends StatelessWidget {
                           ),
                         ),
                       ),
-                      _gradAction(s, Icons.call_rounded),
-                      SizedBox(width: 6 * s),
-                      _gradAction(s, Icons.chat_rounded),
+                  _gradAction(
+  s,
+  Icons.call_rounded,
+  onTap: () => _makePhoneCall(vendor.phoneNumber.toString()),
+),
+
+SizedBox(width: 6 * s),
+
+_gradAction(
+  s,
+  Icons.chat_rounded,
+  onTap: () => _sendSms(vendor.phoneNumber.toString()),
+),
                     ],
                   ),
                   SizedBox(height: 4 * s),
@@ -483,8 +510,15 @@ class _VendorCard extends StatelessWidget {
     );
   }
 
-  static Widget _gradAction(double s, IconData icon) {
-    return Container(
+  static Widget _gradAction(
+  double s,
+  IconData icon, {
+  required VoidCallback onTap,
+}) {
+  return GestureDetector(
+    onTap: onTap,
+    behavior: HitTestBehavior.opaque,
+    child: Container(
       width: 32 * s,
       height: 32 * s,
       margin: EdgeInsets.only(left: 6 * s),
@@ -500,10 +534,10 @@ class _VendorCard extends StatelessWidget {
         ],
       ),
       child: Icon(icon, color: Colors.white, size: 16 * s),
-    );
-  }
+    ),
+  );
+}
 
-  // ✅ updated to accept dynamic size so placeholder matches bigger image
   Widget _placeholderImg(double s, double w, double h) {
     return Container(
       width: w,

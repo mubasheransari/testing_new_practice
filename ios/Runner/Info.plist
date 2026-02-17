@@ -5,6 +5,8 @@
     <key>LSApplicationQueriesSchemes</key>
     <array>
     <string>tel</string>
+    <string>smsto</string>
+    <string>sms</string>
     </array>
     <key>NSAppTransportSecurity</key>
     <dict>
