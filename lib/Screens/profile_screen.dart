@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_bloc.dart';
 import 'package:ios_tiretest_ai/Data/token_store.dart';
+import 'package:ios_tiretest_ai/Screens/app_shell.dart';
 import 'package:ios_tiretest_ai/Screens/auth_screen.dart';
+import 'package:ios_tiretest_ai/Widgets/bottom_bar.dart';
 import 'package:ios_tiretest_ai/Widgets/logout_confirm_dialog.dart';
 import '../Bloc/auth_event.dart';
 import '../Bloc/auth_state.dart';
@@ -237,12 +239,34 @@ class ProfilePage extends StatelessWidget {
 
                 SizedBox(height: 18 * s),
                 _dividerLine(s),
+InkWell(
+  onTap: () {
+    // ✅ go to tab 2 (reports)
+    AppShell.of(context)?.goToTab(BottomTab.about, popToRoot: true);
+  },
+  child: _menuRow(
+    s: s,
+    icon: Icons.engineering_outlined,
+    label: 'Sponsored vendors',
+  ),
+),
+_dividerLine(s),
 
-                _menuRow(s: s, icon: Icons.engineering_outlined, label: 'Sponsored vendors'),
+                // _menuRow(s: s, icon: Icons.engineering_outlined, label: 'Sponsored vendors'),
                 _dividerLine(s),
-                _menuRow(s: s, icon: Icons.receipt_long_outlined, label: 'Recent Report'),
+                InkWell(
+                  onTap: () {
+    // ✅ go to tab 2 (reports)
+    AppShell.of(context)?.goToTab(BottomTab.reports, popToRoot: true);
+  },
+                  child: _menuRow(s: s, icon: Icons.receipt_long_outlined, label: 'Recent Report')),
                 _dividerLine(s),
-                _menuRow(s: s, icon: Icons.add_location_alt_outlined, label: 'Location'),
+                InkWell(
+                                    onTap: () {
+    // ✅ go to tab 2 (reports)
+    AppShell.of(context)?.goToTab(BottomTab.map, popToRoot: true);
+  },
+                  child: _menuRow(s: s, icon: Icons.add_location_alt_outlined, label: 'Location')),
                 _dividerLine(s),
 
                 // ✅ NEW: Change Password row clickable
