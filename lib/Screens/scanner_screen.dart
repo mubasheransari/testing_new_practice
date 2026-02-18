@@ -203,14 +203,14 @@ class _ScannerFrontTireScreenState extends State<ScannerFrontTireScreen>
                 const SnackBar(
                     content: Text('Pick from gallery (optional).')),
               ),
-              onPickDocs: () => ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                    content: Text('Pick documents (optional).')),
-              ),
+              // onPickDocs: () => ScaffoldMessenger.of(context).showSnackBar(
+              //   const SnackBar(
+              //       content: Text('Pick documents (optional).')),
+              // ),
               onCapture: _capture,
-              galleryIconAsset: 'assets/gallery_icon.png',
-              captureIconAsset: 'assets/image_capture_icon.png',
-              docsIconAsset: 'assets/document_icon.png',
+              // galleryIconAsset: 'assets/gallery_icon.png',
+              // captureIconAsset: 'assets/image_capture_icon.png',
+            //  docsIconAsset: 'assets/document_icon.png',
             ),
           ),
         ],
