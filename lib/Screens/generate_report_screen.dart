@@ -180,12 +180,19 @@ class _InspectionResultScreenState extends State<InspectionResultScreen> {
                           flex: 10,
                           child: Column(
                             children: [
-                              _SmallMetricCard(
-                                s: s,
-                                title: 'Tire Pressure',
-                                value: 'Value: ${selectedTyre.pressureValue}',
-                                status: 'Status: ${selectedTyre.pressureStatus}',
-                              ),
+                          _SmallMetricCardPressure(
+  s: s,
+  title: 'Tire Pressure',
+  // value: 'Value: ${selectedTyre.pressureValue}',
+  status: 'Status: ${selectedTyre.pressureStatus}',
+  reason: selectedTyre.pressureReason.trim().isEmpty
+      ? ''
+      : 'Reason: ${selectedTyre.pressureReason}',
+  confidence: selectedTyre.pressureConfidence.trim().isEmpty
+      ? ''
+      : 'Confidence: ${selectedTyre.pressureConfidence}',
+),
+
                               SizedBox(height: 12 * s),
                               _SmallMetricCard(
                                 s: s,
@@ -580,6 +587,116 @@ class _BigTreadCard extends StatelessWidget {
   }
 }
 
+class _SmallMetricCardPressure extends StatelessWidget {
+  const _SmallMetricCardPressure({
+    required this.s,
+    required this.title,
+   // required this.value,
+    required this.status,
+    required this.reason,
+    required this.confidence,
+  });
+
+  final double s;
+  final String title;
+
+  // keep same idea as previous card
+ // final String value;       // e.g. "Value: Normal"
+  final String status;      // e.g. "Status: Normal"
+  final String reason;      // e.g. "Reason: Even wear detected..."
+  final String confidence;  // e.g. "Confidence: Medium"
+
+  @override
+  Widget build(BuildContext context) {
+    final hasReason = reason.trim().isNotEmpty && reason.trim() != 'Reason: —';
+    final hasConfidence =
+        confidence.trim().isNotEmpty && confidence.trim() != 'Confidence: —';
+
+    return Container(
+      padding: EdgeInsets.all(16 * s),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18 * s),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(.10),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
+          )
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              fontFamily: 'ClashGrotesk',
+              fontSize: 22 * s,
+              fontWeight: FontWeight.w900,
+              color: const Color(0xFF00C6FF),
+            ),
+          ),
+          // SizedBox(height: 12 * s),
+
+          // // ✅ Value (line 1)
+          // Text(
+          //   value,
+          //   style: TextStyle(
+          //     fontFamily: 'ClashGrotesk',
+          //     fontSize: 16 * s,
+          //     fontWeight: FontWeight.w700,
+          //     color: const Color(0xFF111827),
+          //   ),
+          // ),
+          SizedBox(height: 8 * s),
+
+          // ✅ Status (line 2)
+          Text(
+            status,
+            style: TextStyle(
+              fontFamily: 'ClashGrotesk',
+              fontSize: 16 * s,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF111827),
+            ),
+          ),
+
+          // ✅ Reason (line 3)
+          if (hasReason) ...[
+            SizedBox(height: 8 * s),
+            Text(
+              reason,
+              style: TextStyle(
+                fontFamily: 'ClashGrotesk',
+                fontSize: 14.5 * s,
+                fontWeight: FontWeight.w600,
+                height: 1.25,
+                color: const Color(0xFF111827),
+              ),
+            ),
+          ],
+
+          // ✅ Confidence (line 4)
+          if (hasConfidence) ...[
+            SizedBox(height: 8 * s),
+            Text(
+              confidence,
+              style: TextStyle(
+                fontFamily: 'ClashGrotesk',
+                fontSize: 14.5 * s,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF111827),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+
 class _SmallMetricCard extends StatelessWidget {
   const _SmallMetricCard({
     required this.s,
@@ -680,24 +797,24 @@ class _ReportSummaryCard extends StatelessWidget {
           Row(
             children: [
               Container(
-                width: 52 * s,
-                height: 52 * s,
+                width: 46 * s,
+                height: 46 * s,
                 decoration: BoxDecoration(shape: BoxShape.circle, gradient: gradient),
-                child: Icon(Icons.description_outlined, color: Colors.white, size: 26 * s),
+                child: Icon(Icons.description_outlined, color: Colors.white, size: 24 * s),
               ),
               SizedBox(width: 12 * s),
               Expanded(
                 child: Text(
-                  'Report Summary:',
+                  'Report Summary',
                   style: TextStyle(
                     fontFamily: 'ClashGrotesk',
-                    fontSize: 26 * s,
+                    fontSize: 22 * s,
                     fontWeight: FontWeight.w900,
                     color: const Color(0xFF111827),
                   ),
                 ),
               ),
-              Icon(Icons.chevron_right_rounded, size: 30 * s, color: const Color(0xFF111827)),
+            //  Icon(Icons.chevron_right_rounded, size: 30 * s, color: const Color(0xFF111827)),
             ],
           ),
           SizedBox(height: 12 * s),
