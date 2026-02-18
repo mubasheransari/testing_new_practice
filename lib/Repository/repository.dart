@@ -13,13 +13,13 @@ import 'package:ios_tiretest_ai/models/four_wheeler_uploads_request.dart';
 import 'package:ios_tiretest_ai/models/reset_password_request.dart';
 import 'package:ios_tiretest_ai/models/reset_password_response.dart';
 import 'package:ios_tiretest_ai/models/response_four_wheeler.dart';
+import 'package:ios_tiretest_ai/models/two_wheeler_tyre_upload_response.dart';
 import 'package:ios_tiretest_ai/models/tyre_record.dart';
 import 'package:ios_tiretest_ai/models/update_user_details_model.dart';
 import 'package:ios_tiretest_ai/models/verify_email_response.dart';
 import 'package:ios_tiretest_ai/models/verify_otp_model.dart';
 import 'package:mime/mime.dart';
 import 'package:ios_tiretest_ai/models/tyre_upload_request.dart';
-import 'package:ios_tiretest_ai/models/tyre_upload_response.dart';
 import 'package:ios_tiretest_ai/models/user_profile.dart';
 import 'package:dio/dio.dart';
 import 'package:path/path.dart' as p;
@@ -66,7 +66,6 @@ Future<Result<List<NotificationItem>>> fetchNotifications({
   Future<void> saveToken(String token);
   Future<String?> getSavedToken();
   Future<void> clearToken();
-  Future<Result<TyreUploadResponse>> uploadTwoWheeler(TyreUploadRequest req);
   Future<Result<VehiclePreferencesModel>> addVehiclePreferences({
     required String vehiclePreference,
     required String brandName,
@@ -97,6 +96,9 @@ Future<Result<List<NotificationItem>>> fetchNotifications({
     required VerifyOtpRequest request,
     String? token, // if backend requires Authorization
   });
+
+  Future<Result<TwoWheelerTyreUploadResponse>> uploadTwoWheeler(TyreUploadRequest req);
+
 }
 
 class AuthRepositoryHttp implements AuthRepository {
@@ -109,7 +111,7 @@ class AuthRepositoryHttp implements AuthRepository {
   final TokenStore _tokenStore;
 
   static const String _twoWheelerUrl =
-      'http://54.162.208.215/app/tyre/twowheeler/upload';
+      'http://54.162.208.215/app/tyre/two_wheeler/upload/';
 
   static const String _profileUrl =
       'http://54.162.208.215/backend/api/profile';
@@ -179,6 +181,79 @@ class AuthRepositoryHttp implements AuthRepository {
 
     return inFile;
   }
+
+  @override
+Future<Result<TwoWheelerTyreUploadResponse>> uploadTwoWheeler(
+  TyreUploadRequest req,
+) async {
+  final uri = Uri.parse(_twoWheelerUrl);
+  final request = http.MultipartRequest('POST', uri);
+
+  final masked = req.token.length > 9
+      ? '${req.token.substring(0, 4)}…${req.token.substring(req.token.length - 4)}'
+      : '***';
+
+  request.headers.addAll({
+    HttpHeaders.authorizationHeader: 'Bearer ${req.token}',
+    HttpHeaders.acceptHeader: 'application/json',
+  });
+
+  request.fields.addAll({
+    'user_id': req.userId.trim(),
+    'vehicle_type': req.vehicleType.trim(),
+    'vehicle_id': req.vehicleId.trim(),
+    if (req.vin != null && req.vin!.trim().isNotEmpty) 'vin': req.vin!.trim(),
+  });
+
+  Future<http.MultipartFile> _file(String field, String path) async {
+    final mime = lookupMimeType(path) ?? 'image/jpeg';
+    final media = MediaType.parse(mime);
+    return http.MultipartFile.fromPath(field, path, contentType: media);
+  }
+
+  request.files.addAll([
+    await _file('front', req.frontPath),
+    await _file('back', req.backPath),
+  ]);
+
+  try {
+    // ignore: avoid_print
+    print('==[UPLOAD-2W]=> POST $_twoWheelerUrl');
+    // ignore: avoid_print
+    print('Headers: {Authorization: Bearer $masked, Accept: application/json}');
+    // ignore: avoid_print
+    print('Fields: ${request.fields}');
+    // ignore: avoid_print
+    print('Files: front=${req.frontPath} | back=${req.backPath}');
+
+    final streamed = await request.send().timeout(timeout);
+    final res = await http.Response.fromStream(streamed);
+
+    // ignore: avoid_print
+    print('<= [UPLOAD-2W] ${res.statusCode}');
+    // ignore: avoid_print
+    print('<= Body: ${res.body}');
+
+    if (res.statusCode == 200 || res.statusCode == 201) {
+      final decoded = jsonDecode(res.body);
+      if (decoded is! Map<String, dynamic>) {
+        return Result.fail(const Failure(code: 'parse', message: 'Invalid response format'));
+      }
+
+      final resp = TwoWheelerTyreUploadResponse.fromJson(decoded);
+      return Result.ok(resp);
+    }
+
+    return Result.fail(_serverFail(res));
+  } on SocketException {
+    return Result.fail(const Failure(code: 'network', message: 'No internet connection'));
+  } on TimeoutException {
+    return Result.fail(const Failure(code: 'timeout', message: 'Request timed out'));
+  } catch (e) {
+    return Result.fail(Failure(code: 'unknown', message: e.toString()));
+  }
+}
+
 
 
 
@@ -925,71 +1000,6 @@ Future<Result<ResponseFourWheeler>> uploadFourWheeler(
     }
   }
 
-  @override
-  Future<Result<TyreUploadResponse>> uploadTwoWheeler(TyreUploadRequest req) async {
-    final uri = Uri.parse(_twoWheelerUrl);
-    final request = http.MultipartRequest('POST', uri);
-
-    final masked = req.token.length > 9
-        ? '${req.token.substring(0, 4)}…${req.token.substring(req.token.length - 4)}'
-        : '***';
-
-    request.headers.addAll({
-      HttpHeaders.authorizationHeader: 'Bearer ${req.token}',
-      HttpHeaders.acceptHeader: 'application/json',
-    });
-
-    request.fields.addAll({
-      'user_id': req.userId,
-      'vehicle_type': req.vehicleType,
-      'vehicle_id': req.vehicleId,
-      if (req.vin != null && req.vin!.trim().isNotEmpty) 'vin': req.vin!.trim(),
-    });
-
-    Future<http.MultipartFile> _file(String field, String path) async {
-      final mime = lookupMimeType(path) ?? 'image/jpeg';
-      final media = MediaType.parse(mime);
-      return http.MultipartFile.fromPath(field, path, contentType: media);
-    }
-
-    request.files.addAll([
-      await _file('front', req.frontPath),
-      await _file('back', req.backPath),
-    ]);
-
-    try {
-      // ignore: avoid_print
-      print('==[UPLOAD-2W]=> POST $_twoWheelerUrl');
-      // ignore: avoid_print
-      print('Headers: {Authorization: Bearer $masked, Accept: application/json}');
-      // ignore: avoid_print
-      print('Fields: ${request.fields}');
-      // ignore: avoid_print
-      print('Files: front=${req.frontPath} | back=${req.backPath}');
-
-      final streamed = await request.send().timeout(timeout);
-      final res = await http.Response.fromStream(streamed);
-
-      // ignore: avoid_print
-      print('<= [UPLOAD-2W] ${res.statusCode}');
-      // ignore: avoid_print
-      print('<= Body: ${res.body}');
-
-      if (res.statusCode == 200) {
-        final Map<String, dynamic> parsed = jsonDecode(res.body);
-        final resp = TyreUploadResponse.fromJson(parsed);
-        return Result.ok(resp);
-      }
-
-      return Result.fail(_serverFail(res));
-    } on SocketException {
-      return Result.fail(const Failure(code: 'network', message: 'No internet connection'));
-    } on TimeoutException {
-      return Result.fail(const Failure(code: 'timeout', message: 'Request timed out'));
-    } catch (e) {
-      return Result.fail(Failure(code: 'unknown', message: e.toString()));
-    }
-  }
 
   @override
 Future<Result<List<ShopVendorModel>>> fetchNearbyShops({
@@ -1207,6 +1217,7 @@ class ApiConfig {
       'http://54.162.208.215/backend/api/addVehiclePreference';
   static const String fourWheelerUrl =
       'http://54.162.208.215/app/tyre/four_wheeler_upload/';
+      
         static const String fetchUserRecord =
       'http://54.162.208.215/app/tyre/fetch_user_record/';
        static const String shopsUrl = 'http://54.162.208.215/backend/api/shops';

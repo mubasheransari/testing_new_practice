@@ -211,29 +211,29 @@ class SignupRequested extends AuthEvent {
   List<Object?> get props => [firstName, lastName, email, password];
 }
 
-class UploadTwoWheelerRequested extends AuthEvent {
-  final String userId;
-  final String vehicleId;
-  final String token;
-  final String frontPath;
-  final String backPath;
-  final String vehicleType;
-  final String? vin;
+// class UploadTwoWheelerRequested extends AuthEvent {
+//   final String userId;
+//   final String vehicleId;
+//   final String token;
+//   final String frontPath;
+//   final String backPath;
+//   final String vehicleType;
+//   final String? vin;
 
-  const UploadTwoWheelerRequested({
-    required this.userId,
-    required this.vehicleId,
-    required this.token,
-    required this.frontPath,
-    required this.backPath,
-    this.vehicleType = 'bike',
-    this.vin,
-  });
+//   const UploadTwoWheelerRequested({
+//     required this.userId,
+//     required this.vehicleId,
+//     required this.token,
+//     required this.frontPath,
+//     required this.backPath,
+//     this.vehicleType = 'bike',
+//     this.vin,
+//   });
 
-  @override
-  List<Object?> get props =>
-      [userId, vehicleId, token, frontPath, backPath, vehicleType, vin];
-}
+//   @override
+//   List<Object?> get props =>
+//       [userId, vehicleId, token, frontPath, backPath, vehicleType, vin];
+// }
 
 class UploadFourWheelerRequested extends AuthEvent {
   final String vehicleId;
@@ -493,4 +493,36 @@ class AdsSelectRequested extends AuthEvent {
 
   @override
   List<Object?> get props => [adId];
+}
+
+class UploadTwoWheelerRequested extends AuthEvent {
+  final String userId;
+  final String vehicleId;
+  final String vehicleType; // bike, motorcycle, etc
+  final String token;
+  final String? vin;
+
+  final String frontPath;
+  final String backPath;
+
+  const UploadTwoWheelerRequested({
+    required this.userId,
+    required this.vehicleId,
+    required this.vehicleType,
+    required this.token,
+    this.vin,
+    required this.frontPath,
+    required this.backPath,
+  });
+
+  @override
+  List<Object?> get props => [
+        userId,
+        vehicleId,
+        vehicleType,
+        token,
+        vin,
+        frontPath,
+        backPath,
+      ];
 }

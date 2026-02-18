@@ -7,6 +7,7 @@ import 'package:ios_tiretest_ai/Bloc/auth_event.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_state.dart';
 import 'package:ios_tiretest_ai/Screens/notifications_screen.dart';
 import 'package:ios_tiretest_ai/Screens/scanner_screen.dart';
+import 'package:ios_tiretest_ai/Screens/vehicle_form_preferences_bike_screen.dart';
 import 'package:ios_tiretest_ai/Screens/verhicle_form_preferences_screen.dart';
 import 'package:ios_tiretest_ai/Widgets/gradient_text_widget.dart';
 import 'package:ios_tiretest_ai/Widgets/gretting_data.dart';
@@ -72,10 +73,8 @@ class InspectionHomePixelPerfect extends StatelessWidget {
               SizedBox(height: 25 * s),
               _CarCard(s: s, height: carH, width: size.width),
               SizedBox(height: 22 * s),
-              InkWell(
-                onTap: () => _openTwoWheelerScanner(context),
-                child: _BikeCard(s: s, height: bikeH, width: size.width),
-              ),
+            _BikeCard(s: s, height: bikeH, width: size.width),
+              
             ],
           ),
         ),
@@ -821,87 +820,112 @@ class _BikeCard extends StatelessWidget {
   final double width;
   final VoidCallback? onTap;
 
+  void _go(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const VehicleFormPreferencesBikeScreen(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return SizedBox(
       height: height,
       width: width - (32 * s),
-      decoration: BoxDecoration(
+      child: Material(
+        color: Colors.transparent,
         borderRadius: BorderRadius.circular(14 * s),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 18 * s,
-            offset: Offset(0, 10 * s),
-          ),
-        ],
-        image: const DecorationImage(
-          image: AssetImage('assets/bike_wheel.png'),
-          fit: BoxFit.cover,
-          alignment: Alignment.centerRight,
-        ),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Stack(
-        children: [
-          Container(
+        clipBehavior: Clip.antiAlias, // ✅ clips ripple + image properly
+        child: InkWell(
+          onTap: () => _go(context), // ✅ whole card tap
+          child: Ink(
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Colors.white.withOpacity(.96),
-                  Colors.white.withOpacity(.15),
-                ],
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
+              borderRadius: BorderRadius.circular(14 * s),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.06),
+                  blurRadius: 18 * s,
+                  offset: Offset(0, 10 * s),
+                ),
+              ],
+              image: const DecorationImage(
+                image: AssetImage('assets/bike_wheel.png'),
+                fit: BoxFit.cover,
+                alignment: Alignment.centerRight,
               ),
             ),
-          ),
-          Padding(
-            padding: EdgeInsets.all(16 * s),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Stack(
               children: [
-                GradientText(
-                  'Bike Wheel\nInspection',
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF00C6FF), Color(0xFF7F53FD)],
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                  ),
-                  style: TextStyle(
-                    fontFamily: 'ClashGrotesk',
-                    fontSize: 29 * s,
-                    fontWeight: FontWeight.w900,
-                    height: 1.05,
-                  ),
-                ),
-                SizedBox(height: 6 * s),
-                Text(
-                  'Analyze your motorcycle\ntires and get a report',
-                  style: TextStyle(
-                    fontFamily: 'ClashGrotesk',
-                    color: const Color(0xFF444B59),
-                    fontSize: 16.5 * s,
-                    fontWeight: FontWeight.w600,
-                    height: 1.25,
+                // ✅ gradient overlay (still tappable)
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.white.withOpacity(.96),
+                          Colors.white.withOpacity(.15),
+                        ],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                      ),
+                    ),
                   ),
                 ),
-                const Spacer(),
-                GestureDetector(
-                  onTap: onTap,
-                  child: _ChipButtonGradient(
-                    s: s,
-                    label: 'Scan Bike Tries',
+
+                Padding(
+                  padding: EdgeInsets.all(16 * s),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      GradientText(
+                        'Bike Wheel\nInspection',
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF00C6FF), Color(0xFF7F53FD)],
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                        ),
+                        style: TextStyle(
+                          fontFamily: 'ClashGrotesk',
+                          fontSize: 29 * s,
+                          fontWeight: FontWeight.w900,
+                          height: 1.05,
+                        ),
+                      ),
+                      SizedBox(height: 6 * s),
+                      Text(
+                        'Analyze your motorcycle\ntires and get a report',
+                        style: TextStyle(
+                          fontFamily: 'ClashGrotesk',
+                          color: const Color(0xFF444B59),
+                          fontSize: 16.5 * s,
+                          fontWeight: FontWeight.w600,
+                          height: 1.25,
+                        ),
+                      ),
+                      const Spacer(),
+
+                      // ✅ button also navigates (or uses onTap if you pass custom)
+                      InkWell(
+                        onTap: onTap ?? () => _go(context),
+                        borderRadius: BorderRadius.circular(999),
+                        child: _ChipButtonGradient(
+                          s: s,
+                          label: 'Scan Bike Tyres',
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
 }
+
 
 class _ChipButtonWhite extends StatelessWidget {
   const _ChipButtonWhite({

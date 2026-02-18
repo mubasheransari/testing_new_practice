@@ -6,6 +6,7 @@ import 'package:ios_tiretest_ai/models/auth_models.dart';
 import 'package:ios_tiretest_ai/models/reset_password_response.dart';
 import 'package:ios_tiretest_ai/models/response_four_wheeler.dart';
 import 'package:ios_tiretest_ai/models/shop_vendor.dart' hide ShopVendorModel;
+import 'package:ios_tiretest_ai/models/two_wheeler_tyre_upload_response.dart';
 import 'package:ios_tiretest_ai/models/tyre_record.dart';
 import 'package:ios_tiretest_ai/models/tyre_upload_response.dart';
 import 'package:ios_tiretest_ai/models/update_user_details_model.dart';
@@ -15,22 +16,7 @@ import 'package:ios_tiretest_ai/models/verify_email_response.dart';
 import 'package:ios_tiretest_ai/models/verify_otp_model.dart';
 
 
-import 'package:equatable/equatable.dart';
-
-import 'package:ios_tiretest_ai/Models/shop_vendor.dart';
-import 'package:ios_tiretest_ai/models/add_verhicle_preferences_model.dart';
-import 'package:ios_tiretest_ai/models/auth_models.dart';
-import 'package:ios_tiretest_ai/models/notification_models.dart';
-import 'package:ios_tiretest_ai/models/reset_password_response.dart';
-import 'package:ios_tiretest_ai/models/response_four_wheeler.dart';
-import 'package:ios_tiretest_ai/models/tyre_record.dart';
-import 'package:ios_tiretest_ai/models/tyre_upload_response.dart';
-import 'package:ios_tiretest_ai/models/update_user_details_model.dart';
-import 'package:ios_tiretest_ai/models/user_profile.dart';
-import 'package:ios_tiretest_ai/models/verify_email_response.dart';
-import 'package:ios_tiretest_ai/models/verify_otp_model.dart';
-
-
+enum TwoWheelerStatus { idle, uploading, success, failure }
 enum AdsStatus { initial, loading, success, failure }
 
 
@@ -39,7 +25,6 @@ enum ForgotResetStatus { initial, loading, success, failure }
 
 enum VerifyOtpStatus { initial, verifying, success, failure }
 enum AuthStatus { initial, loading, success, failure }
-enum TwoWheelerStatus { initial, uploading, success, failure }
 enum FourWheelerStatus { initial, uploading, success, failure }
 enum ProfileStatus { initial, loading, success, failure }
 enum AddVehiclePreferencesStatus { initial, loading, success, failure }
@@ -52,6 +37,9 @@ enum NotificationStatus { initial, loading, success, failure }
 enum ChangePasswordStatus { initial, loading, success, failure }
 
 class AuthState extends Equatable {
+    final TwoWheelerStatus twoWheelerStatus;
+  final TwoWheelerTyreUploadResponse? twoWheelerResponse;
+  final String twoWheelerError;
   final AdsStatus adsStatus;
 final List<AdItem> ads;
 final AdItem? selectedAd;
@@ -121,8 +109,7 @@ final String? adsError;
   // =========================
   // ✅ Uploads
   // =========================
-  final TwoWheelerStatus twoWheelerStatus;
-  final TyreUploadResponse? twoWheelerResponse;
+
 
   final FourWheelerStatus fourWheelerStatus;
   final ResponseFourWheeler? fourWheelerResponse;
@@ -153,6 +140,9 @@ final String? adsError;
   final String recordsVehicleType;
 
   const AuthState({
+       this.twoWheelerStatus = TwoWheelerStatus.idle,
+    this.twoWheelerResponse,
+    this.twoWheelerError = '',
       this.adsStatus = AdsStatus.initial,
   this.ads = const <AdItem>[],
   this.selectedAd,
@@ -202,9 +192,7 @@ final String? adsError;
     this.vehiclePreferencesModel,
     this.errorMessageVehiclePreferences,
 
-    // Uploads
-    this.twoWheelerStatus = TwoWheelerStatus.initial,
-    this.twoWheelerResponse,
+
     this.fourWheelerStatus = FourWheelerStatus.initial,
     this.fourWheelerResponse,
     this.fourWheelerError,
@@ -239,6 +227,9 @@ final String? adsError;
   }
 
   AuthState copyWith({
+        TwoWheelerStatus? twoWheelerStatus,
+    TwoWheelerTyreUploadResponse? twoWheelerResponse,
+    String? twoWheelerError,
       AdsStatus? adsStatus,
   List<AdItem>? ads,
   AdItem? selectedAd,
@@ -289,8 +280,7 @@ final String? adsError;
     String? errorMessageVehiclePreferences,
 
     // Uploads
-    TwoWheelerStatus? twoWheelerStatus,
-    TyreUploadResponse? twoWheelerResponse,
+
 
     FourWheelerStatus? fourWheelerStatus,
     ResponseFourWheeler? fourWheelerResponse,
@@ -315,6 +305,10 @@ final String? adsError;
     String? recordsVehicleType,
   }) {
     return AuthState(
+
+      twoWheelerStatus: twoWheelerStatus ?? this.twoWheelerStatus,
+      twoWheelerResponse: twoWheelerResponse ?? this.twoWheelerResponse,
+      twoWheelerError: twoWheelerError ?? this.twoWheelerError,
           adsStatus: adsStatus ?? this.adsStatus,
     ads: ads ?? this.ads,
     selectedAd: selectedAd ?? this.selectedAd,
@@ -370,8 +364,7 @@ final String? adsError;
           errorMessageVehiclePreferences ?? this.errorMessageVehiclePreferences,
 
       // Uploads
-      twoWheelerStatus: twoWheelerStatus ?? this.twoWheelerStatus,
-      twoWheelerResponse: twoWheelerResponse ?? this.twoWheelerResponse,
+  
       fourWheelerStatus: fourWheelerStatus ?? this.fourWheelerStatus,
       fourWheelerResponse: fourWheelerResponse ?? this.fourWheelerResponse,
       fourWheelerError: fourWheelerError ?? this.fourWheelerError,
@@ -400,6 +393,9 @@ final String? adsError;
 
   @override
   List<Object?> get props => [
+            twoWheelerStatus,
+        twoWheelerResponse,
+        twoWheelerError,
       adsStatus,
   ads,
   selectedAd,

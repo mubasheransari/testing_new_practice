@@ -13,7 +13,6 @@ import 'package:ios_tiretest_ai/models/tyre_upload_request.dart';
 import 'package:ios_tiretest_ai/Repository/repository.dart';
 import 'package:ios_tiretest_ai/models/update_user_details_model.dart' show UpdateUserDetailsRequest;
 import 'package:ios_tiretest_ai/models/user_profile.dart';
-import 'package:ios_tiretest_ai/models/verify_email_models.dart';
 import 'package:ios_tiretest_ai/models/verify_otp_model.dart';
 import '../models/auth_models.dart';
 import 'package:bloc/bloc.dart';
@@ -47,8 +46,9 @@ on<AdsSelectRequested>(_onAdsSelect);
     on<SignupRequested>(_onSignup);
     on<ClearAuthError>((e, emit) => emit(state.copyWith(error: null)));
 
-    // ✅ Uploads
-    on<UploadTwoWheelerRequested>(_onTwoWheelerUpload);
+
+   on<UploadTwoWheelerRequested>(_onUploadTwoWheeler);
+
     on<UploadFourWheelerRequested>(_onFourWheelerUpload);
 
     // ✅ Profile
@@ -97,9 +97,81 @@ on<AdsSelectRequested>(_onAdsSelect);
     return list.where((n) => !readIds.contains(n.id)).length;
   }
 
-  // ============================================================
-  // ✅ Forgot Password - Step 1: Verify Email -> returns userId
-  // ============================================================
+Future<void> _onUploadTwoWheeler(
+  UploadTwoWheelerRequested e,
+  Emitter<AuthState> emit,
+) async {
+  if (state.twoWheelerStatus == TwoWheelerStatus.uploading) return;
+
+  final box = GetStorage();
+  final token = (box.read<String>('auth_token') ?? box.read<String>('token') ?? '').trim();
+
+  if (token.isEmpty) {
+    emit(state.copyWith(
+      twoWheelerStatus: TwoWheelerStatus.failure,
+      twoWheelerError: 'Missing auth token. Please log in again.',
+    ));
+    return;
+  }
+
+  final userId = (state.profile?.userId?.toString() ?? '').trim();
+  if (userId.isEmpty) {
+    emit(state.copyWith(
+      twoWheelerStatus: TwoWheelerStatus.failure,
+      twoWheelerError: 'User profile not loaded. Please login again.',
+    ));
+    return;
+  }
+
+  if (e.vehicleId.trim().isEmpty) {
+    emit(state.copyWith(
+      twoWheelerStatus: TwoWheelerStatus.failure,
+      twoWheelerError: 'Missing vehicle_id.',
+    ));
+    return;
+  }
+
+  if (e.frontPath.trim().isEmpty || e.backPath.trim().isEmpty) {
+    emit(state.copyWith(
+      twoWheelerStatus: TwoWheelerStatus.failure,
+      twoWheelerError: 'Missing front/back tyre images.',
+    ));
+    return;
+  }
+
+  emit(state.copyWith(
+    twoWheelerStatus: TwoWheelerStatus.uploading,
+    twoWheelerError: '',
+  ));
+
+  final req = TyreUploadRequest(
+    token: token,
+    userId: userId,
+    vehicleType: (e.vehicleType.trim().isEmpty ? 'bike' : e.vehicleType.trim()),
+    vehicleId: e.vehicleId.trim(),
+    vin: (e.vin ?? '').trim().isEmpty ? null : e.vin!.trim(),
+    frontPath: e.frontPath.trim(),
+    backPath: e.backPath.trim(),
+  );
+
+  final result = await repo.uploadTwoWheeler(req);
+
+  if (result.isSuccess) {
+    emit(state.copyWith(
+      twoWheelerStatus: TwoWheelerStatus.success,
+      twoWheelerResponse: result.data,
+      twoWheelerError: '',
+    ));
+  } else {
+    emit(state.copyWith(
+      twoWheelerStatus: TwoWheelerStatus.failure,
+      twoWheelerError: result.failure?.message ?? 'Upload failed',
+    ));
+  }
+}
+
+
+
   Future<void> _onForgotVerifyEmail(
     ForgotPasswordVerifyEmailRequested event,
     Emitter<AuthState> emit,
@@ -532,88 +604,88 @@ Future<void> _onAdsSelect(AdsSelectRequested e, Emitter<AuthState> emit) async {
   // ============================================================
   // ✅ Upload Two Wheeler
   // ============================================================
-  Future<void> _onTwoWheelerUpload(
-    UploadTwoWheelerRequested e,
-    Emitter<AuthState> emit,
-  ) async {
-    final box = GetStorage();
-    final token = (box.read<String>('auth_token') ?? '').trim();
+  // Future<void> _onTwoWheelerUpload(
+  //   UploadTwoWheelerRequested e,
+  //   Emitter<AuthState> emit,
+  // ) async {
+  //   final box = GetStorage();
+  //   final token = (box.read<String>('auth_token') ?? '').trim();
 
-    if (state.twoWheelerStatus == TwoWheelerStatus.uploading) return;
+  //   if (state.twoWheelerStatus == TwoWheelerStatus.uploading) return;
 
-    if (token.isEmpty) {
-      emit(state.copyWith(
-        twoWheelerStatus: TwoWheelerStatus.failure,
-        error: 'Missing auth token. Please log in again.',
-      ));
-      return;
-    }
+  //   if (token.isEmpty) {
+  //     emit(state.copyWith(
+  //       twoWheelerStatus: TwoWheelerStatus.failure,
+  //       error: 'Missing auth token. Please log in again.',
+  //     ));
+  //     return;
+  //   }
 
-    if (state.profile?.userId == null) {
-      emit(state.copyWith(
-        twoWheelerStatus: TwoWheelerStatus.failure,
-        error: 'User profile not loaded. Please login again.',
-      ));
-      return;
-    }
+  //   if (state.profile?.userId == null) {
+  //     emit(state.copyWith(
+  //       twoWheelerStatus: TwoWheelerStatus.failure,
+  //       error: 'User profile not loaded. Please login again.',
+  //     ));
+  //     return;
+  //   }
 
-    if (e.vehicleId.trim().isEmpty) {
-      emit(state.copyWith(
-        twoWheelerStatus: TwoWheelerStatus.failure,
-        error: 'Missing vehicle_id.',
-      ));
-      return;
-    }
+  //   if (e.vehicleId.trim().isEmpty) {
+  //     emit(state.copyWith(
+  //       twoWheelerStatus: TwoWheelerStatus.failure,
+  //       error: 'Missing vehicle_id.',
+  //     ));
+  //     return;
+  //   }
 
-    if (!File(e.frontPath).existsSync()) {
-      emit(state.copyWith(
-        twoWheelerStatus: TwoWheelerStatus.failure,
-        error: 'Front image not found: ${e.frontPath}',
-      ));
-      return;
-    }
+  //   if (!File(e.frontPath).existsSync()) {
+  //     emit(state.copyWith(
+  //       twoWheelerStatus: TwoWheelerStatus.failure,
+  //       error: 'Front image not found: ${e.frontPath}',
+  //     ));
+  //     return;
+  //   }
 
-    if (!File(e.backPath).existsSync()) {
-      emit(state.copyWith(
-        twoWheelerStatus: TwoWheelerStatus.failure,
-        error: 'Back image not found: ${e.backPath}',
-      ));
-      return;
-    }
+  //   if (!File(e.backPath).existsSync()) {
+  //     emit(state.copyWith(
+  //       twoWheelerStatus: TwoWheelerStatus.failure,
+  //       error: 'Back image not found: ${e.backPath}',
+  //     ));
+  //     return;
+  //   }
 
-    emit(state.copyWith(
-      twoWheelerStatus: TwoWheelerStatus.uploading,
-      error: null,
-    ));
+  //   emit(state.copyWith(
+  //     twoWheelerStatus: TwoWheelerStatus.uploading,
+  //     error: null,
+  //   ));
 
-    final req = TyreUploadRequest(
-      userId: state.profile!.userId.toString(),
-      vehicleType: 'bike',
-      vehicleId: e.vehicleId,
-      frontPath: e.frontPath,
-      backPath: e.backPath,
-      token: token,
-      vin: e.vin,
-    );
+  //   final req = TyreUploadRequest(
+  //     userId: state.profile!.userId.toString(),
+  //     vehicleType: 'bike',
+  //     vehicleId: e.vehicleId,
+  //     frontPath: e.frontPath,
+  //     backPath: e.backPath,
+  //     token: token,
+  //     vin: e.vin,
+  //   );
 
-    final r = await repo.uploadTwoWheeler(req);
+  //   final r = await repo.uploadTwoWheeler(req);
 
-    if (r.isSuccess) {
-      emit(state.copyWith(
-        twoWheelerStatus: TwoWheelerStatus.success,
-        twoWheelerResponse: r.data,
-        error: null,
-      ));
-    } else {
-      final sc = r.failure?.statusCode;
-      final msg = r.failure?.message ??
-          'Upload failed${sc != null ? ' ($sc)' : ''}';
-      emit(state.copyWith(
-        twoWheelerStatus: TwoWheelerStatus.failure,
-        error: msg,
-      ));
-    }
-  }
+  //   if (r.isSuccess) {
+  //     emit(state.copyWith(
+  //       twoWheelerStatus: TwoWheelerStatus.success,
+  //       twoWheelerResponse: r.data,
+  //       error: null,
+  //     ));
+  //   } else {
+  //     final sc = r.failure?.statusCode;
+  //     final msg = r.failure?.message ??
+  //         'Upload failed${sc != null ? ' ($sc)' : ''}';
+  //     emit(state.copyWith(
+  //       twoWheelerStatus: TwoWheelerStatus.failure,
+  //       error: msg,
+  //     ));
+  //   }
+  // }
 
   // ============================================================
   // ✅ Upload Four Wheeler
