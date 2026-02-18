@@ -1215,7 +1215,6 @@ class ApiConfig {
       "http://54.162.208.215/backend/api/resetpassword";
       static const String getNotification =
     "http://54.162.208.215/backend/api/getNotification";
-
   static const String verifyOtp =
       "http://54.162.208.215/backend/api/verifyotp";
       static const String customAds = "http://54.162.208.215/backend/api/customads";
