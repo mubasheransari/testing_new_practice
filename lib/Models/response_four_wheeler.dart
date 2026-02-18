@@ -32,6 +32,32 @@ class ResponseFourWheeler {
       };
 }
 
+class TirePressure {
+  final String status;
+  final String reason;
+  final String confidence;
+
+  const TirePressure({
+    required this.status,
+    required this.reason,
+    required this.confidence,
+  });
+
+  static String _s(dynamic v) => v == null ? '' : v.toString();
+
+  factory TirePressure.fromJson(Map<String, dynamic> json) => TirePressure(
+        status: _s(json['status']),
+        reason: _s(json['reason']),
+        confidence: _s(json['confidence']),
+      );
+
+  Map<String, dynamic> toJson() => {
+        'status': status,
+        'reason': reason,
+        'confidence': confidence,
+      };
+}
+
 class FourWheelerData {
   final String userId;
   final String vehicleType;
@@ -64,6 +90,18 @@ class FourWheelerData {
   final String backLeftTypeImage;
   final String backRightTypeImage;
 
+  // ✅ NEW: summaries (your API provides these)
+  final String frontLeftSummary;
+  final String frontRightSummary;
+  final String backLeftSummary;
+  final String backRightSummary;
+
+  // ✅ NEW: tire pressure objects (your API provides these)
+  final TirePressure? frontLeftTirePressure;
+  final TirePressure? frontRightTirePressure;
+  final TirePressure? backLeftTirePressure;
+  final TirePressure? backRightTirePressure;
+
   const FourWheelerData({
     required this.userId,
     required this.vehicleType,
@@ -90,9 +128,17 @@ class FourWheelerData {
     required this.frontRightTypeImage,
     required this.backLeftTypeImage,
     required this.backRightTypeImage,
+    required this.frontLeftSummary,
+    required this.frontRightSummary,
+    required this.backLeftSummary,
+    required this.backRightSummary,
+    required this.frontLeftTirePressure,
+    required this.frontRightTirePressure,
+    required this.backLeftTirePressure,
+    required this.backRightTirePressure,
   });
 
-  /// ✅ helpers (handles int/string/null safely)
+  /// ✅ helpers
   static String _s(dynamic v) => v == null ? '' : v.toString();
   static int _i(dynamic v) {
     if (v == null) return 0;
@@ -100,8 +146,13 @@ class FourWheelerData {
     return int.tryParse(v.toString()) ?? 0;
   }
 
+  static TirePressure? _tp(dynamic v) {
+    if (v is Map<String, dynamic>) return TirePressure.fromJson(v);
+    if (v is Map) return TirePressure.fromJson(Map<String, dynamic>.from(v));
+    return null;
+  }
+
   factory FourWheelerData.fromJson(Map<String, dynamic> json) => FourWheelerData(
-        // NOTE: backend keys have spaces + casing exactly like you shared
         userId: _s(json['User ID']),
         vehicleType: _s(json['Vehicle type']),
         recordId: _i(json['Record ID']),
@@ -132,6 +183,18 @@ class FourWheelerData {
         frontRightTypeImage: _s(json['Front Right Type image']),
         backLeftTypeImage: _s(json['Back Left Type image']),
         backRightTypeImage: _s(json['Back Right Type image']),
+
+        // ✅ NEW summaries
+        frontLeftSummary: _s(json['Front Left Summary']),
+        frontRightSummary: _s(json['Front Right Summary']),
+        backLeftSummary: _s(json['Back Left Summary']),
+        backRightSummary: _s(json['Back Right Summary']),
+
+        // ✅ NEW pressure objects
+        frontLeftTirePressure: _tp(json['Front Left Tire pressure']),
+        frontRightTirePressure: _tp(json['Front Right Tire pressure']),
+        backLeftTirePressure: _tp(json['Back Left Tire pressure']),
+        backRightTirePressure: _tp(json['Back Right Tire pressure']),
       );
 
   Map<String, dynamic> toJson() => {
@@ -165,5 +228,17 @@ class FourWheelerData {
         'Front Right Type image': frontRightTypeImage,
         'Back Left Type image': backLeftTypeImage,
         'Back Right Type image': backRightTypeImage,
+
+        // ✅ NEW summaries
+        'Front Left Summary': frontLeftSummary,
+        'Front Right Summary': frontRightSummary,
+        'Back Left Summary': backLeftSummary,
+        'Back Right Summary': backRightSummary,
+
+        // ✅ NEW pressure objects
+        'Front Left Tire pressure': frontLeftTirePressure?.toJson(),
+        'Front Right Tire pressure': frontRightTirePressure?.toJson(),
+        'Back Left Tire pressure': backLeftTirePressure?.toJson(),
+        'Back Right Tire pressure': backRightTirePressure?.toJson(),
       };
 }

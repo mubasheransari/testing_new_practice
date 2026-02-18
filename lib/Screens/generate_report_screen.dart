@@ -9,7 +9,2014 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:ios_tiretest_ai/models/tyre_upload_response.dart' as m;
 import 'package:video_player/video_player.dart';
+import 'package:ios_tiretest_ai/models/response_four_wheeler.dart' as fw;
 
+class InspectionResultScreen extends StatefulWidget {
+  const InspectionResultScreen({
+    super.key,
+    required this.frontLeftPath,
+    required this.frontRightPath,
+    required this.backLeftPath,
+    required this.backRightPath,
+    required this.vehicleId,
+    required this.userId,
+    required this.token,
+    this.response,
+    this.fourWheelerRaw,
+  });
+
+  final String frontLeftPath;
+  final String frontRightPath;
+  final String backLeftPath;
+  final String backRightPath;
+
+  final String vehicleId;
+  final String userId;
+  final String token;
+
+  final dynamic response; // can be fw.ResponseFourWheeler OR Map OR json string
+  final Map<String, dynamic>? fourWheelerRaw;
+
+  @override
+  State<InspectionResultScreen> createState() => _InspectionResultScreenState();
+}
+
+class _InspectionResultScreenState extends State<InspectionResultScreen> {
+  static const _bg = Color(0xFFF2F2F2);
+
+  static const LinearGradient _brandGrad = LinearGradient(
+    colors: [Color(0xFF00C6FF), Color(0xFF7F53FD)],
+    begin: Alignment.centerLeft,
+    end: Alignment.centerRight,
+  );
+
+  int _selected = 0;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // keep your existing behavior
+    try {
+      final userid = context.read<AuthBloc>().state.profile?.userId?.toString();
+      if (userid != null && userid.isNotEmpty) {
+        context.read<AuthBloc>().add(FetchTyreHistoryRequested(userId: userid));
+      }
+    } catch (_) {}
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = MediaQuery.sizeOf(context).width / 393;
+
+    // ✅ Parse response into STRONGLY-TYPED model (fixes pressure showing "—")
+    final parsed = _parseFourWheeler(widget.fourWheelerRaw, widget.response);
+    final d = parsed?.data;
+
+    // ✅ chip order: Left, Front, Back, Right
+    final tyreByChipIndex = <int, _TyreUi>{
+      0: _tyreUiFromModel(
+        label: 'Front Left',
+        treadDepth: d?.frontLeftTreadDepth,
+        tyreStatus: d?.frontLeftTyreStatus,
+        damageValue: d?.frontLeftWearPatterns,
+        summary: d?.frontLeftSummary,
+        tp: d?.frontLeftTirePressure,
+      ),
+      1: _tyreUiFromModel(
+        label: 'Front Right',
+        treadDepth: d?.frontRightTreadDepth,
+        tyreStatus: d?.frontRightTyreStatus,
+        damageValue: d?.frontRightWearPatterns,
+        summary: d?.frontRightSummary,
+        tp: d?.frontRightTirePressure,
+      ),
+      2: _tyreUiFromModel(
+        label: 'Back Left',
+        treadDepth: d?.backLeftTreadDepth,
+        tyreStatus: d?.backLeftTyreStatus,
+        damageValue: d?.backLeftWearPatterns,
+        summary: d?.backLeftSummary,
+        tp: d?.backLeftTirePressure,
+      ),
+      3: _tyreUiFromModel(
+        label: 'Back Right',
+        treadDepth: d?.backRightTreadDepth,
+        tyreStatus: d?.backRightTyreStatus,
+        damageValue: d?.backRightWearPatterns,
+        summary: d?.backRightSummary,
+        tp: d?.backRightTirePressure,
+      ),
+    };
+
+    final selectedTyre = tyreByChipIndex[_selected] ?? tyreByChipIndex[0]!;
+
+    // ✅ Images: your API returns filenames, so we keep local fallback (UI unchanged)
+    final flImg = _imgProvider(localPath: widget.frontLeftPath, apiValue: d?.frontLeftWheel);
+    final frImg = _imgProvider(localPath: widget.frontRightPath, apiValue: d?.frontRightWheel);
+    final blImg = _imgProvider(localPath: widget.backLeftPath, apiValue: d?.backLeftWheel);
+    final brImg = _imgProvider(localPath: widget.backRightPath, apiValue: d?.backRightWheel);
+
+    final wheelImages = <_WheelCardData>[
+      _WheelCardData(image: flImg, label: 'left'),
+      _WheelCardData(image: frImg, label: 'Front'),
+      _WheelCardData(image: blImg, label: 'Back'),
+      _WheelCardData(image: brImg, label: 'Right'),
+    ];
+
+    final summaryText = _composeSelectedSummary(selectedTyre);
+
+    return Scaffold(
+      backgroundColor: _bg,
+      body: SafeArea(
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 14 * s, vertical: 12 * s),
+          child: Column(
+            children: [
+              SizedBox(
+                height: 190 * s,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: wheelImages.length,
+                  separatorBuilder: (_, __) => SizedBox(width: 12 * s),
+                  itemBuilder: (_, i) {
+                    final item = wheelImages[i];
+                    return _WheelImageCard(
+                      s: s,
+                      image: item.image,
+                      label: item.label,
+                      gradient: _brandGrad,
+                    );
+                  },
+                ),
+              ),
+              SizedBox(height: 12 * s),
+              _TyreChips(
+                s: s,
+                labels: const ['Left', 'Front', 'Back', 'Right'],
+                selected: _selected,
+                gradient: _brandGrad,
+                onSelect: (i) => setState(() => _selected = i),
+              ),
+              SizedBox(height: 14 * s),
+              Expanded(
+                child: ListView(
+                  padding: EdgeInsets.zero,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          flex: 11,
+                          child: _BigTreadCard(
+                            s: s,
+                            gradient: _brandGrad,
+                            treadValue: selectedTyre.treadDepth,
+                            treadStatus: selectedTyre.tyreStatus,
+                          ),
+                        ),
+                        SizedBox(width: 12 * s),
+                        Expanded(
+                          flex: 10,
+                          child: Column(
+                            children: [
+                              _SmallMetricCard(
+                                s: s,
+                                title: 'Tire Pressure',
+                                value: 'Value: ${selectedTyre.pressureValue}',
+                                status: 'Status: ${selectedTyre.pressureStatus}',
+                              ),
+                              SizedBox(height: 12 * s),
+                              _SmallMetricCard(
+                                s: s,
+                                title: 'Damage Check',
+                                value: 'Value: ${selectedTyre.damageValue}',
+                                status: 'Status: ${selectedTyre.damageStatus}',
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 16 * s),
+                    _ReportSummaryCard(
+                      s: s,
+                      gradient: _brandGrad,
+                      tyre: selectedTyre,
+                      summary: summaryText,
+                    ),
+                    SizedBox(height: 10 * s),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // -----------------------------
+  // ✅ Convert model to UI holder
+  // -----------------------------
+  _TyreUi _tyreUiFromModel({
+    required String label,
+    required String? treadDepth,
+    required String? tyreStatus,
+    required String? damageValue,
+    required String? summary,
+    required fw.TirePressure? tp,
+  }) {
+    final status = (tyreStatus ?? '').trim().isEmpty ? '—' : tyreStatus!.trim();
+
+    final pressureStatus = (tp?.status ?? '').trim().isEmpty ? '—' : tp!.status.trim();
+
+    // API has no psi/value -> show status as "Value"
+    final pressureValue = pressureStatus;
+
+    return _TyreUi(
+      label: label,
+      treadDepth: (treadDepth ?? '').trim().isEmpty ? '—' : treadDepth!.trim(),
+      tyreStatus: status,
+      damageValue: (damageValue ?? '').trim().isEmpty ? '—' : damageValue!.trim(),
+      damageStatus: status,
+      pressureValue: pressureValue,
+      pressureStatus: pressureStatus,
+      pressureReason: (tp?.reason ?? '').trim(),
+      pressureConfidence: (tp?.confidence ?? '').trim(),
+      summary: (summary ?? '').trim().isEmpty ? '—' : summary!.trim(),
+    );
+  }
+
+  String _composeSelectedSummary(_TyreUi t) {
+    final parts = <String>[];
+
+    if (t.summary.trim().isNotEmpty && t.summary != '—') {
+      parts.add(t.summary.trim());
+    }
+
+    if (t.pressureStatus != '—' ||
+        t.pressureReason.trim().isNotEmpty ||
+        t.pressureConfidence.trim().isNotEmpty) {
+      parts.add([
+        'Tire pressure:',
+        '• Status: ${t.pressureStatus}',
+        if (t.pressureReason.trim().isNotEmpty) '• Reason: ${t.pressureReason}',
+        if (t.pressureConfidence.trim().isNotEmpty)
+          '• Confidence: ${t.pressureConfidence}',
+      ].join('\n'));
+    }
+
+    return parts.isEmpty ? '—' : parts.join('\n\n');
+  }
+
+  // -----------------------------
+  // ✅ Parse response safely
+  // -----------------------------
+  fw.ResponseFourWheeler? _parseFourWheeler(
+    Map<String, dynamic>? rawOverride,
+    dynamic response,
+  ) {
+    try {
+      if (response is fw.ResponseFourWheeler) return response;
+
+      final raw = rawOverride ?? _safeToJson(response);
+
+      if (raw == null) return null;
+
+      // Sometimes you may pass only {"data":{...}} without "message"
+      if (raw.containsKey('data') && !raw.containsKey('message')) {
+        return fw.ResponseFourWheeler.fromJson({'data': raw['data'], 'message': ''});
+      }
+
+      return fw.ResponseFourWheeler.fromJson(raw);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  ImageProvider _imgProvider({required String localPath, dynamic apiValue}) {
+    final apiStr = _asNonEmptyString(apiValue);
+
+    if (apiStr != null) {
+      if (apiStr.startsWith('http://') || apiStr.startsWith('https://')) {
+        return NetworkImage(apiStr);
+      }
+      if (apiStr.startsWith('data:image')) {
+        try {
+          final base64Part = apiStr.split(',').last;
+          final bytes = base64Decode(base64Part);
+          return MemoryImage(bytes);
+        } catch (_) {}
+      }
+    }
+
+    // API returns filenames -> keep local fallback
+    return FileImage(File(localPath));
+  }
+
+  Map<String, dynamic>? _safeToJson(dynamic obj) {
+    if (obj == null) return null;
+
+    if (obj is Map<String, dynamic>) return obj;
+    if (obj is Map) return Map<String, dynamic>.from(obj);
+
+    if (obj is String) {
+      try {
+        final decoded = jsonDecode(obj);
+        if (decoded is Map<String, dynamic>) return decoded;
+        if (decoded is Map) return Map<String, dynamic>.from(decoded);
+      } catch (_) {}
+    }
+
+    try {
+      final j = (obj as dynamic).toJson();
+      if (j is Map<String, dynamic>) return j;
+      if (j is Map) return Map<String, dynamic>.from(j);
+    } catch (_) {}
+
+    try {
+      final encoded = jsonEncode(obj);
+      final decoded = jsonDecode(encoded);
+      if (decoded is Map<String, dynamic>) return decoded;
+      if (decoded is Map) return Map<String, dynamic>.from(decoded);
+    } catch (_) {}
+
+    return null;
+  }
+
+  String? _asNonEmptyString(dynamic v) {
+    if (v == null) return null;
+    final s = v.toString().trim();
+    if (s.isEmpty || s == 'null') return null;
+    return s;
+  }
+}
+
+// =============================
+// UI WIDGETS (UNCHANGED)
+// =============================
+
+class _WheelCardData {
+  const _WheelCardData({required this.image, required this.label});
+  final ImageProvider image;
+  final String label;
+}
+
+class _WheelImageCard extends StatelessWidget {
+  const _WheelImageCard({
+    required this.s,
+    required this.image,
+    required this.label,
+    required this.gradient,
+  });
+
+  final double s;
+  final ImageProvider image;
+  final String label;
+  final LinearGradient gradient;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 120 * s,
+      child: Column(
+        children: [
+          Container(
+            height: 140 * s,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(18 * s),
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(.10),
+                  blurRadius: 18,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(18 * s),
+              child: Image(image: image, fit: BoxFit.cover),
+            ),
+          ),
+          SizedBox(height: 10 * s),
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.symmetric(vertical: 8 * s),
+            decoration: BoxDecoration(
+              gradient: gradient,
+              borderRadius: BorderRadius.circular(10 * s),
+            ),
+            child: Center(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontFamily: 'ClashGrotesk',
+                  fontWeight: FontWeight.w900,
+                  fontSize: 14 * s,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TyreChips extends StatelessWidget {
+  const _TyreChips({
+    super.key,
+    required this.s,
+    required this.labels,
+    required this.selected,
+    required this.gradient,
+    required this.onSelect,
+  });
+
+  final double s;
+  final List<String> labels;
+  final int selected;
+  final LinearGradient gradient;
+  final ValueChanged<int> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: List.generate(labels.length, (i) {
+        final isSel = i == selected;
+        return Expanded(
+          child: Padding(
+            padding: EdgeInsets.only(right: i == labels.length - 1 ? 0 : 10 * s),
+            child: InkWell(
+              onTap: () => onSelect(i),
+              borderRadius: BorderRadius.circular(12 * s),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                padding: EdgeInsets.symmetric(vertical: 10 * s),
+                decoration: BoxDecoration(
+                  gradient: isSel ? gradient : null,
+                  color: isSel ? null : Colors.white,
+                  borderRadius: BorderRadius.circular(12 * s),
+                  border: Border.all(
+                    color: isSel ? Colors.transparent : const Color(0xFFE7E7E7),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(isSel ? .10 : .05),
+                      blurRadius: isSel ? 16 : 10,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: Text(
+                    labels[i],
+                    style: TextStyle(
+                      fontFamily: 'ClashGrotesk',
+                      fontSize: 13.5 * s,
+                      fontWeight: FontWeight.w900,
+                      color: isSel ? Colors.white : const Color(0xFF111827),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      }),
+    );
+  }
+}
+
+class _BigTreadCard extends StatelessWidget {
+  const _BigTreadCard({
+    required this.s,
+    required this.gradient,
+    required this.treadValue,
+    required this.treadStatus,
+  });
+
+  final double s;
+  final LinearGradient gradient;
+  final String treadValue;
+  final String treadStatus;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.all(16 * s),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18 * s),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(.10),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
+          )
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 62 * s,
+            height: 62 * s,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(.10),
+                  blurRadius: 18,
+                  offset: const Offset(0, 10),
+                )
+              ],
+            ),
+            child: Center(
+              child: ShaderMask(
+                shaderCallback: (r) => gradient.createShader(r),
+                child: Image.asset("assets/thread_depth.png", height: 34, width: 34),
+              ),
+            ),
+          ),
+          SizedBox(height: 12 * s),
+          Text(
+            'Tread Depth',
+            style: TextStyle(
+              fontFamily: 'ClashGrotesk',
+              fontSize: 20 * s,
+              fontWeight: FontWeight.w900,
+              foreground: Paint()
+                ..shader = gradient.createShader(const Rect.fromLTWH(0, 0, 200, 40)),
+            ),
+          ),
+          SizedBox(height: 12 * s),
+          Text(
+            'Value: $treadValue',
+            style: TextStyle(
+              fontFamily: 'ClashGrotesk',
+              fontSize: 16 * s,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF111827),
+            ),
+          ),
+          SizedBox(height: 8 * s),
+          Text(
+            'Status: $treadStatus',
+            style: TextStyle(
+              fontFamily: 'ClashGrotesk',
+              fontSize: 16 * s,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF111827),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SmallMetricCard extends StatelessWidget {
+  const _SmallMetricCard({
+    required this.s,
+    required this.title,
+    required this.value,
+    required this.status,
+  });
+
+  final double s;
+  final String title;
+  final String value;
+  final String status;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.all(16 * s),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18 * s),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(.10),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
+          )
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              fontFamily: 'ClashGrotesk',
+              fontSize: 22 * s,
+              fontWeight: FontWeight.w900,
+              color: const Color(0xFF00C6FF),
+            ),
+          ),
+          SizedBox(height: 12 * s),
+          Text(
+            value,
+            style: TextStyle(
+              fontFamily: 'ClashGrotesk',
+              fontSize: 16 * s,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF111827),
+            ),
+          ),
+          SizedBox(height: 8 * s),
+          Text(
+            status,
+            style: TextStyle(
+              fontFamily: 'ClashGrotesk',
+              fontSize: 16 * s,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF111827),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReportSummaryCard extends StatelessWidget {
+  const _ReportSummaryCard({
+    required this.s,
+    required this.gradient,
+    required this.tyre,
+    required this.summary,
+  });
+
+  final double s;
+  final LinearGradient gradient;
+  final _TyreUi tyre;
+  final String summary;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.all(16 * s),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18 * s),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(.10),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
+          )
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 52 * s,
+                height: 52 * s,
+                decoration: BoxDecoration(shape: BoxShape.circle, gradient: gradient),
+                child: Icon(Icons.description_outlined, color: Colors.white, size: 26 * s),
+              ),
+              SizedBox(width: 12 * s),
+              Expanded(
+                child: Text(
+                  'Report Summary:',
+                  style: TextStyle(
+                    fontFamily: 'ClashGrotesk',
+                    fontSize: 26 * s,
+                    fontWeight: FontWeight.w900,
+                    color: const Color(0xFF111827),
+                  ),
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded, size: 30 * s, color: const Color(0xFF111827)),
+            ],
+          ),
+          SizedBox(height: 12 * s),
+          Text(
+            tyre.label,
+            style: TextStyle(
+              fontFamily: 'ClashGrotesk',
+              fontSize: 14.5 * s,
+              fontWeight: FontWeight.w900,
+              foreground: Paint()..shader = gradient.createShader(const Rect.fromLTWH(0, 0, 220, 40)),
+            ),
+          ),
+          SizedBox(height: 6 * s),
+          Text(
+            summary,
+            style: TextStyle(
+              fontFamily: 'ClashGrotesk',
+              fontSize: 14.5 * s,
+              fontWeight: FontWeight.w600,
+              height: 1.35,
+              color: const Color(0xFF222222),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TyreUi {
+  _TyreUi({
+    required this.label,
+    required this.treadDepth,
+    required this.tyreStatus,
+    required this.damageValue,
+    required this.damageStatus,
+    required this.pressureValue,
+    required this.pressureStatus,
+    required this.pressureReason,
+    required this.pressureConfidence,
+    required this.summary,
+  });
+
+  final String label;
+  final String treadDepth;
+  final String tyreStatus;
+
+  final String damageValue;
+  final String damageStatus;
+
+  final String pressureValue;
+  final String pressureStatus;
+  final String pressureReason;
+  final String pressureConfidence;
+
+  final String summary;
+}
+
+// ======================================================
+// ✅ GenerateReportScreen (UI unchanged)
+// ======================================================
+
+class GenerateReportScreen extends StatefulWidget {
+  const GenerateReportScreen({
+    super.key,
+    required this.frontLeftPath,
+    required this.frontRightPath,
+    required this.backLeftPath,
+    required this.backRightPath,
+    required this.userId,
+    required this.vehicleId,
+    required this.token,
+    required this.vin,
+    required this.frontLeftTyreId,
+    required this.frontRightTyreId,
+    required this.backLeftTyreId,
+    required this.backRightTyreId,
+    this.vehicleType = 'car',
+  });
+
+  final String frontLeftPath;
+  final String frontRightPath;
+  final String backLeftPath;
+  final String backRightPath;
+
+  final String userId;
+  final String vehicleId;
+  final String token;
+
+  final String vin;
+
+  final String frontLeftTyreId;
+  final String frontRightTyreId;
+  final String backLeftTyreId;
+  final String backRightTyreId;
+
+  final String vehicleType;
+
+  @override
+  State<GenerateReportScreen> createState() => _GenerateReportScreenState();
+}
+
+class _GenerateReportScreenState extends State<GenerateReportScreen> {
+  bool _fired = false;
+  bool _navigated = false;
+
+  fw.ResponseFourWheeler? _apiResponse;
+
+  VideoPlayerController? _videoCtrl;
+  String _currentUrl = '';
+
+  @override
+  void initState() {
+    super.initState();
+
+    context.read<AuthBloc>().add(AdsFetchRequested(token: widget.token, silent: true));
+    _startUpload();
+  }
+
+  void _startUpload() {
+    if (_fired) return;
+    _fired = true;
+
+    context.read<AuthBloc>().add(
+      UploadFourWheelerRequested(
+        vehicleId: widget.vehicleId,
+        vehicleType: widget.vehicleType,
+        vin: widget.vin,
+        frontLeftTyreId: widget.frontLeftTyreId,
+        frontRightTyreId: widget.frontRightTyreId,
+        backLeftTyreId: widget.backLeftTyreId,
+        backRightTyreId: widget.backRightTyreId,
+        frontLeftPath: widget.frontLeftPath,
+        frontRightPath: widget.frontRightPath,
+        backLeftPath: widget.backLeftPath,
+        backRightPath: widget.backRightPath,
+      ),
+    );
+  }
+
+  Future<void> _playVideo(String url) async {
+    final u = url.trim();
+    if (u.isEmpty) return;
+    if (_currentUrl == u && _videoCtrl != null) return;
+
+    _currentUrl = u;
+
+    try {
+      final old = _videoCtrl;
+
+      final ctrl = VideoPlayerController.networkUrl(Uri.parse(u));
+      await ctrl.initialize();
+      await ctrl.setLooping(true);
+      await ctrl.play();
+
+      if (!mounted) {
+        await ctrl.dispose();
+        return;
+      }
+
+      setState(() => _videoCtrl = ctrl);
+      await old?.dispose();
+    } catch (_) {}
+  }
+
+  void _navigateToResult() {
+    if (!mounted || _navigated) return;
+    _navigated = true;
+
+    final vc = _videoCtrl;
+    _videoCtrl = null;
+    vc?.dispose();
+
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => InspectionResultScreen(
+          frontLeftPath: widget.frontLeftPath,
+          frontRightPath: widget.frontRightPath,
+          backLeftPath: widget.backLeftPath,
+          backRightPath: widget.backRightPath,
+          vehicleId: widget.vehicleId,
+          userId: widget.userId,
+          token: widget.token,
+          response: _apiResponse,
+        ),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    final vc = _videoCtrl;
+    _videoCtrl = null;
+    vc?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: MultiBlocListener(
+        listeners: [
+          BlocListener<AuthBloc, AuthState>(
+            listenWhen: (p, c) =>
+                p.selectedAd?.media != c.selectedAd?.media || p.adsStatus != c.adsStatus,
+            listener: (context, state) {
+              final media = state.selectedAd?.media ?? '';
+              if (media.trim().isNotEmpty) {
+                _playVideo(media);
+              }
+            },
+          ),
+          BlocListener<AuthBloc, AuthState>(
+            listenWhen: (p, c) => p.fourWheelerStatus != c.fourWheelerStatus,
+            listener: (context, state) {
+              if (state.fourWheelerStatus == FourWheelerStatus.success) {
+                _apiResponse = state.fourWheelerResponse as fw.ResponseFourWheeler?;
+                _navigateToResult();
+              }
+            },
+          ),
+        ],
+        child: _FullscreenVideoOnly(controller: _videoCtrl),
+      ),
+    );
+  }
+}
+
+class _FullscreenVideoOnly extends StatelessWidget {
+  const _FullscreenVideoOnly({required this.controller});
+  final VideoPlayerController? controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = controller;
+
+    if (c == null || !c.value.isInitialized) {
+      return const ColoredBox(color: Colors.black);
+    }
+
+    return SizedBox.expand(
+      child: FittedBox(
+        fit: BoxFit.cover,
+        child: SizedBox(
+          width: c.value.size.width,
+          height: c.value.size.height,
+          child: VideoPlayer(c),
+        ),
+      ),
+    );
+  }
+}
+
+// import 'dart:convert';
+// import 'dart:io';
+
+// import 'package:flutter/material.dart';
+// import 'package:flutter_bloc/flutter_bloc.dart';
+// import 'package:ios_tiretest_ai/Bloc/auth_bloc.dart';
+// import 'package:ios_tiretest_ai/Bloc/auth_event.dart';
+// import 'package:ios_tiretest_ai/Bloc/auth_state.dart';
+
+// class InspectionResultScreen extends StatefulWidget {
+//   const InspectionResultScreen({
+//     super.key,
+//     required this.frontLeftPath,
+//     required this.frontRightPath,
+//     required this.backLeftPath,
+//     required this.backRightPath,
+//     required this.vehicleId,
+//     required this.userId,
+//     required this.token,
+//     this.response,
+//     this.fourWheelerRaw,
+//   });
+
+//   final String frontLeftPath;
+//   final String frontRightPath;
+//   final String backLeftPath;
+//   final String backRightPath;
+
+//   final String vehicleId;
+//   final String userId;
+//   final String token;
+
+//   final dynamic response;
+//   final Map<String, dynamic>? fourWheelerRaw;
+
+//   @override
+//   State<InspectionResultScreen> createState() => _InspectionResultScreenState();
+// }
+
+// class _InspectionResultScreenState extends State<InspectionResultScreen> {
+//   static const _bg = Color(0xFFF2F2F2);
+
+//   static const LinearGradient _brandGrad = LinearGradient(
+//     colors: [Color(0xFF00C6FF), Color(0xFF7F53FD)],
+//     begin: Alignment.centerLeft,
+//     end: Alignment.centerRight,
+//   );
+
+//   int _selected = 0;
+
+//   @override
+//   void initState() {
+//     super.initState();
+
+//     // keep your existing behavior
+//     try {
+//       final userid = context.read<AuthBloc>().state.profile?.userId?.toString();
+//       if (userid != null && userid.isNotEmpty) {
+//         context.read<AuthBloc>().add(FetchTyreHistoryRequested(userId: userid));
+//       }
+//     } catch (_) {}
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     final s = MediaQuery.sizeOf(context).width / 393;
+
+//     final raw =
+//         widget.fourWheelerRaw ?? _safeToJson(widget.response) ?? const <String, dynamic>{};
+
+//     // ✅ your response is { "data": { ...flat keys... } }
+//     final data = _unwrapApiRoot(raw);
+
+//     print("DATA CHECK ${data['User ID']}");
+//     print("DATA CHECK ${data['Front Left Tyre status']}");
+//     print("DATA CHECK ${data['Back Left Tire pressure']}");
+
+//     // ✅ chip order: Left, Front, Back, Right
+//     final tyreByChipIndex = <int, _TyreUi>{
+//       0: _buildTyreUi(data, label: 'Front Left', keyPrefix: 'Front Left'),
+//       1: _buildTyreUi(data, label: 'Front Right', keyPrefix: 'Front Right'),
+//       2: _buildTyreUi(data, label: 'Back Left', keyPrefix: 'Back Left'),
+//       3: _buildTyreUi(data, label: 'Back Right', keyPrefix: 'Back Right'),
+//     };
+
+//     final selectedTyre = tyreByChipIndex[_selected] ?? tyreByChipIndex[0]!;
+
+
+//     final flImg = _imgProvider(
+//       localPath: widget.frontLeftPath,
+//       apiValue: _getAnyKey(data, const ['Front Left Wheel', 'Front Left wheel']),
+//     );
+//     final frImg = _imgProvider(
+//       localPath: widget.frontRightPath,
+//       apiValue: _getAnyKey(data, const ['Front Right Wheel', 'Front Right wheel']),
+//     );
+//     final blImg = _imgProvider(
+//       localPath: widget.backLeftPath,
+//       apiValue: _getAnyKey(data, const ['Back Left Wheel', 'Back Left wheel']),
+//     );
+//     final brImg = _imgProvider(
+//       localPath: widget.backRightPath,
+//       apiValue: _getAnyKey(data, const ['Back Right Wheel', 'Back Right wheel']),
+//     );
+
+//     final wheelImages = <_WheelCardData>[
+//       _WheelCardData(image: flImg, label: 'left'),
+//       _WheelCardData(image: frImg, label: 'Front'),
+//       _WheelCardData(image: blImg, label: 'Back'),
+//       _WheelCardData(image: brImg, label: 'Right'),
+//     ];
+
+//     final summaryText = _composeSelectedSummary(selectedTyre);
+
+//     return Scaffold(
+//       backgroundColor: _bg,
+//       body: SafeArea(
+//         child: Padding(
+//           padding: EdgeInsets.symmetric(horizontal: 14 * s, vertical: 12 * s),
+//           child: Column(
+//             children: [
+//               SizedBox(
+//                 height: 190 * s,
+//                 child: ListView.separated(
+//                   scrollDirection: Axis.horizontal,
+//                   itemCount: wheelImages.length,
+//                   separatorBuilder: (_, __) => SizedBox(width: 12 * s),
+//                   itemBuilder: (_, i) {
+//                     final item = wheelImages[i];
+//                     return _WheelImageCard(
+//                       s: s,
+//                       image: item.image,
+//                       label: item.label,
+//                       gradient: _brandGrad,
+//                     );
+//                   },
+//                 ),
+//               ),
+//               SizedBox(height: 12 * s),
+
+//               _TyreChips(
+//                 s: s,
+//                 labels: const ['Left', 'Front', 'Back', 'Right'],
+//                 selected: _selected,
+//                 gradient: _brandGrad,
+//                 onSelect: (i) => setState(() => _selected = i),
+//               ),
+
+//               SizedBox(height: 14 * s),
+
+//               Expanded(
+//                 child: ListView(
+//                   padding: EdgeInsets.zero,
+//                   children: [
+//                     Row(
+//                       crossAxisAlignment: CrossAxisAlignment.start,
+//                       children: [
+//                         Expanded(
+//                           flex: 11,
+//                           child: _BigTreadCard(
+//                             s: s,
+//                             gradient: _brandGrad,
+//                             treadValue: selectedTyre.treadDepth,
+//                             treadStatus: selectedTyre.tyreStatus,
+//                           ),
+//                         ),
+//                         SizedBox(width: 12 * s),
+//                         Expanded(
+//                           flex: 10,
+//                           child: Column(
+//                             children: [
+//                               _SmallMetricCard(
+//                                 s: s,
+//                                 title: 'Tire Pressure',
+//                                 value: 'Value: ${selectedTyre.pressureValue}',
+//                                 status: 'Status: ${selectedTyre.pressureStatus}',
+//                               ),
+//                               SizedBox(height: 12 * s),
+//                               _SmallMetricCard(
+//                                 s: s,
+//                                 title: 'Damage Check',
+//                                 value: 'Value: ${selectedTyre.damageValue}',
+//                                 status: 'Status: ${selectedTyre.damageStatus}',
+//                               ),
+//                             ],
+//                           ),
+//                         ),
+//                       ],
+//                     ),
+//                     SizedBox(height: 16 * s),
+
+//                     _ReportSummaryCard(
+//                       s: s,
+//                       gradient: _brandGrad,
+//                       tyre: selectedTyre,
+//                       summary: summaryText,
+//                     ),
+//                     SizedBox(height: 10 * s),
+//                   ],
+//                 ),
+//               ),
+//             ],
+//           ),
+//         ),
+//       ),
+//     );
+//   }
+
+//   // ✅ EXACT KEYS based on your API response
+//   _TyreUi _buildTyreUi(
+//     Map<String, dynamic> data, {
+//     required String label,
+//     required String keyPrefix, // "Front Left"
+//   }) {
+//     final treadDepth = _asNonEmptyString(_getAnyKey(data, [
+//       '$keyPrefix Tread depth',
+//       '$keyPrefix Tread Depth',
+//     ]));
+
+//     final tyreStatus = _asNonEmptyString(_getAnyKey(data, [
+//       '$keyPrefix Tyre status',
+//       '$keyPrefix Tire status',
+//     ]));
+
+//     final wearPatterns = _asNonEmptyString(_getAnyKey(data, [
+//       '$keyPrefix Wear patterns',
+//       '$keyPrefix wear patterns',
+//       '$keyPrefix Wear Patterns',
+//     ]));
+
+//     final summary = _asNonEmptyString(_getAnyKey(data, [
+//       '$keyPrefix Summary',
+//       '$keyPrefix summary',
+//     ]));
+
+//     final pressureObj = _getAnyKey(data, [
+//       '$keyPrefix Tire pressure',
+//       '$keyPrefix Tyre pressure',
+//       '$keyPrefix tire pressure',
+//       '$keyPrefix tyre pressure',
+//     ]);
+
+//     String pressureStatus = '—';
+//     String pressureReason = '';
+//     String pressureConfidence = '';
+//     String pressureValue = '—';
+
+//     if (pressureObj is Map) {
+//       final m = Map<String, dynamic>.from(pressureObj);
+//       pressureStatus = _asNonEmptyString(m['status']) ?? '—';
+//       pressureReason = _asNonEmptyString(m['reason']) ?? '';
+//       pressureConfidence = _asNonEmptyString(m['confidence']) ?? '';
+//       pressureValue = _asNonEmptyString(m['value']) ??
+//           _asNonEmptyString(m['psi']) ??
+//           pressureStatus; // your API has no psi/value -> show status as value
+//     } else {
+//       final s = _asNonEmptyString(pressureObj);
+//       if (s != null) {
+//         pressureStatus = s;
+//         pressureValue = s;
+//       }
+//     }
+
+//     return _TyreUi(
+//       label: label,
+//       treadDepth: treadDepth ?? '—',
+//       tyreStatus: tyreStatus ?? '—',
+//       damageValue: wearPatterns ?? '—',
+//       damageStatus: tyreStatus ?? '—',
+//       pressureValue: pressureValue,
+//       pressureStatus: pressureStatus,
+//       pressureReason: pressureReason,
+//       pressureConfidence: pressureConfidence,
+//       summary: summary ?? '—',
+//     );
+//   }
+
+//   String _composeSelectedSummary(_TyreUi t) {
+//     final parts = <String>[];
+
+//     if (t.summary.trim().isNotEmpty && t.summary != '—') {
+//       parts.add(t.summary.trim());
+//     }
+
+//     // include full pressure info inside same summary text (UI unchanged)
+//     if (t.pressureStatus != '—' ||
+//         t.pressureReason.trim().isNotEmpty ||
+//         t.pressureConfidence.trim().isNotEmpty) {
+//       parts.add([
+//         'Tire pressure:',
+//         '• Status: ${t.pressureStatus}',
+//         if (t.pressureReason.trim().isNotEmpty) '• Reason: ${t.pressureReason}',
+//         if (t.pressureConfidence.trim().isNotEmpty)
+//           '• Confidence: ${t.pressureConfidence}',
+//       ].join('\n'));
+//     }
+
+//     return parts.isEmpty ? '—' : parts.join('\n\n');
+//   }
+
+//   // -----------------------------
+//   // Helpers
+//   // -----------------------------
+//   Map<String, dynamic> _unwrapApiRoot(Map<String, dynamic> raw) {
+//     Map<String, dynamic> cur = raw;
+//     for (int i = 0; i < 6; i++) {
+//       final next = _tryReadMap(cur, const ['data', 'result', 'payload']);
+//       if (next == null) break;
+//       cur = next;
+//     }
+//     return cur;
+//   }
+
+//   // ✅ Get by exact key OR normalized key (spaces/case/underscore/dash)
+//   dynamic _getAnyKey(Map<String, dynamic> root, List<String> keys) {
+//     for (final k in keys) {
+//       if (root.containsKey(k)) return root[k];
+//     }
+
+//     String norm(String x) => x.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+//     final idx = <String, String>{};
+//     for (final actual in root.keys) {
+//       idx[norm(actual)] = actual;
+//     }
+
+//     for (final want in keys) {
+//       final hit = idx[norm(want)];
+//       if (hit != null) return root[hit];
+//     }
+
+//     return null;
+//   }
+
+//   ImageProvider _imgProvider({required String localPath, dynamic apiValue}) {
+//     final apiStr = _asNonEmptyString(apiValue);
+
+//     // if backend returns full URL/base64, show it
+//     if (apiStr != null) {
+//       if (apiStr.startsWith('http://') || apiStr.startsWith('https://')) {
+//         return NetworkImage(apiStr);
+//       }
+//       if (apiStr.startsWith('data:image')) {
+//         try {
+//           final base64Part = apiStr.split(',').last;
+//           final bytes = base64Decode(base64Part);
+//           return MemoryImage(bytes);
+//         } catch (_) {}
+//       }
+//     }
+
+//     // otherwise your API returns filename string -> keep local fallback
+//     return FileImage(File(localPath));
+//   }
+
+//   Map<String, dynamic>? _safeToJson(dynamic obj) {
+//     if (obj == null) return null;
+//     if (obj is Map<String, dynamic>) return obj;
+//     if (obj is Map) return Map<String, dynamic>.from(obj);
+
+//     try {
+//       final j = (obj as dynamic).toJson();
+//       if (j is Map<String, dynamic>) return j;
+//       if (j is Map) return Map<String, dynamic>.from(j);
+//     } catch (_) {}
+
+//     try {
+//       final encoded = jsonEncode(obj);
+//       final decoded = jsonDecode(encoded);
+//       if (decoded is Map<String, dynamic>) return decoded;
+//       if (decoded is Map) return Map<String, dynamic>.from(decoded);
+//     } catch (_) {}
+
+//     return null;
+//   }
+
+//   Map<String, dynamic>? _tryReadMap(Map<String, dynamic> root, List<String> keys) {
+//     for (final k in keys) {
+//       final v = root[k];
+//       if (v is Map<String, dynamic>) return v;
+//       if (v is Map) return Map<String, dynamic>.from(v);
+//     }
+//     return null;
+//   }
+
+//   String? _asNonEmptyString(dynamic v) {
+//     if (v == null) return null;
+//     final s = v.toString().trim();
+//     if (s.isEmpty || s == 'null') return null;
+//     return s;
+//   }
+// }
+
+// // =============================
+// // UI WIDGETS (UNCHANGED)
+// // =============================
+
+// class _WheelCardData {
+//   const _WheelCardData({required this.image, required this.label});
+//   final ImageProvider image;
+//   final String label;
+// }
+
+// class _WheelImageCard extends StatelessWidget {
+//   const _WheelImageCard({
+//     required this.s,
+//     required this.image,
+//     required this.label,
+//     required this.gradient,
+//   });
+
+//   final double s;
+//   final ImageProvider image;
+//   final String label;
+//   final LinearGradient gradient;
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return SizedBox(
+//       width: 120 * s,
+//       child: Column(
+//         children: [
+//           Container(
+//             height: 140 * s,
+//             decoration: BoxDecoration(
+//               borderRadius: BorderRadius.circular(18 * s),
+//               color: Colors.white,
+//               boxShadow: [
+//                 BoxShadow(
+//                   color: Colors.black.withOpacity(.10),
+//                   blurRadius: 18,
+//                   offset: const Offset(0, 10),
+//                 ),
+//               ],
+//             ),
+//             child: ClipRRect(
+//               borderRadius: BorderRadius.circular(18 * s),
+//               child: Image(image: image, fit: BoxFit.cover),
+//             ),
+//           ),
+//           SizedBox(height: 10 * s),
+//           Container(
+//             width: double.infinity,
+//             padding: EdgeInsets.symmetric(vertical: 8 * s),
+//             decoration: BoxDecoration(
+//               gradient: gradient,
+//               borderRadius: BorderRadius.circular(10 * s),
+//             ),
+//             child: Center(
+//               child: Text(
+//                 label,
+//                 style: TextStyle(
+//                   fontFamily: 'ClashGrotesk',
+//                   fontWeight: FontWeight.w900,
+//                   fontSize: 14 * s,
+//                   color: Colors.white,
+//                 ),
+//               ),
+//             ),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+// }
+
+// class _TyreChips extends StatelessWidget {
+//   const _TyreChips({
+//     super.key,
+//     required this.s,
+//     required this.labels,
+//     required this.selected,
+//     required this.gradient,
+//     required this.onSelect,
+//   });
+
+//   final double s;
+//   final List<String> labels;
+//   final int selected;
+//   final LinearGradient gradient;
+//   final ValueChanged<int> onSelect;
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Row(
+//       children: List.generate(labels.length, (i) {
+//         final isSel = i == selected;
+//         return Expanded(
+//           child: Padding(
+//             padding: EdgeInsets.only(right: i == labels.length - 1 ? 0 : 10 * s),
+//             child: InkWell(
+//               onTap: () => onSelect(i),
+//               borderRadius: BorderRadius.circular(12 * s),
+//               child: AnimatedContainer(
+//                 duration: const Duration(milliseconds: 180),
+//                 padding: EdgeInsets.symmetric(vertical: 10 * s),
+//                 decoration: BoxDecoration(
+//                   gradient: isSel ? gradient : null,
+//                   color: isSel ? null : Colors.white,
+//                   borderRadius: BorderRadius.circular(12 * s),
+//                   border: Border.all(
+//                     color: isSel ? Colors.transparent : const Color(0xFFE7E7E7),
+//                   ),
+//                   boxShadow: [
+//                     BoxShadow(
+//                       color: Colors.black.withOpacity(isSel ? .10 : .05),
+//                       blurRadius: isSel ? 16 : 10,
+//                       offset: const Offset(0, 8),
+//                     ),
+//                   ],
+//                 ),
+//                 child: Center(
+//                   child: Text(
+//                     labels[i],
+//                     style: TextStyle(
+//                       fontFamily: 'ClashGrotesk',
+//                       fontSize: 13.5 * s,
+//                       fontWeight: FontWeight.w900,
+//                       color: isSel ? Colors.white : const Color(0xFF111827),
+//                     ),
+//                   ),
+//                 ),
+//               ),
+//             ),
+//           ),
+//         );
+//       }),
+//     );
+//   }
+// }
+
+// class _BigTreadCard extends StatelessWidget {
+//   const _BigTreadCard({
+//     required this.s,
+//     required this.gradient,
+//     required this.treadValue,
+//     required this.treadStatus,
+//   });
+
+//   final double s;
+//   final LinearGradient gradient;
+//   final String treadValue;
+//   final String treadStatus;
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Container(
+//       padding: EdgeInsets.all(16 * s),
+//       decoration: BoxDecoration(
+//         color: Colors.white,
+//         borderRadius: BorderRadius.circular(18 * s),
+//         boxShadow: [
+//           BoxShadow(
+//             color: Colors.black.withOpacity(.10),
+//             blurRadius: 18,
+//             offset: const Offset(0, 10),
+//           )
+//         ],
+//       ),
+//       child: Column(
+//         crossAxisAlignment: CrossAxisAlignment.start,
+//         children: [
+//           Container(
+//             width: 62 * s,
+//             height: 62 * s,
+//             decoration: BoxDecoration(
+//               shape: BoxShape.circle,
+//               color: Colors.white,
+//               boxShadow: [
+//                 BoxShadow(
+//                   color: Colors.black.withOpacity(.10),
+//                   blurRadius: 18,
+//                   offset: const Offset(0, 10),
+//                 )
+//               ],
+//             ),
+//             child: Center(
+//               child: ShaderMask(
+//                 shaderCallback: (r) => gradient.createShader(r),
+//                 child: Image.asset("assets/thread_depth.png", height: 34, width: 34),
+//               ),
+//             ),
+//           ),
+//           SizedBox(height: 12 * s),
+//           Text(
+//             'Tread Depth',
+//             style: TextStyle(
+//               fontFamily: 'ClashGrotesk',
+//               fontSize: 20 * s,
+//               fontWeight: FontWeight.w900,
+//               foreground: Paint()..shader = gradient.createShader(const Rect.fromLTWH(0, 0, 200, 40)),
+//             ),
+//           ),
+//           SizedBox(height: 12 * s),
+//           Text(
+//             'Value: $treadValue',
+//             style: TextStyle(
+//               fontFamily: 'ClashGrotesk',
+//               fontSize: 16 * s,
+//               fontWeight: FontWeight.w700,
+//               color: const Color(0xFF111827),
+//             ),
+//           ),
+//           SizedBox(height: 8 * s),
+//           Text(
+//             'Status: $treadStatus',
+//             style: TextStyle(
+//               fontFamily: 'ClashGrotesk',
+//               fontSize: 16 * s,
+//               fontWeight: FontWeight.w700,
+//               color: const Color(0xFF111827),
+//             ),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+// }
+
+// class _SmallMetricCard extends StatelessWidget {
+//   const _SmallMetricCard({
+//     required this.s,
+//     required this.title,
+//     required this.value,
+//     required this.status,
+//   });
+
+//   final double s;
+//   final String title;
+//   final String value;
+//   final String status;
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Container(
+//       padding: EdgeInsets.all(16 * s),
+//       decoration: BoxDecoration(
+//         color: Colors.white,
+//         borderRadius: BorderRadius.circular(18 * s),
+//         boxShadow: [
+//           BoxShadow(
+//             color: Colors.black.withOpacity(.10),
+//             blurRadius: 18,
+//             offset: const Offset(0, 10),
+//           )
+//         ],
+//       ),
+//       child: Column(
+//         crossAxisAlignment: CrossAxisAlignment.start,
+//         children: [
+//           Text(
+//             title,
+//             style: TextStyle(
+//               fontFamily: 'ClashGrotesk',
+//               fontSize: 22 * s,
+//               fontWeight: FontWeight.w900,
+//               color: const Color(0xFF00C6FF),
+//             ),
+//           ),
+//           SizedBox(height: 12 * s),
+//           Text(
+//             value,
+//             style: TextStyle(
+//               fontFamily: 'ClashGrotesk',
+//               fontSize: 16 * s,
+//               fontWeight: FontWeight.w700,
+//               color: const Color(0xFF111827),
+//             ),
+//           ),
+//           SizedBox(height: 8 * s),
+//           Text(
+//             status,
+//             style: TextStyle(
+//               fontFamily: 'ClashGrotesk',
+//               fontSize: 16 * s,
+//               fontWeight: FontWeight.w700,
+//               color: const Color(0xFF111827),
+//             ),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+// }
+
+// class _ReportSummaryCard extends StatelessWidget {
+//   const _ReportSummaryCard({
+//     required this.s,
+//     required this.gradient,
+//     required this.tyre,
+//     required this.summary,
+//   });
+
+//   final double s;
+//   final LinearGradient gradient;
+//   final _TyreUi tyre;
+//   final String summary;
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Container(
+//       padding: EdgeInsets.all(16 * s),
+//       decoration: BoxDecoration(
+//         color: Colors.white,
+//         borderRadius: BorderRadius.circular(18 * s),
+//         boxShadow: [
+//           BoxShadow(
+//             color: Colors.black.withOpacity(.10),
+//             blurRadius: 18,
+//             offset: const Offset(0, 10),
+//           )
+//         ],
+//       ),
+//       child: Column(
+//         crossAxisAlignment: CrossAxisAlignment.start,
+//         children: [
+//           Row(
+//             children: [
+//               Container(
+//                 width: 52 * s,
+//                 height: 52 * s,
+//                 decoration: BoxDecoration(shape: BoxShape.circle, gradient: gradient),
+//                 child: Icon(Icons.description_outlined, color: Colors.white, size: 26 * s),
+//               ),
+//               SizedBox(width: 12 * s),
+//               Expanded(
+//                 child: Text(
+//                   'Report Summary:',
+//                   style: TextStyle(
+//                     fontFamily: 'ClashGrotesk',
+//                     fontSize: 26 * s,
+//                     fontWeight: FontWeight.w900,
+//                     color: const Color(0xFF111827),
+//                   ),
+//                 ),
+//               ),
+//               Icon(Icons.chevron_right_rounded, size: 30 * s, color: const Color(0xFF111827)),
+//             ],
+//           ),
+//           SizedBox(height: 12 * s),
+//           Text(
+//             tyre.label,
+//             style: TextStyle(
+//               fontFamily: 'ClashGrotesk',
+//               fontSize: 14.5 * s,
+//               fontWeight: FontWeight.w900,
+//               foreground: Paint()..shader = gradient.createShader(const Rect.fromLTWH(0, 0, 220, 40)),
+//             ),
+//           ),
+//           SizedBox(height: 6 * s),
+//           Text(
+//             summary,
+//             style: TextStyle(
+//               fontFamily: 'ClashGrotesk',
+//               fontSize: 14.5 * s,
+//               fontWeight: FontWeight.w600,
+//               height: 1.35,
+//               color: const Color(0xFF222222),
+//             ),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+// }
+
+// class _TyreUi {
+//   _TyreUi({
+//     required this.label,
+//     required this.treadDepth,
+//     required this.tyreStatus,
+//     required this.damageValue,
+//     required this.damageStatus,
+//     required this.pressureValue,
+//     required this.pressureStatus,
+//     required this.pressureReason,
+//     required this.pressureConfidence,
+//     required this.summary,
+//   });
+
+//   final String label;
+//   final String treadDepth;
+//   final String tyreStatus;
+
+//   final String damageValue;
+//   final String damageStatus;
+
+//   final String pressureValue;
+//   final String pressureStatus;
+//   final String pressureReason;
+//   final String pressureConfidence;
+
+//   final String summary;
+// }
+
+
+// class GenerateReportScreen extends StatefulWidget {
+//   const GenerateReportScreen({
+//     super.key,
+//     required this.frontLeftPath,
+//     required this.frontRightPath,
+//     required this.backLeftPath,
+//     required this.backRightPath,
+//     required this.userId,
+//     required this.vehicleId,
+//     required this.token,
+//     required this.vin,
+//     required this.frontLeftTyreId,
+//     required this.frontRightTyreId,
+//     required this.backLeftTyreId,
+//     required this.backRightTyreId,
+//     this.vehicleType = 'car',
+//   });
+
+//   final String frontLeftPath;
+//   final String frontRightPath;
+//   final String backLeftPath;
+//   final String backRightPath;
+
+//   final String userId;
+//   final String vehicleId;
+//   final String token;
+
+//   final String vin;
+
+//   final String frontLeftTyreId;
+//   final String frontRightTyreId;
+//   final String backLeftTyreId;
+//   final String backRightTyreId;
+
+//   final String vehicleType;
+
+//   @override
+//   State<GenerateReportScreen> createState() => _GenerateReportScreenState();
+// }
+
+// class _GenerateReportScreenState extends State<GenerateReportScreen> {
+//   bool _fired = false;
+//   bool _navigated = false;
+
+//   m.ResponseFourWheeler? _apiResponse;
+
+//   VideoPlayerController? _videoCtrl;
+//   String _currentUrl = '';
+
+//   @override
+//   void initState() {
+//     super.initState();
+
+//     // 1) fetch ads immediately (silent)
+//     context.read<AuthBloc>().add(AdsFetchRequested(token: widget.token, silent: true));
+
+//     // 2) fire your four-wheeler upload immediately
+//     _startUpload();
+//   }
+
+//   void _startUpload() {
+//     if (_fired) return;
+//     _fired = true;
+
+//     context.read<AuthBloc>().add(
+//       UploadFourWheelerRequested(
+//         vehicleId: widget.vehicleId,
+//         vehicleType: widget.vehicleType,
+//         vin: widget.vin,
+//         frontLeftTyreId: widget.frontLeftTyreId,
+//         frontRightTyreId: widget.frontRightTyreId,
+//         backLeftTyreId: widget.backLeftTyreId,
+//         backRightTyreId: widget.backRightTyreId,
+//         frontLeftPath: widget.frontLeftPath,
+//         frontRightPath: widget.frontRightPath,
+//         backLeftPath: widget.backLeftPath,
+//         backRightPath: widget.backRightPath,
+//       ),
+//     );
+//   }
+
+//   Future<void> _playVideo(String url) async {
+//     final u = url.trim();
+//     if (u.isEmpty) return;
+//     if (_currentUrl == u && _videoCtrl != null) return;
+
+//     _currentUrl = u;
+
+//     try {
+//       final old = _videoCtrl;
+
+//       final ctrl = VideoPlayerController.networkUrl(Uri.parse(u));
+
+//       await ctrl.initialize();
+//       await ctrl.setLooping(true);
+//       await ctrl.play();
+
+//       if (!mounted) {
+//         await ctrl.dispose();
+//         return;
+//       }
+
+//       setState(() => _videoCtrl = ctrl);
+//       await old?.dispose();
+//     } catch (_) {}
+//   }
+
+//   void _navigateToResult() {
+//     if (!mounted || _navigated) return;
+//     _navigated = true;
+
+//     final vc = _videoCtrl;
+//     _videoCtrl = null;
+//     vc?.dispose();
+
+//     Navigator.of(context).pushReplacement(
+//       MaterialPageRoute(
+//         builder: (_) => InspectionResultScreen(
+//           frontLeftPath: widget.frontLeftPath,
+//           frontRightPath: widget.frontRightPath,
+//           backLeftPath: widget.backLeftPath,
+//           backRightPath: widget.backRightPath,
+//           vehicleId: widget.vehicleId,
+//           userId: widget.userId,
+//           token: widget.token,
+//           response: _apiResponse,
+//         ),
+//       ),
+//     );
+//   }
+
+//   @override
+//   void dispose() {
+//     final vc = _videoCtrl;
+//     _videoCtrl = null;
+//     vc?.dispose();
+//     super.dispose();
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       body: MultiBlocListener(
+//         listeners: [
+//           BlocListener<AuthBloc, AuthState>(
+//             listenWhen: (p, c) =>
+//                 p.selectedAd?.media != c.selectedAd?.media || p.adsStatus != c.adsStatus,
+//             listener: (context, state) {
+//               final media = state.selectedAd?.media ?? '';
+//               if (media.trim().isNotEmpty) {
+//                 _playVideo(media);
+//               }
+//             },
+//           ),
+//           BlocListener<AuthBloc, AuthState>(
+//             listenWhen: (p, c) => p.fourWheelerStatus != c.fourWheelerStatus,
+//             listener: (context, state) {
+//               if (state.fourWheelerStatus == FourWheelerStatus.success) {
+//                 _apiResponse = state.fourWheelerResponse;
+//                 _navigateToResult();
+//               }
+//               if (state.fourWheelerStatus == FourWheelerStatus.failure) {
+//                 // keep silent
+//               }
+//             },
+//           ),
+//         ],
+//         child: _FullscreenVideoOnly(controller: _videoCtrl),
+//       ),
+//     );
+//   }
+// }
+
+// class _FullscreenVideoOnly extends StatelessWidget {
+//   const _FullscreenVideoOnly({required this.controller});
+//   final VideoPlayerController? controller;
+
+//   @override
+//   Widget build(BuildContext context) {
+//     final c = controller;
+
+//     if (c == null || !c.value.isInitialized) {
+//       return const ColoredBox(color: Colors.black);
+//     }
+
+//     return SizedBox.expand(
+//       child: FittedBox(
+//         fit: BoxFit.cover,
+//         child: SizedBox(
+//           width: c.value.size.width,
+//           height: c.value.size.height,
+//           child: VideoPlayer(c),
+//         ),
+//       ),
+//     );
+//   }
+// }
+
+// class _AdVideoBackground extends StatelessWidget {
+//   const _AdVideoBackground({required this.controller});
+//   final VideoPlayerController? controller;
+
+//   @override
+//   Widget build(BuildContext context) {
+//     final c = controller;
+//     if (c == null || !c.value.isInitialized) {
+//       return Container(
+//         color: Colors.black,
+//         child: const Center(child: CircularProgressIndicator()),
+//       );
+//     }
+
+//     return FittedBox(
+//       fit: BoxFit.cover,
+//       child: SizedBox(
+//         width: c.value.size.width,
+//         height: c.value.size.height,
+//         child: VideoPlayer(c),
+//       ),
+//     );
+//   }
+// }
+
+// class _BottomLeftProgressPill extends StatelessWidget {
+//   const _BottomLeftProgressPill({required this.scale, required this.progress});
+
+//   final double scale;
+//   final Animation<double> progress;
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return SizedBox(
+//       width: 160 * scale,
+//       height: 46 * scale,
+//       child: ClipRRect(
+//         borderRadius: BorderRadius.circular(999),
+//         child: Stack(
+//           children: [
+//             Container(color: Colors.white.withOpacity(.22)),
+//             AnimatedBuilder(
+//               animation: progress,
+//               builder: (_, __) {
+//                 return FractionallySizedBox(
+//                   widthFactor: progress.value.clamp(0, 1),
+//                   child: Container(color: Colors.white.withOpacity(.35)),
+//                 );
+//               },
+//             ),
+//             Center(
+//               child: Text(
+//                 'Generating…',
+//                 style: TextStyle(
+//                   fontFamily: 'ClashGrotesk',
+//                   color: Colors.white,
+//                   fontSize: 14 * scale,
+//                   fontWeight: FontWeight.w800,
+//                 ),
+//               ),
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+// }
+
+
+/*
+import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/material.dart';
 
 class InspectionResultScreen extends StatefulWidget {
   const InspectionResultScreen({
@@ -62,9 +2069,7 @@ class _InspectionResultScreenState extends State<InspectionResultScreen> {
       if (userid != null && userid.isNotEmpty) {
         context.read<AuthBloc>().add(FetchTyreHistoryRequested(userId: userid));
       }
-    } catch (_) {
-      // ignore if bloc not available in this context
-    }
+    } catch (_) {}
   }
 
   @override
@@ -74,37 +2079,34 @@ class _InspectionResultScreenState extends State<InspectionResultScreen> {
     final raw =
         widget.fourWheelerRaw ?? _safeToJson(widget.response) ?? const <String, dynamic>{};
 
-    // API shape: { data: {...} }
-    final data = _tryReadMap(raw, const ['data', 'result', 'payload']) ?? raw;
+    // ✅ unwrap {data:{...}} / {result:{...}} / {payload:{...}} (even nested)
+    final data = _unwrapApiRoot(raw);
 
-    // ✅ IMPORTANT: chip order is ['Left','Front','Back','Right']
-    // and must map to: Front Left, Front Right, Back Left, Back Right
+    // ✅ chip order fixed: Left, Front, Back, Right
     final tyreByChipIndex = <int, _TyreUi>{
-      0: _buildTyreUi(data, label: 'Front Left', keyPrefix: 'Front Left'), // Left
-      1: _buildTyreUi(data, label: 'Front Right', keyPrefix: 'Front Right'), // Front
-      2: _buildTyreUi(data, label: 'Back Left', keyPrefix: 'Back Left'), // Back
-      3: _buildTyreUi(data, label: 'Back Right', keyPrefix: 'Back Right'), // Right
+      0: _buildTyreUi(data, label: 'Front Left', keyPrefix: 'Front Left'),
+      1: _buildTyreUi(data, label: 'Front Right', keyPrefix: 'Front Right'),
+      2: _buildTyreUi(data, label: 'Back Left', keyPrefix: 'Back Left'),
+      3: _buildTyreUi(data, label: 'Back Right', keyPrefix: 'Back Right'),
     };
 
-    final tyres = tyreByChipIndex.values.toList();
     final selectedTyre = tyreByChipIndex[_selected] ?? tyreByChipIndex[0]!;
 
-    // ---- images (api may return url/base64; fallback local paths)
     final flImg = _imgProvider(
       localPath: widget.frontLeftPath,
-      apiValue: _pickAnyLoose(data, const ['Front Left wheel', 'frontLeftWheelUrl', 'front_left_wheel_url']),
+      apiValue: _pickAnyDeep(data, const ['Front Left wheel', 'frontLeftWheelUrl', 'front_left_wheel_url']),
     );
     final frImg = _imgProvider(
       localPath: widget.frontRightPath,
-      apiValue: _pickAnyLoose(data, const ['Front Right wheel', 'frontRightWheelUrl', 'front_right_wheel_url']),
+      apiValue: _pickAnyDeep(data, const ['Front Right wheel', 'frontRightWheelUrl', 'front_right_wheel_url']),
     );
     final blImg = _imgProvider(
       localPath: widget.backLeftPath,
-      apiValue: _pickAnyLoose(data, const ['Back Left wheel', 'backLeftWheelUrl', 'back_left_wheel_url']),
+      apiValue: _pickAnyDeep(data, const ['Back Left wheel', 'backLeftWheelUrl', 'back_left_wheel_url']),
     );
     final brImg = _imgProvider(
       localPath: widget.backRightPath,
-      apiValue: _pickAnyLoose(data, const ['Back Right wheel', 'backRightWheelUrl', 'back_right_wheel_url']),
+      apiValue: _pickAnyDeep(data, const ['Back Right wheel', 'backRightWheelUrl', 'back_right_wheel_url']),
     );
 
     final wheelImages = <_WheelCardData>[
@@ -114,6 +2116,9 @@ class _InspectionResultScreenState extends State<InspectionResultScreen> {
       _WheelCardData(image: brImg, label: 'Right'),
     ];
 
+    // ✅ show ONLY selected tyre summary + full pressure details (same UI)
+    final summaryText = _composeSelectedSummary(selectedTyre);
+
     return Scaffold(
       backgroundColor: _bg,
       body: SafeArea(
@@ -121,7 +2126,6 @@ class _InspectionResultScreenState extends State<InspectionResultScreen> {
           padding: EdgeInsets.symmetric(horizontal: 14 * s, vertical: 12 * s),
           child: Column(
             children: [
-              // ======= TOP IMAGES (like model) =======
               SizedBox(
                 height: 190 * s,
                 child: ListView.separated(
@@ -139,10 +2143,8 @@ class _InspectionResultScreenState extends State<InspectionResultScreen> {
                   },
                 ),
               ),
-
               SizedBox(height: 12 * s),
 
-              // ======= CHIPS (same style) =======
               _TyreChips(
                 s: s,
                 labels: const ['Left', 'Front', 'Back', 'Right'],
@@ -157,7 +2159,6 @@ class _InspectionResultScreenState extends State<InspectionResultScreen> {
                 child: ListView(
                   padding: EdgeInsets.zero,
                   children: [
-                    // ======= METRIC CARDS (same layout) =======
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -178,782 +2179,7 @@ class _InspectionResultScreenState extends State<InspectionResultScreen> {
                               _SmallMetricCard(
                                 s: s,
                                 title: 'Tire Pressure',
-                                // value: selectedTyre.pressureValue == '—'
-                                //     ? 'Value: —'
-                                //     : 'Value: ${selectedTyre.pressureValue}',
-                                status: 'Status: ${selectedTyre.pressureStatus}',
-                              ),
-                              SizedBox(height: 12 * s),
-                              _SmallMetricCard(
-                                s: s,
-                                title: 'Damage Check',
-                              //  value: 'Value: ${selectedTyre.damageValue}',
-                                status: 'Status: ${selectedTyre.damageStatus}',
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    SizedBox(height: 16 * s),
-
-                    // ✅ REPORT SUMMARY: show ONLY selected tyre summary (UI same card)
-                    _ReportSummaryCard(
-                      summary: selectedTyre.damageValue,
-                      s: s,
-                      gradient: _brandGrad,
-                      tyre: selectedTyre,
-                    ),
-
-                    SizedBox(height: 10 * s),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // -----------------------------
-  // Build per-tyre UI from API map
-  // -----------------------------
-  _TyreUi _buildTyreUi(
-    Map<String, dynamic> data, {
-    required String label,
-    required String keyPrefix,
-  }) {
-    final treadDepth = _asNonEmptyString(_pickAnyLoose(data, [
-      '$keyPrefix Tread depth',
-      '$keyPrefix Tread Depth',
-      '${keyPrefix}_tread_depth',
-      '${keyPrefix.toLowerCase().replaceAll(' ', '_')}_tread_depth',
-    ]));
-
-    final tyreStatus = _asNonEmptyString(_pickAnyLoose(data, [
-      '$keyPrefix Tyre status',
-      '$keyPrefix Tire status',
-      '$keyPrefix tyre status',
-      '$keyPrefix tire status',
-    ]));
-
-    final damageValue = _asNonEmptyString(_pickAnyLoose(data, [
-      '$keyPrefix wear patterns',
-      '$keyPrefix Wear patterns',
-      '$keyPrefix wearPatterns',
-      '${keyPrefix}_wear_patterns',
-    ]));
-
-    // ✅ Pressure object EXACT from your API:
-    // "Front Left Tire pressure": { status, reason, confidence }
-    final pressureObj = _pickAnyLoose(data, [
-      '$keyPrefix Tire pressure',
-      '$keyPrefix Tyre pressure',
-    ]);
-
-    String? pressureStatus;
-    String? pressureReason;
-    String? pressureConfidence;
-
-    // ✅ Value shown in UI (API doesn't provide psi/value -> use status as "Value")
-    String? pressureValue;
-
-    if (pressureObj is Map) {
-      final m = Map<String, dynamic>.from(pressureObj);
-      pressureStatus = _asNonEmptyString(m['status']);
-      pressureReason = _asNonEmptyString(m['reason']);
-      pressureConfidence = _asNonEmptyString(m['confidence']);
-
-      pressureValue =
-          _asNonEmptyString(m['value']) ?? _asNonEmptyString(m['psi']) ?? pressureStatus;
-    } else {
-      pressureStatus = _asNonEmptyString(pressureObj);
-      pressureValue = pressureStatus;
-    }
-
-    // ✅ Summary EXACT from your API:
-    // "Front Left Summary": "...."
-    final summary = _asNonEmptyString(_pickAnyLoose(data, [
-      '$keyPrefix Summary',
-      '$keyPrefix summary',
-      '${keyPrefix}_summary',
-      '${keyPrefix.toLowerCase().replaceAll(' ', '_')}_summary',
-    ]));
-
-    return _TyreUi(
-      label: label,
-      treadDepth: treadDepth ?? '—',
-      tyreStatus: tyreStatus ?? '—',
-      damageValue: damageValue ?? '—',
-      damageStatus: tyreStatus ?? '—',
-      pressureValue: pressureValue ?? '—',
-      pressureStatus: pressureStatus ?? '—',
-      pressureReason: pressureReason ?? '',
-      pressureConfidence: pressureConfidence ?? '',
-      summary: summary ?? '—',
-    );
-  }
-
-  // -----------------------------
-  // Helpers (same behavior)
-  // -----------------------------
-  ImageProvider _imgProvider({required String localPath, dynamic apiValue}) {
-    final apiStr = _asNonEmptyString(apiValue);
-    if (apiStr != null) {
-      if (apiStr.startsWith('http://') || apiStr.startsWith('https://')) {
-        return NetworkImage(apiStr);
-      }
-      if (apiStr.startsWith('data:image')) {
-        try {
-          final base64Part = apiStr.split(',').last;
-          final bytes = base64Decode(base64Part);
-          return MemoryImage(bytes);
-        } catch (_) {}
-      }
-    }
-    return FileImage(File(localPath));
-  }
-
-  Map<String, dynamic>? _safeToJson(dynamic obj) {
-    if (obj == null) return null;
-    if (obj is Map<String, dynamic>) return obj;
-    if (obj is Map) return Map<String, dynamic>.from(obj);
-
-    try {
-      final j = (obj as dynamic).toJson();
-      if (j is Map<String, dynamic>) return j;
-      if (j is Map) return Map<String, dynamic>.from(j);
-    } catch (_) {}
-
-    try {
-      final encoded = jsonEncode(obj);
-      final decoded = jsonDecode(encoded);
-      if (decoded is Map<String, dynamic>) return decoded;
-      if (decoded is Map) return Map<String, dynamic>.from(decoded);
-    } catch (_) {}
-
-    return null;
-  }
-
-  Map<String, dynamic>? _tryReadMap(Map<String, dynamic> root, List<String> keys) {
-    for (final k in keys) {
-      final v = root[k];
-      if (v is Map<String, dynamic>) return v;
-      if (v is Map) return Map<String, dynamic>.from(v);
-    }
-    return null;
-  }
-
-  String? _asNonEmptyString(dynamic v) {
-    if (v == null) return null;
-    final s = v.toString().trim();
-    if (s.isEmpty || s == 'null') return null;
-    return s;
-  }
-
-  // ✅ New: loose key matcher (handles spaces/case)
-  dynamic _pickAnyLoose(Map<String, dynamic> root, List<String> keys) {
-    // direct check first
-    for (final k in keys) {
-      if (root.containsKey(k)) return root[k];
-    }
-    // loose check
-    String norm(String x) => x.toLowerCase().replaceAll(RegExp(r'[\s_\-]'), '');
-    final mapNorm = <String, String>{};
-    for (final actual in root.keys) {
-      mapNorm[norm(actual)] = actual;
-    }
-    for (final want in keys) {
-      final hit = mapNorm[norm(want)];
-      if (hit != null) return root[hit];
-    }
-    return null;
-  }
-}
-
-// =============================
-// MODEL UI WIDGETS (UI unchanged)
-// =============================
-
-class _WheelCardData {
-  const _WheelCardData({required this.image, required this.label});
-  final ImageProvider image;
-  final String label;
-}
-
-class _WheelImageCard extends StatelessWidget {
-  const _WheelImageCard({
-    required this.s,
-    required this.image,
-    required this.label,
-    required this.gradient,
-  });
-
-  final double s;
-  final ImageProvider image;
-  final String label;
-  final LinearGradient gradient;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 120 * s,
-      child: Column(
-        children: [
-          Container(
-            height: 140 * s,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(18 * s),
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(.10),
-                  blurRadius: 18,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(18 * s),
-              child: Image(image: image, fit: BoxFit.cover),
-            ),
-          ),
-          SizedBox(height: 10 * s),
-          Container(
-            width: double.infinity,
-            padding: EdgeInsets.symmetric(vertical: 8 * s),
-            decoration: BoxDecoration(
-              gradient: gradient,
-              borderRadius: BorderRadius.circular(10 * s),
-            ),
-            child: Center(
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontFamily: 'ClashGrotesk',
-                  fontWeight: FontWeight.w900,
-                  fontSize: 14 * s,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TyreChips extends StatelessWidget {
-  const _TyreChips({
-    super.key,
-    required this.s,
-    required this.labels,
-    required this.selected,
-    required this.gradient,
-    required this.onSelect,
-  });
-
-  final double s;
-  final List<String> labels;
-  final int selected;
-  final LinearGradient gradient;
-  final ValueChanged<int> onSelect;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: List.generate(labels.length, (i) {
-        final isSel = i == selected;
-        return Expanded(
-          child: Padding(
-            padding: EdgeInsets.only(right: i == labels.length - 1 ? 0 : 10 * s),
-            child: InkWell(
-              onTap: () => onSelect(i),
-              borderRadius: BorderRadius.circular(12 * s),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                padding: EdgeInsets.symmetric(vertical: 10 * s),
-                decoration: BoxDecoration(
-                  gradient: isSel ? gradient : null,
-                  color: isSel ? null : Colors.white,
-                  borderRadius: BorderRadius.circular(12 * s),
-                  border: Border.all(
-                    color: isSel ? Colors.transparent : const Color(0xFFE7E7E7),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(isSel ? .10 : .05),
-                      blurRadius: isSel ? 16 : 10,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
-                child: Center(
-                  child: Text(
-                    labels[i],
-                    style: TextStyle(
-                      fontFamily: 'ClashGrotesk',
-                      fontSize: 13.5 * s,
-                      fontWeight: FontWeight.w900,
-                      color: isSel ? Colors.white : const Color(0xFF111827),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-      }),
-    );
-  }
-}
-
-class _BigTreadCard extends StatelessWidget {
-  const _BigTreadCard({
-    required this.s,
-    required this.gradient,
-    required this.treadValue,
-    required this.treadStatus,
-  });
-
-  final double s;
-  final LinearGradient gradient;
-  final String treadValue;
-  final String treadStatus;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.all(16 * s),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18 * s),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(.10),
-            blurRadius: 18,
-            offset: const Offset(0, 10),
-          )
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // icon circle
-          Container(
-            width: 62 * s,
-            height: 62 * s,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(.10),
-                  blurRadius: 18,
-                  offset: const Offset(0, 10),
-                )
-              ],
-            ),
-            child: Center(
-              child: ShaderMask(
-                shaderCallback: (r) => gradient.createShader(r),
-                child: Image.asset(
-                  "assets/thread_depth.png",
-                  height: 34,
-                  width: 34,
-                ),
-              ),
-            ),
-          ),
-          SizedBox(height: 12 * s),
-          Text(
-            'Tread Depth',
-            style: TextStyle(
-              fontFamily: 'ClashGrotesk',
-              fontSize: 20 * s,
-              fontWeight: FontWeight.w900,
-              foreground: Paint()
-                ..shader = gradient.createShader(const Rect.fromLTWH(0, 0, 200, 40)),
-            ),
-          ),
-          SizedBox(height: 12 * s),
-          Text(
-            'Value: $treadValue',
-            style: TextStyle(
-              fontFamily: 'ClashGrotesk',
-              fontSize: 16 * s,
-              fontWeight: FontWeight.w700,
-              color: const Color(0xFF111827),
-            ),
-          ),
-          SizedBox(height: 8 * s),
-          Text(
-            'Status: $treadStatus',
-            style: TextStyle(
-              fontFamily: 'ClashGrotesk',
-              fontSize: 16 * s,
-              fontWeight: FontWeight.w700,
-              color: const Color(0xFF111827),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SmallMetricCard extends StatelessWidget {
-  const _SmallMetricCard({
-    required this.s,
-    required this.title,
-   /// required this.value,
-    required this.status,
-  });
-
-  final double s;
-  final String title;
-  //final String value;
-  final String status;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.all(16 * s),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18 * s),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(.10),
-            blurRadius: 18,
-            offset: const Offset(0, 10),
-          )
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: TextStyle(
-              fontFamily: 'ClashGrotesk',
-              fontSize: 22 * s,
-              fontWeight: FontWeight.w900,
-              color: const Color(0xFF00C6FF),
-            ),
-          ),
-          SizedBox(height: 12 * s),
-          // Text(
-          //   value,
-          //   style: TextStyle(
-          //     fontFamily: 'ClashGrotesk',
-          //     fontSize: 16 * s,
-          //     fontWeight: FontWeight.w700,
-          //     color: const Color(0xFF111827),
-          //   ),
-          // ),
-          // SizedBox(height: 8 * s),
-          Text(
-            status,
-            style: TextStyle(
-              fontFamily: 'ClashGrotesk',
-              fontSize: 16 * s,
-              fontWeight: FontWeight.w700,
-              color: const Color(0xFF111827),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ReportSummaryCard extends StatelessWidget {
-  const _ReportSummaryCard({
-    required this.s,
-    required this.gradient,
-    required this.tyre,
-    required this.summary
-  });
-
-  final double s;
-  final LinearGradient gradient;
-  final _TyreUi tyre;
-  final String summary;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.all(16 * s),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18 * s),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(.10),
-            blurRadius: 18,
-            offset: const Offset(0, 10),
-          )
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // header row like model
-          Row(
-            children: [
-              Container(
-                width: 52 * s,
-                height: 52 * s,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: gradient,
-                ),
-                child: Icon(Icons.description_outlined, color: Colors.white, size: 26 * s),
-              ),
-              SizedBox(width: 12 * s),
-              Expanded(
-                child: Text(
-                  'Report Summary:',
-                  style: TextStyle(
-                    fontFamily: 'ClashGrotesk',
-                    fontSize: 26 * s,
-                    fontWeight: FontWeight.w900,
-                    color: const Color(0xFF111827),
-                  ),
-                ),
-              ),
-              Icon(Icons.chevron_right_rounded, size: 30 * s, color: const Color(0xFF111827)),
-            ],
-          ),
-
-          SizedBox(height: 12 * s),
-
-          // ✅ Only selected tyre summary (no UI change)
-          Text(
-            tyre.label,
-            style: TextStyle(
-              fontFamily: 'ClashGrotesk',
-              fontSize: 14.5 * s,
-              fontWeight: FontWeight.w900,
-              foreground: Paint()..shader = gradient.createShader(const Rect.fromLTWH(0, 0, 220, 40)),
-            ),
-          ),
-          SizedBox(height: 6 * s),
-          Text(
-            summary,
-            style: TextStyle(
-              fontFamily: 'ClashGrotesk',
-              fontSize: 14.5 * s,
-              fontWeight: FontWeight.w600,
-              height: 1.35,
-              color: const Color(0xFF222222),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// =============================
-// Data holder
-// =============================
-class _TyreUi {
-  _TyreUi({
-    required this.label,
-    required this.treadDepth,
-    required this.tyreStatus,
-    required this.damageValue,
-    required this.damageStatus,
-    required this.pressureValue,
-    required this.pressureStatus,
-    required this.pressureReason,
-    required this.pressureConfidence,
-    required this.summary,
-  });
-
-  final String label;
-
-  final String treadDepth;
-  final String tyreStatus;
-
-  final String damageValue;
-  final String damageStatus;
-
-  final String pressureValue;
-  final String pressureStatus;
-  final String pressureReason;
-  final String pressureConfidence;
-
-  final String summary;
-}
-
-
-
-/*
-class InspectionResultScreen extends StatefulWidget {
-  const InspectionResultScreen({
-    super.key,
-    required this.frontLeftPath,
-    required this.frontRightPath,
-    required this.backLeftPath,
-    required this.backRightPath,
-    required this.vehicleId,
-    required this.userId,
-    required this.token,
-    this.response,
-    this.fourWheelerRaw,
-  });
-
-  final String frontLeftPath;
-  final String frontRightPath;
-  final String backLeftPath;
-  final String backRightPath;
-
-  final String vehicleId;
-  final String userId;
-  final String token;
-
-  final dynamic response;
-  final Map<String, dynamic>? fourWheelerRaw;
-
-  @override
-  State<InspectionResultScreen> createState() => _InspectionResultScreenState();
-}
-
-class _InspectionResultScreenState extends State<InspectionResultScreen> {
-  static const _bg = Color(0xFFF2F2F2);
-  static const _card = Colors.white;
-
-  static const LinearGradient _brandGrad = LinearGradient(
-    colors: [Color(0xFF00C6FF), Color(0xFF7F53FD)],
-    begin: Alignment.centerLeft,
-    end: Alignment.centerRight,
-  );
-
-  int _selected = 0;
-
-  @override
-  void initState() {
-    super.initState();
-
-    final userid = context.read<AuthBloc>().state.profile?.userId?.toString();
-    if (userid != null && userid.isNotEmpty) {
-      context.read<AuthBloc>().add(FetchTyreHistoryRequested(userId: userid));
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final s = MediaQuery.sizeOf(context).width / 393;
-
-    final raw = widget.fourWheelerRaw ?? _safeToJson(widget.response) ?? const <String, dynamic>{};
-    final data = _tryReadMap(raw, const ['data', 'result', 'payload']) ?? raw;
-
-    final tyres = <_TyreUi>[
-      _buildTyreUi(data, label: 'Front Left', keyPrefix: 'Front Left'),
-      _buildTyreUi(data, label: 'Front Right', keyPrefix: 'Front Right'),
-      _buildTyreUi(data, label: 'Back Left', keyPrefix: 'Back Left'),
-      _buildTyreUi(data, label: 'Back Right', keyPrefix: 'Back Right'),
-    ];
-
-    final selectedTyre = tyres[_selected.clamp(0, tyres.length - 1)];
-
-    final flImg = _imgProvider(
-      localPath: widget.frontLeftPath,
-      apiValue: _pickAny(data, const ['Front Left wheel', 'frontLeftWheelUrl', 'front_left_wheel_url']),
-    );
-    final frImg = _imgProvider(
-      localPath: widget.frontRightPath,
-      apiValue: _pickAny(data, const ['Front Right wheel', 'frontRightWheelUrl', 'front_right_wheel_url']),
-    );
-    final blImg = _imgProvider(
-      localPath: widget.backLeftPath,
-      apiValue: _pickAny(data, const ['Back Left wheel', 'backLeftWheelUrl', 'back_left_wheel_url']),
-    );
-    final brImg = _imgProvider(
-      localPath: widget.backRightPath,
-      apiValue: _pickAny(data, const ['Back Right wheel', 'backRightWheelUrl', 'back_right_wheel_url']),
-    );
-
-    final wheelImages = <_WheelCardData>[
-      _WheelCardData(image: flImg, label: 'left'),
-      _WheelCardData(image: frImg, label: 'Front'),
-      _WheelCardData(image: blImg, label: 'Back'),
-      _WheelCardData(image: brImg, label: 'Right'),
-    ];
-
-    return Scaffold(
-      backgroundColor: _bg,
-      body: SafeArea(
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 14 * s, vertical: 12 * s),
-          child: Column(
-            children: [
-              // ======= TOP IMAGES (like model) =======
-              SizedBox(
-                height: 190 * s,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: wheelImages.length,
-                  separatorBuilder: (_, __) => SizedBox(width: 12 * s),
-                  itemBuilder: (_, i) {
-                    final item = wheelImages[i];
-                    return _WheelImageCard(
-                      s: s,
-                      image: item.image,
-                      label: item.label,
-                      gradient: _brandGrad,
-                    );
-                  },
-                ),
-              ),
-
-              SizedBox(height: 12 * s),
-
-              // ======= CHIPS (same style) =======
-              _TyreChips(
-                s: s,
-                labels: const ['Left', 'Front', 'Back', 'Right'],
-                selected: _selected,
-                gradient: _brandGrad,
-                onSelect: (i) => setState(() => _selected = i),
-              ),
-
-              SizedBox(height: 14 * s),
-
-              Expanded(
-                child: ListView(
-                  padding: EdgeInsets.zero,
-                  children: [
-                    // ======= METRIC CARDS (same layout) =======
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          flex: 11,
-                          child: _BigTreadCard(
-                            s: s,
-                            gradient: _brandGrad,
-                            treadValue: selectedTyre.treadDepth,
-                            treadStatus: selectedTyre.tyreStatus,
-                          ),
-                        ),
-                        SizedBox(width: 12 * s),
-                        Expanded(
-                          flex: 10,
-                          child: Column(
-                            children: [
-                              _SmallMetricCard(
-                                s: s,
-                                title: 'Tire Pressure',
-                                value: selectedTyre.pressureValue == '—'
-                                    ? 'Value: —'
-                                    : 'Value: ${selectedTyre.pressureValue}',
+                                value: 'Value: ${selectedTyre.pressureValue}',
                                 status: 'Status: ${selectedTyre.pressureStatus}',
                               ),
                               SizedBox(height: 12 * s),
@@ -968,14 +2194,13 @@ class _InspectionResultScreenState extends State<InspectionResultScreen> {
                         ),
                       ],
                     ),
-
                     SizedBox(height: 16 * s),
 
-                    // ======= REPORT SUMMARY (same card style) =======
                     _ReportSummaryCard(
                       s: s,
                       gradient: _brandGrad,
-                      tyres: tyres,
+                      tyre: selectedTyre,
+                      summary: summaryText,
                     ),
 
                     SizedBox(height: 10 * s),
@@ -989,54 +2214,68 @@ class _InspectionResultScreenState extends State<InspectionResultScreen> {
     );
   }
 
-
-  _TyreUi _buildTyreUi(Map<String, dynamic> data, {required String label, required String keyPrefix}) {
-    final treadDepth = _asNonEmptyString(_pickAny(data, [
+  // ✅ IMPORTANT: this now matches your API EXACTLY
+  _TyreUi _buildTyreUi(
+    Map<String, dynamic> data, {
+    required String label,
+    required String keyPrefix,
+  }) {
+    final treadDepth = _asNonEmptyString(_pickAnyDeep(data, [
       '$keyPrefix Tread depth',
       '$keyPrefix Tread Depth',
       '${keyPrefix}_tread_depth',
       '${keyPrefix.toLowerCase().replaceAll(' ', '_')}_tread_depth',
     ]));
 
-    final tyreStatus = _asNonEmptyString(_pickAny(data, [
+    final tyreStatus = _asNonEmptyString(_pickAnyDeep(data, [
       '$keyPrefix Tyre status',
       '$keyPrefix Tire status',
       '$keyPrefix tyre status',
       '$keyPrefix tire status',
     ]));
 
-    final damageValue = _asNonEmptyString(_pickAny(data, [
+    final damageValue = _asNonEmptyString(_pickAnyDeep(data, [
       '$keyPrefix wear patterns',
       '$keyPrefix Wear patterns',
       '$keyPrefix wearPatterns',
       '${keyPrefix}_wear_patterns',
     ]));
 
-    // Pressure object:
-    // "Front Left Tire pressure": {status, reason, confidence}
-    final pressureObj = _pickAny(data, [
+    // ✅ "Front Left Tire pressure": { status, reason, confidence }
+    final pressureObj = _pickAnyDeep(data, [
       '$keyPrefix Tire pressure',
       '$keyPrefix Tyre pressure',
       '$keyPrefix tire pressure',
       '$keyPrefix tyre pressure',
+      '$keyPrefix Tire Pressure',
     ]);
 
-    String? pressureStatus;
-    String? pressureReason;
-    String? pressureConfidence;
-    String? pressureValue;
+    String pressureStatus = '—';
+    String pressureReason = '';
+    String pressureConfidence = '';
+    String pressureValue = '—';
 
     if (pressureObj is Map) {
       final m = Map<String, dynamic>.from(pressureObj);
-      pressureStatus = _asNonEmptyString(m['status']);
-      pressureReason = _asNonEmptyString(m['reason']);
-      pressureConfidence = _asNonEmptyString(m['confidence']);
-      pressureValue = _asNonEmptyString(m['value']) ?? _asNonEmptyString(m['psi']);
+
+      pressureStatus = _asNonEmptyString(m['status']) ?? '—';
+      pressureReason = _asNonEmptyString(m['reason']) ?? '';
+      pressureConfidence = _asNonEmptyString(m['confidence']) ?? '';
+
+      // If API doesn't provide numeric psi, use status as displayed value
+      pressureValue = _asNonEmptyString(m['value']) ??
+          _asNonEmptyString(m['psi']) ??
+          pressureStatus;
     } else {
-      pressureStatus = _asNonEmptyString(pressureObj);
+      final s = _asNonEmptyString(pressureObj);
+      if (s != null) {
+        pressureStatus = s;
+        pressureValue = s;
+      }
     }
 
-    final summary = _asNonEmptyString(_pickAny(data, [
+    // ✅ "Front Left Summary": "...."
+    final summary = _asNonEmptyString(_pickAnyDeep(data, [
       '$keyPrefix Summary',
       '$keyPrefix summary',
       '${keyPrefix}_summary',
@@ -1049,17 +2288,49 @@ class _InspectionResultScreenState extends State<InspectionResultScreen> {
       tyreStatus: tyreStatus ?? '—',
       damageValue: damageValue ?? '—',
       damageStatus: tyreStatus ?? '—',
-      pressureValue: pressureValue ?? '—',
-      pressureStatus: pressureStatus ?? '—',
-      pressureReason: pressureReason ?? '',
-      pressureConfidence: pressureConfidence ?? '',
+      pressureValue: pressureValue,
+      pressureStatus: pressureStatus,
+      pressureReason: pressureReason,
+      pressureConfidence: pressureConfidence,
       summary: summary ?? '—',
     );
+  }
+
+  // ✅ One text block (UI unchanged) but includes full tyre-pressure details too
+  String _composeSelectedSummary(_TyreUi t) {
+    final parts = <String>[];
+
+    if (t.summary.trim().isNotEmpty && t.summary != '—') {
+      parts.add(t.summary.trim());
+    }
+
+    if (t.pressureStatus != '—' ||
+        t.pressureReason.trim().isNotEmpty ||
+        t.pressureConfidence.trim().isNotEmpty) {
+      parts.add([
+        'Tire pressure:',
+        '• Status: ${t.pressureStatus}',
+        if (t.pressureReason.trim().isNotEmpty) '• Reason: ${t.pressureReason}',
+        if (t.pressureConfidence.trim().isNotEmpty) '• Confidence: ${t.pressureConfidence}',
+      ].join('\n'));
+    }
+
+    return parts.isEmpty ? '—' : parts.join('\n\n');
   }
 
   // -----------------------------
   // Helpers
   // -----------------------------
+  Map<String, dynamic> _unwrapApiRoot(Map<String, dynamic> raw) {
+    Map<String, dynamic> cur = raw;
+    for (int i = 0; i < 5; i++) {
+      final next = _tryReadMap(cur, const ['data', 'result', 'payload']);
+      if (next == null) break;
+      cur = next;
+    }
+    return cur;
+  }
+
   ImageProvider _imgProvider({required String localPath, dynamic apiValue}) {
     final apiStr = _asNonEmptyString(apiValue);
     if (apiStr != null) {
@@ -1107,23 +2378,50 @@ class _InspectionResultScreenState extends State<InspectionResultScreen> {
     return null;
   }
 
-  dynamic _pickAny(Map<String, dynamic> root, List<String> keys) {
-    for (final k in keys) {
-      if (root.containsKey(k)) return root[k];
-    }
-    return null;
-  }
-
   String? _asNonEmptyString(dynamic v) {
     if (v == null) return null;
     final s = v.toString().trim();
     if (s.isEmpty || s == 'null') return null;
     return s;
   }
+
+  // ✅ FIX: strongest key matching (removes ALL non-alphanumeric)
+  dynamic _pickAnyDeep(Map<String, dynamic> root, List<String> keys) {
+    // 1) direct
+    for (final k in keys) {
+      if (root.containsKey(k)) return root[k];
+    }
+
+    // 2) normalized lookup
+    String norm(String x) => x
+        .trim()
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9]'), ''); // 🔥 everything removed except letters/numbers
+
+    final normalizedIndex = <String, String>{};
+    for (final actual in root.keys) {
+      normalizedIndex[norm(actual)] = actual;
+    }
+
+    for (final want in keys) {
+      final hit = normalizedIndex[norm(want)];
+      if (hit != null) return root[hit];
+    }
+
+    // 3) deep search in nested maps (some APIs nest fields)
+    for (final v in root.values) {
+      if (v is Map) {
+        final found = _pickAnyDeep(Map<String, dynamic>.from(v), keys);
+        if (found != null) return found;
+      }
+    }
+
+    return null;
+  }
 }
 
 // =============================
-// MODEL UI WIDGETS (same style)
+// UI WIDGETS (UNCHANGED)
 // =============================
 
 class _WheelCardData {
@@ -1291,7 +2589,6 @@ class _BigTreadCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // icon circle
           Container(
             width: 62 * s,
             height: 62 * s,
@@ -1309,7 +2606,7 @@ class _BigTreadCard extends StatelessWidget {
             child: Center(
               child: ShaderMask(
                 shaderCallback: (r) => gradient.createShader(r),
-                child:Image.asset("assets/thread_depth.png",height: 34,width: 34,) //Icon(Icons.circle, size: 34 * s, color: Colors.white),
+                child: Image.asset("assets/thread_depth.png", height: 34, width: 34),
               ),
             ),
           ),
@@ -1419,12 +2716,14 @@ class _ReportSummaryCard extends StatelessWidget {
   const _ReportSummaryCard({
     required this.s,
     required this.gradient,
-    required this.tyres,
+    required this.tyre,
+    required this.summary,
   });
 
   final double s;
   final LinearGradient gradient;
-  final List<_TyreUi> tyres;
+  final _TyreUi tyre;
+  final String summary;
 
   @override
   Widget build(BuildContext context) {
@@ -1444,16 +2743,12 @@ class _ReportSummaryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // header row like model
           Row(
             children: [
               Container(
                 width: 52 * s,
                 height: 52 * s,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: gradient,
-                ),
+                decoration: BoxDecoration(shape: BoxShape.circle, gradient: gradient),
                 child: Icon(Icons.description_outlined, color: Colors.white, size: 26 * s),
               ),
               SizedBox(width: 12 * s),
@@ -1471,49 +2766,33 @@ class _ReportSummaryCard extends StatelessWidget {
               Icon(Icons.chevron_right_rounded, size: 30 * s, color: const Color(0xFF111827)),
             ],
           ),
-
           SizedBox(height: 12 * s),
-
-          // content area (same card) - show each tyre summary in column
-          ...tyres.map((t) {
-            return Padding(
-              padding: EdgeInsets.only(bottom: 10 * s),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    t.label,
-                    style: TextStyle(
-                      fontFamily: 'ClashGrotesk',
-                      fontSize: 14.5 * s,
-                      fontWeight: FontWeight.w900,
-                      foreground: Paint()..shader = gradient.createShader(const Rect.fromLTWH(0, 0, 220, 40)),
-                    ),
-                  ),
-                  SizedBox(height: 6 * s),
-                  Text(
-                    t.summary,
-                    style: TextStyle(
-                      fontFamily: 'ClashGrotesk',
-                      fontSize: 14.5 * s,
-                      fontWeight: FontWeight.w600,
-                      height: 1.35,
-                      color: const Color(0xFF222222),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }).toList(),
+          Text(
+            tyre.label,
+            style: TextStyle(
+              fontFamily: 'ClashGrotesk',
+              fontSize: 14.5 * s,
+              fontWeight: FontWeight.w900,
+              foreground: Paint()..shader = gradient.createShader(const Rect.fromLTWH(0, 0, 220, 40)),
+            ),
+          ),
+          SizedBox(height: 6 * s),
+          Text(
+            summary,
+            style: TextStyle(
+              fontFamily: 'ClashGrotesk',
+              fontSize: 14.5 * s,
+              fontWeight: FontWeight.w600,
+              height: 1.35,
+              color: const Color(0xFF222222),
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-// =============================
-// Data holder
-// =============================
 class _TyreUi {
   _TyreUi({
     required this.label,
@@ -1529,10 +2808,8 @@ class _TyreUi {
   });
 
   final String label;
-
   final String treadDepth;
   final String tyreStatus;
-
   final String damageValue;
   final String damageStatus;
 
@@ -1543,7 +2820,19 @@ class _TyreUi {
 
   final String summary;
 }
-*/
+
+
+// ✅ InspectionResultScreen (UPDATED)
+// - UI stays SAME as your model screen
+// - When you select Left/Front/Back/Right -> shows ONLY that tyre’s pressure + summary
+// - Tire Pressure shows Value + Status on the card (like model)
+// - Full pressure details (Status/Reason/Confidence) shown inside the SAME summary text (no layout change)
+// - Fix: previously you were sending damageValue as summary. Now uses selectedTyre.summary.
+// - Fix: data was showing "-" because API can be nested (data->data). Now unwrapped safely.
+
+// import 'dart:convert';
+// import 'dart:io';
+// import 'package:flutter/material.dart';
 
 // class InspectionResultScreen extends StatefulWidget {
 //   const InspectionResultScreen({
@@ -1576,12 +2865,844 @@ class _TyreUi {
 // }
 
 // class _InspectionResultScreenState extends State<InspectionResultScreen> {
+//   static const _bg = Color(0xFFF2F2F2);
+
+//   static const LinearGradient _brandGrad = LinearGradient(
+//     colors: [Color(0xFF00C6FF), Color(0xFF7F53FD)],
+//     begin: Alignment.centerLeft,
+//     end: Alignment.centerRight,
+//   );
+
+//   int _selected = 0;
+
 //   @override
 //   void initState() {
 //     super.initState();
-//     final userid = context.read<AuthBloc>().state.profile?.userId?.toString();
-//     if (userid != null && userid.isNotEmpty) {
-//       context.read<AuthBloc>().add(FetchTyreHistoryRequested(userId: userid));
+
+//     // ✅ keep your existing behavior
+//     try {
+//       final userid = context.read<AuthBloc>().state.profile?.userId?.toString();
+//       if (userid != null && userid.isNotEmpty) {
+//         context.read<AuthBloc>().add(FetchTyreHistoryRequested(userId: userid));
+//       }
+//     } catch (_) {
+//       // ignore if bloc not available in this context
+//     }
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     final s = MediaQuery.sizeOf(context).width / 393;
+
+//     final raw =
+//         widget.fourWheelerRaw ?? _safeToJson(widget.response) ?? const <String, dynamic>{};
+
+//     // ✅ Unwrap deep possible nests: {data:{data:{...}}} or {result:{...}} etc.
+//     final data = _unwrapApiRoot(raw);
+
+//     // ✅ IMPORTANT: chip order is ['Left','Front','Back','Right']
+//     // Map to: Front Left, Front Right, Back Left, Back Right
+//     final tyreByChipIndex = <int, _TyreUi>{
+//       0: _buildTyreUi(data, label: 'Front Left', keyPrefix: 'Front Left'), // Left
+//       1: _buildTyreUi(data, label: 'Front Right', keyPrefix: 'Front Right'), // Front
+//       2: _buildTyreUi(data, label: 'Back Left', keyPrefix: 'Back Left'), // Back
+//       3: _buildTyreUi(data, label: 'Back Right', keyPrefix: 'Back Right'), // Right
+//     };
+
+//     final selectedTyre = tyreByChipIndex[_selected] ?? tyreByChipIndex[0]!;
+
+//     // ---- images (api may return url/base64; fallback local paths)
+//     final flImg = _imgProvider(
+//       localPath: widget.frontLeftPath,
+//       apiValue: _pickAnyLoose(data, const ['Front Left wheel', 'frontLeftWheelUrl', 'front_left_wheel_url']),
+//     );
+//     final frImg = _imgProvider(
+//       localPath: widget.frontRightPath,
+//       apiValue: _pickAnyLoose(data, const ['Front Right wheel', 'frontRightWheelUrl', 'front_right_wheel_url']),
+//     );
+//     final blImg = _imgProvider(
+//       localPath: widget.backLeftPath,
+//       apiValue: _pickAnyLoose(data, const ['Back Left wheel', 'backLeftWheelUrl', 'back_left_wheel_url']),
+//     );
+//     final brImg = _imgProvider(
+//       localPath: widget.backRightPath,
+//       apiValue: _pickAnyLoose(data, const ['Back Right wheel', 'backRightWheelUrl', 'back_right_wheel_url']),
+//     );
+
+//     final wheelImages = <_WheelCardData>[
+//       _WheelCardData(image: flImg, label: 'left'),
+//       _WheelCardData(image: frImg, label: 'Front'),
+//       _WheelCardData(image: blImg, label: 'Back'),
+//       _WheelCardData(image: brImg, label: 'Right'),
+//     ];
+
+//     // ✅ Full pressure details text (NO UI layout change: still a single summary paragraph)
+//     final pressureDetailsText = _buildPressureDetailsText(selectedTyre);
+
+//     // ✅ Summary shown is TYRE-wise summary only
+//     final tyreWiseSummary = selectedTyre.summary == '—' ? '' : selectedTyre.summary;
+
+//     // ✅ Combine: tyre summary + pressure details (still ONE Text widget)
+//     final summaryText = [
+//       if (tyreWiseSummary.trim().isNotEmpty) tyreWiseSummary.trim(),
+//       if (pressureDetailsText.trim().isNotEmpty) pressureDetailsText.trim(),
+//     ].join('\n\n');
+
+//     return Scaffold(
+//       backgroundColor: _bg,
+//       body: SafeArea(
+//         child: Padding(
+//           padding: EdgeInsets.symmetric(horizontal: 14 * s, vertical: 12 * s),
+//           child: Column(
+//             children: [
+//               // ======= TOP IMAGES (like model) =======
+//               SizedBox(
+//                 height: 190 * s,
+//                 child: ListView.separated(
+//                   scrollDirection: Axis.horizontal,
+//                   itemCount: wheelImages.length,
+//                   separatorBuilder: (_, __) => SizedBox(width: 12 * s),
+//                   itemBuilder: (_, i) {
+//                     final item = wheelImages[i];
+//                     return _WheelImageCard(
+//                       s: s,
+//                       image: item.image,
+//                       label: item.label,
+//                       gradient: _brandGrad,
+//                     );
+//                   },
+//                 ),
+//               ),
+
+//               SizedBox(height: 12 * s),
+
+//               // ======= CHIPS (same style) =======
+//               _TyreChips(
+//                 s: s,
+//                 labels: const ['Left', 'Front', 'Back', 'Right'],
+//                 selected: _selected,
+//                 gradient: _brandGrad,
+//                 onSelect: (i) => setState(() => _selected = i),
+//               ),
+
+//               SizedBox(height: 14 * s),
+
+//               Expanded(
+//                 child: ListView(
+//                   padding: EdgeInsets.zero,
+//                   children: [
+//                     // ======= METRIC CARDS (same layout) =======
+//                     Row(
+//                       crossAxisAlignment: CrossAxisAlignment.start,
+//                       children: [
+//                         Expanded(
+//                           flex: 11,
+//                           child: _BigTreadCard(
+//                             s: s,
+//                             gradient: _brandGrad,
+//                             treadValue: selectedTyre.treadDepth,
+//                             treadStatus: selectedTyre.tyreStatus,
+//                           ),
+//                         ),
+//                         SizedBox(width: 12 * s),
+//                         Expanded(
+//                           flex: 10,
+//                           child: Column(
+//                             children: [
+//                               // ✅ Tire Pressure: show Value + Status (like model)
+//                               _SmallMetricCard(
+//                                 s: s,
+//                                 title: 'Tire Pressure',
+//                                 value: 'Value: ${selectedTyre.pressureValue}',
+//                                 status: 'Status: ${selectedTyre.pressureStatus}',
+//                               ),
+//                               SizedBox(height: 12 * s),
+//                               // ✅ Damage Check: show Value + Status (like model)
+//                               _SmallMetricCard(
+//                                 s: s,
+//                                 title: 'Damage Check',
+//                                 value: 'Value: ${selectedTyre.damageValue}',
+//                                 status: 'Status: ${selectedTyre.damageStatus}',
+//                               ),
+//                             ],
+//                           ),
+//                         ),
+//                       ],
+//                     ),
+
+//                     SizedBox(height: 16 * s),
+
+//                     // ✅ REPORT SUMMARY: ONLY selected tyre summary + pressure details (same card)
+//                     _ReportSummaryCard(
+//                       s: s,
+//                       gradient: _brandGrad,
+//                       tyre: selectedTyre,
+//                       summary: summaryText.isEmpty ? '—' : summaryText,
+//                     ),
+
+//                     SizedBox(height: 10 * s),
+//                   ],
+//                 ),
+//               ),
+//             ],
+//           ),
+//         ),
+//       ),
+//     );
+//   }
+
+//   // -----------------------------
+//   // Build per-tyre UI from API map
+//   // -----------------------------
+//   _TyreUi _buildTyreUi(
+//     Map<String, dynamic> data, {
+//     required String label,
+//     required String keyPrefix,
+//   }) {
+//     final treadDepth = _asNonEmptyString(_pickAnyLoose(data, [
+//       '$keyPrefix Tread depth',
+//       '$keyPrefix Tread Depth',
+//       '${keyPrefix}_tread_depth',
+//       '${keyPrefix.toLowerCase().replaceAll(' ', '_')}_tread_depth',
+//     ]));
+
+//     final tyreStatus = _asNonEmptyString(_pickAnyLoose(data, [
+//       '$keyPrefix Tyre status',
+//       '$keyPrefix Tire status',
+//       '$keyPrefix tyre status',
+//       '$keyPrefix tire status',
+//     ]));
+
+//     final damageValue = _asNonEmptyString(_pickAnyLoose(data, [
+//       '$keyPrefix wear patterns',
+//       '$keyPrefix Wear patterns',
+//       '$keyPrefix wearPatterns',
+//       '${keyPrefix}_wear_patterns',
+//     ]));
+
+//     // ✅ Pressure object EXACT from your API:
+//     // "Front Left Tire pressure": { status, reason, confidence }
+//     final pressureObj = _pickAnyLoose(data, [
+//       '$keyPrefix Tire pressure',
+//       '$keyPrefix Tyre pressure',
+//       '$keyPrefix tire pressure',
+//       '$keyPrefix tyre pressure',
+//     ]);
+
+//     String? pressureStatus;
+//     String? pressureReason;
+//     String? pressureConfidence;
+//     String? pressureValue;
+
+//     if (pressureObj is Map) {
+//       final m = Map<String, dynamic>.from(pressureObj);
+//       pressureStatus = _asNonEmptyString(m['status']);
+//       pressureReason = _asNonEmptyString(m['reason']);
+//       pressureConfidence = _asNonEmptyString(m['confidence']);
+
+//       // API usually doesn't provide PSI number, so keep same behavior:
+//       // show psi/value if ever exists, otherwise show status as "Value"
+//       pressureValue = _asNonEmptyString(m['value']) ??
+//           _asNonEmptyString(m['psi']) ??
+//           pressureStatus;
+//     } else {
+//       pressureStatus = _asNonEmptyString(pressureObj);
+//       pressureValue = pressureStatus;
+//     }
+
+//     // ✅ Summary EXACT from your API:
+//     // "Front Left Summary": "...."
+//     final summary = _asNonEmptyString(_pickAnyLoose(data, [
+//       '$keyPrefix Summary',
+//       '$keyPrefix summary',
+//       '${keyPrefix}_summary',
+//       '${keyPrefix.toLowerCase().replaceAll(' ', '_')}_summary',
+//     ]));
+
+//     return _TyreUi(
+//       label: label,
+//       treadDepth: treadDepth ?? '—',
+//       tyreStatus: tyreStatus ?? '—',
+//       damageValue: damageValue ?? '—',
+//       damageStatus: tyreStatus ?? '—',
+//       pressureValue: pressureValue ?? '—',
+//       pressureStatus: pressureStatus ?? '—',
+//       pressureReason: pressureReason ?? '',
+//       pressureConfidence: pressureConfidence ?? '',
+//       summary: summary ?? '—',
+//     );
+//   }
+
+//   // ✅ build the pressure details as shown in your “full details” screenshot (text only)
+//   String _buildPressureDetailsText(_TyreUi t) {
+//     final hasAny =
+//         t.pressureStatus.trim().isNotEmpty ||
+//         t.pressureReason.trim().isNotEmpty ||
+//         t.pressureConfidence.trim().isNotEmpty;
+
+//     if (!hasAny || (t.pressureStatus == '—' && t.pressureReason.isEmpty && t.pressureConfidence.isEmpty)) {
+//       return '';
+//     }
+
+//     final lines = <String>[
+//       'Tire pressure:',
+//       '• Status: ${t.pressureStatus}',
+//       if (t.pressureReason.trim().isNotEmpty) '• Reason: ${t.pressureReason}',
+//       if (t.pressureConfidence.trim().isNotEmpty) '• Confidence: ${t.pressureConfidence}',
+//     ];
+
+//     return lines.join('\n');
+//   }
+
+//   // -----------------------------
+//   // Helpers
+//   // -----------------------------
+//   Map<String, dynamic> _unwrapApiRoot(Map<String, dynamic> raw) {
+//     Map<String, dynamic> cur = raw;
+//     // try few layers safely
+//     for (int i = 0; i < 4; i++) {
+//       final next = _tryReadMap(cur, const ['data', 'result', 'payload']);
+//       if (next == null) break;
+//       cur = next;
+//     }
+//     return cur;
+//   }
+
+//   ImageProvider _imgProvider({required String localPath, dynamic apiValue}) {
+//     final apiStr = _asNonEmptyString(apiValue);
+//     if (apiStr != null) {
+//       if (apiStr.startsWith('http://') || apiStr.startsWith('https://')) {
+//         return NetworkImage(apiStr);
+//       }
+//       if (apiStr.startsWith('data:image')) {
+//         try {
+//           final base64Part = apiStr.split(',').last;
+//           final bytes = base64Decode(base64Part);
+//           return MemoryImage(bytes);
+//         } catch (_) {}
+//       }
+//     }
+//     return FileImage(File(localPath));
+//   }
+
+//   Map<String, dynamic>? _safeToJson(dynamic obj) {
+//     if (obj == null) return null;
+//     if (obj is Map<String, dynamic>) return obj;
+//     if (obj is Map) return Map<String, dynamic>.from(obj);
+
+//     try {
+//       final j = (obj as dynamic).toJson();
+//       if (j is Map<String, dynamic>) return j;
+//       if (j is Map) return Map<String, dynamic>.from(j);
+//     } catch (_) {}
+
+//     try {
+//       final encoded = jsonEncode(obj);
+//       final decoded = jsonDecode(encoded);
+//       if (decoded is Map<String, dynamic>) return decoded;
+//       if (decoded is Map) return Map<String, dynamic>.from(decoded);
+//     } catch (_) {}
+
+//     return null;
+//   }
+
+//   Map<String, dynamic>? _tryReadMap(Map<String, dynamic> root, List<String> keys) {
+//     for (final k in keys) {
+//       final v = root[k];
+//       if (v is Map<String, dynamic>) return v;
+//       if (v is Map) return Map<String, dynamic>.from(v);
+//     }
+//     return null;
+//   }
+
+//   String? _asNonEmptyString(dynamic v) {
+//     if (v == null) return null;
+//     final s = v.toString().trim();
+//     if (s.isEmpty || s == 'null') return null;
+//     return s;
+//   }
+
+//   // ✅ Loose key matcher (handles spaces/case/underscore/dash)
+//   dynamic _pickAnyLoose(Map<String, dynamic> root, List<String> keys) {
+//     // direct check first
+//     for (final k in keys) {
+//       if (root.containsKey(k)) return root[k];
+//     }
+//     // loose check
+//     String norm(String x) => x.toLowerCase().replaceAll(RegExp(r'[\s_\-]'), '');
+//     final mapNorm = <String, String>{};
+//     for (final actual in root.keys) {
+//       mapNorm[norm(actual)] = actual;
+//     }
+//     for (final want in keys) {
+//       final hit = mapNorm[norm(want)];
+//       if (hit != null) return root[hit];
+//     }
+//     return null;
+//   }
+// }
+
+// // =============================
+// // MODEL UI WIDGETS (UI unchanged)
+// // =============================
+
+// class _WheelCardData {
+//   const _WheelCardData({required this.image, required this.label});
+//   final ImageProvider image;
+//   final String label;
+// }
+
+// class _WheelImageCard extends StatelessWidget {
+//   const _WheelImageCard({
+//     required this.s,
+//     required this.image,
+//     required this.label,
+//     required this.gradient,
+//   });
+
+//   final double s;
+//   final ImageProvider image;
+//   final String label;
+//   final LinearGradient gradient;
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return SizedBox(
+//       width: 120 * s,
+//       child: Column(
+//         children: [
+//           Container(
+//             height: 140 * s,
+//             decoration: BoxDecoration(
+//               borderRadius: BorderRadius.circular(18 * s),
+//               color: Colors.white,
+//               boxShadow: [
+//                 BoxShadow(
+//                   color: Colors.black.withOpacity(.10),
+//                   blurRadius: 18,
+//                   offset: const Offset(0, 10),
+//                 ),
+//               ],
+//             ),
+//             child: ClipRRect(
+//               borderRadius: BorderRadius.circular(18 * s),
+//               child: Image(image: image, fit: BoxFit.cover),
+//             ),
+//           ),
+//           SizedBox(height: 10 * s),
+//           Container(
+//             width: double.infinity,
+//             padding: EdgeInsets.symmetric(vertical: 8 * s),
+//             decoration: BoxDecoration(
+//               gradient: gradient,
+//               borderRadius: BorderRadius.circular(10 * s),
+//             ),
+//             child: Center(
+//               child: Text(
+//                 label,
+//                 style: TextStyle(
+//                   fontFamily: 'ClashGrotesk',
+//                   fontWeight: FontWeight.w900,
+//                   fontSize: 14 * s,
+//                   color: Colors.white,
+//                 ),
+//               ),
+//             ),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+// }
+
+// class _TyreChips extends StatelessWidget {
+//   const _TyreChips({
+//     super.key,
+//     required this.s,
+//     required this.labels,
+//     required this.selected,
+//     required this.gradient,
+//     required this.onSelect,
+//   });
+
+//   final double s;
+//   final List<String> labels;
+//   final int selected;
+//   final LinearGradient gradient;
+//   final ValueChanged<int> onSelect;
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Row(
+//       children: List.generate(labels.length, (i) {
+//         final isSel = i == selected;
+//         return Expanded(
+//           child: Padding(
+//             padding: EdgeInsets.only(right: i == labels.length - 1 ? 0 : 10 * s),
+//             child: InkWell(
+//               onTap: () => onSelect(i),
+//               borderRadius: BorderRadius.circular(12 * s),
+//               child: AnimatedContainer(
+//                 duration: const Duration(milliseconds: 180),
+//                 padding: EdgeInsets.symmetric(vertical: 10 * s),
+//                 decoration: BoxDecoration(
+//                   gradient: isSel ? gradient : null,
+//                   color: isSel ? null : Colors.white,
+//                   borderRadius: BorderRadius.circular(12 * s),
+//                   border: Border.all(
+//                     color: isSel ? Colors.transparent : const Color(0xFFE7E7E7),
+//                   ),
+//                   boxShadow: [
+//                     BoxShadow(
+//                       color: Colors.black.withOpacity(isSel ? .10 : .05),
+//                       blurRadius: isSel ? 16 : 10,
+//                       offset: const Offset(0, 8),
+//                     ),
+//                   ],
+//                 ),
+//                 child: Center(
+//                   child: Text(
+//                     labels[i],
+//                     style: TextStyle(
+//                       fontFamily: 'ClashGrotesk',
+//                       fontSize: 13.5 * s,
+//                       fontWeight: FontWeight.w900,
+//                       color: isSel ? Colors.white : const Color(0xFF111827),
+//                     ),
+//                   ),
+//                 ),
+//               ),
+//             ),
+//           ),
+//         );
+//       }),
+//     );
+//   }
+// }
+
+// class _BigTreadCard extends StatelessWidget {
+//   const _BigTreadCard({
+//     required this.s,
+//     required this.gradient,
+//     required this.treadValue,
+//     required this.treadStatus,
+//   });
+
+//   final double s;
+//   final LinearGradient gradient;
+//   final String treadValue;
+//   final String treadStatus;
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Container(
+//       padding: EdgeInsets.all(16 * s),
+//       decoration: BoxDecoration(
+//         color: Colors.white,
+//         borderRadius: BorderRadius.circular(18 * s),
+//         boxShadow: [
+//           BoxShadow(
+//             color: Colors.black.withOpacity(.10),
+//             blurRadius: 18,
+//             offset: const Offset(0, 10),
+//           )
+//         ],
+//       ),
+//       child: Column(
+//         crossAxisAlignment: CrossAxisAlignment.start,
+//         children: [
+//           Container(
+//             width: 62 * s,
+//             height: 62 * s,
+//             decoration: BoxDecoration(
+//               shape: BoxShape.circle,
+//               color: Colors.white,
+//               boxShadow: [
+//                 BoxShadow(
+//                   color: Colors.black.withOpacity(.10),
+//                   blurRadius: 18,
+//                   offset: const Offset(0, 10),
+//                 )
+//               ],
+//             ),
+//             child: Center(
+//               child: ShaderMask(
+//                 shaderCallback: (r) => gradient.createShader(r),
+//                 child: Image.asset("assets/thread_depth.png", height: 34, width: 34),
+//               ),
+//             ),
+//           ),
+//           SizedBox(height: 12 * s),
+//           Text(
+//             'Tread Depth',
+//             style: TextStyle(
+//               fontFamily: 'ClashGrotesk',
+//               fontSize: 20 * s,
+//               fontWeight: FontWeight.w900,
+//               foreground: Paint()..shader = gradient.createShader(const Rect.fromLTWH(0, 0, 200, 40)),
+//             ),
+//           ),
+//           SizedBox(height: 12 * s),
+//           Text(
+//             'Value: $treadValue',
+//             style: TextStyle(
+//               fontFamily: 'ClashGrotesk',
+//               fontSize: 16 * s,
+//               fontWeight: FontWeight.w700,
+//               color: const Color(0xFF111827),
+//             ),
+//           ),
+//           SizedBox(height: 8 * s),
+//           Text(
+//             'Status: $treadStatus',
+//             style: TextStyle(
+//               fontFamily: 'ClashGrotesk',
+//               fontSize: 16 * s,
+//               fontWeight: FontWeight.w700,
+//               color: const Color(0xFF111827),
+//             ),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+// }
+
+// class _SmallMetricCard extends StatelessWidget {
+//   const _SmallMetricCard({
+//     required this.s,
+//     required this.title,
+//     required this.value,
+//     required this.status,
+//   });
+
+//   final double s;
+//   final String title;
+//   final String value;
+//   final String status;
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Container(
+//       padding: EdgeInsets.all(16 * s),
+//       decoration: BoxDecoration(
+//         color: Colors.white,
+//         borderRadius: BorderRadius.circular(18 * s),
+//         boxShadow: [
+//           BoxShadow(
+//             color: Colors.black.withOpacity(.10),
+//             blurRadius: 18,
+//             offset: const Offset(0, 10),
+//           )
+//         ],
+//       ),
+//       child: Column(
+//         crossAxisAlignment: CrossAxisAlignment.start,
+//         children: [
+//           Text(
+//             title,
+//             style: TextStyle(
+//               fontFamily: 'ClashGrotesk',
+//               fontSize: 22 * s,
+//               fontWeight: FontWeight.w900,
+//               color: const Color(0xFF00C6FF),
+//             ),
+//           ),
+//           SizedBox(height: 12 * s),
+//           Text(
+//             value,
+//             style: TextStyle(
+//               fontFamily: 'ClashGrotesk',
+//               fontSize: 16 * s,
+//               fontWeight: FontWeight.w700,
+//               color: const Color(0xFF111827),
+//             ),
+//           ),
+//           SizedBox(height: 8 * s),
+//           Text(
+//             status,
+//             style: TextStyle(
+//               fontFamily: 'ClashGrotesk',
+//               fontSize: 16 * s,
+//               fontWeight: FontWeight.w700,
+//               color: const Color(0xFF111827),
+//             ),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+// }
+
+// class _ReportSummaryCard extends StatelessWidget {
+//   const _ReportSummaryCard({
+//     required this.s,
+//     required this.gradient,
+//     required this.tyre,
+//     required this.summary,
+//   });
+
+//   final double s;
+//   final LinearGradient gradient;
+//   final _TyreUi tyre;
+//   final String summary;
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Container(
+//       padding: EdgeInsets.all(16 * s),
+//       decoration: BoxDecoration(
+//         color: Colors.white,
+//         borderRadius: BorderRadius.circular(18 * s),
+//         boxShadow: [
+//           BoxShadow(
+//             color: Colors.black.withOpacity(.10),
+//             blurRadius: 18,
+//             offset: const Offset(0, 10),
+//           )
+//         ],
+//       ),
+//       child: Column(
+//         crossAxisAlignment: CrossAxisAlignment.start,
+//         children: [
+//           Row(
+//             children: [
+//               Container(
+//                 width: 52 * s,
+//                 height: 52 * s,
+//                 decoration: BoxDecoration(shape: BoxShape.circle, gradient: gradient),
+//                 child: Icon(Icons.description_outlined, color: Colors.white, size: 26 * s),
+//               ),
+//               SizedBox(width: 12 * s),
+//               Expanded(
+//                 child: Text(
+//                   'Report Summary:',
+//                   style: TextStyle(
+//                     fontFamily: 'ClashGrotesk',
+//                     fontSize: 26 * s,
+//                     fontWeight: FontWeight.w900,
+//                     color: const Color(0xFF111827),
+//                   ),
+//                 ),
+//               ),
+//               Icon(Icons.chevron_right_rounded, size: 30 * s, color: const Color(0xFF111827)),
+//             ],
+//           ),
+//           SizedBox(height: 12 * s),
+//           Text(
+//             tyre.label,
+//             style: TextStyle(
+//               fontFamily: 'ClashGrotesk',
+//               fontSize: 14.5 * s,
+//               fontWeight: FontWeight.w900,
+//               foreground: Paint()..shader = gradient.createShader(const Rect.fromLTWH(0, 0, 220, 40)),
+//             ),
+//           ),
+//           SizedBox(height: 6 * s),
+//           Text(
+//             summary,
+//             style: TextStyle(
+//               fontFamily: 'ClashGrotesk',
+//               fontSize: 14.5 * s,
+//               fontWeight: FontWeight.w600,
+//               height: 1.35,
+//               color: const Color(0xFF222222),
+//             ),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+// }
+
+// // =============================
+// // Data holder
+// // =============================
+// class _TyreUi {
+//   _TyreUi({
+//     required this.label,
+//     required this.treadDepth,
+//     required this.tyreStatus,
+//     required this.damageValue,
+//     required this.damageStatus,
+//     required this.pressureValue,
+//     required this.pressureStatus,
+//     required this.pressureReason,
+//     required this.pressureConfidence,
+//     required this.summary,
+//   });
+
+//   final String label;
+
+//   final String treadDepth;
+//   final String tyreStatus;
+
+//   final String damageValue;
+//   final String damageStatus;
+
+//   final String pressureValue;
+//   final String pressureStatus;
+//   final String pressureReason;
+//   final String pressureConfidence;
+
+//   final String summary;
+// }
+
+
+
+// class InspectionResultScreen extends StatefulWidget {
+//   const InspectionResultScreen({
+//     super.key,
+//     required this.frontLeftPath,
+//     required this.frontRightPath,
+//     required this.backLeftPath,
+//     required this.backRightPath,
+//     required this.vehicleId,
+//     required this.userId,
+//     required this.token,
+//     this.response,
+//     this.fourWheelerRaw,
+//   });
+
+//   final String frontLeftPath;
+//   final String frontRightPath;
+//   final String backLeftPath;
+//   final String backRightPath;
+
+//   final String vehicleId;
+//   final String userId;
+//   final String token;
+
+//   final dynamic response;
+//   final Map<String, dynamic>? fourWheelerRaw;
+
+//   @override
+//   State<InspectionResultScreen> createState() => _InspectionResultScreenState();
+// }
+
+// class _InspectionResultScreenState extends State<InspectionResultScreen> {
+//   static const _bg = Color(0xFFF2F2F2);
+
+//   static const LinearGradient _brandGrad = LinearGradient(
+//     colors: [Color(0xFF00C6FF), Color(0xFF7F53FD)],
+//     begin: Alignment.centerLeft,
+//     end: Alignment.centerRight,
+//   );
+
+//   int _selected = 0;
+
+//   @override
+//   void initState() {
+//     super.initState();
+
+//     // ✅ keep your existing behavior
+//     try {
+//       final userid = context.read<AuthBloc>().state.profile?.userId?.toString();
+//       if (userid != null && userid.isNotEmpty) {
+//         context.read<AuthBloc>().add(FetchTyreHistoryRequested(userId: userid));
+//       }
+//     } catch (_) {
+//       // ignore if bloc not available in this context
 //     }
 //   }
 
@@ -1595,148 +3716,142 @@ class _TyreUi {
 //     // API shape: { data: {...} }
 //     final data = _tryReadMap(raw, const ['data', 'result', 'payload']) ?? raw;
 
-//     // ---- wheel images (api may return url/base64 or you already have local paths)
+//     // ✅ IMPORTANT: chip order is ['Left','Front','Back','Right']
+//     // and must map to: Front Left, Front Right, Back Left, Back Right
+//     final tyreByChipIndex = <int, _TyreUi>{
+//       0: _buildTyreUi(data, label: 'Front Left', keyPrefix: 'Front Left'), // Left
+//       1: _buildTyreUi(data, label: 'Front Right', keyPrefix: 'Front Right'), // Front
+//       2: _buildTyreUi(data, label: 'Back Left', keyPrefix: 'Back Left'), // Back
+//       3: _buildTyreUi(data, label: 'Back Right', keyPrefix: 'Back Right'), // Right
+//     };
+
+//     final tyres = tyreByChipIndex.values.toList();
+//     final selectedTyre = tyreByChipIndex[_selected] ?? tyreByChipIndex[0]!;
+
+//     // ---- images (api may return url/base64; fallback local paths)
 //     final flImg = _imgProvider(
 //       localPath: widget.frontLeftPath,
-//       apiValue: _pickAny(data, const [
-//         'Front Left wheel',
-//         'frontLeftWheelUrl',
-//         'front_left_wheel_url',
-//         'frontLeftUrl',
-//         'front_left_image_url',
-//         'front_left_image',
-//       ]),
+//       apiValue: _pickAnyLoose(data, const ['Front Left wheel', 'frontLeftWheelUrl', 'front_left_wheel_url']),
 //     );
-
 //     final frImg = _imgProvider(
 //       localPath: widget.frontRightPath,
-//       apiValue: _pickAny(data, const [
-//         'Front Right wheel',
-//         'frontRightWheelUrl',
-//         'front_right_wheel_url',
-//         'frontRightUrl',
-//         'front_right_image_url',
-//         'front_right_image',
-//       ]),
+//       apiValue: _pickAnyLoose(data, const ['Front Right wheel', 'frontRightWheelUrl', 'front_right_wheel_url']),
 //     );
-
 //     final blImg = _imgProvider(
 //       localPath: widget.backLeftPath,
-//       apiValue: _pickAny(data, const [
-//         'Back Left wheel',
-//         'backLeftWheelUrl',
-//         'back_left_wheel_url',
-//         'backLeftUrl',
-//         'back_left_image_url',
-//         'back_left_image',
-//       ]),
+//       apiValue: _pickAnyLoose(data, const ['Back Left wheel', 'backLeftWheelUrl', 'back_left_wheel_url']),
 //     );
-
 //     final brImg = _imgProvider(
 //       localPath: widget.backRightPath,
-//       apiValue: _pickAny(data, const [
-//         'Back Right wheel',
-//         'backRightWheelUrl',
-//         'back_right_wheel_url',
-//         'backRightUrl',
-//         'back_right_image_url',
-//         'back_right_image',
-//       ]),
+//       apiValue: _pickAnyLoose(data, const ['Back Right wheel', 'backRightWheelUrl', 'back_right_wheel_url']),
 //     );
 
-//     // ---- per-tyre details
-//     final tyres = <_TyreUi>[
-//       _buildTyreUi(data, label: 'Front Left', keyPrefix: 'Front Left'),
-//       _buildTyreUi(data, label: 'Front Right', keyPrefix: 'Front Right'),
-//       _buildTyreUi(data, label: 'Back Left', keyPrefix: 'Back Left'),
-//       _buildTyreUi(data, label: 'Back Right', keyPrefix: 'Back Right'),
+//     final wheelImages = <_WheelCardData>[
+//       _WheelCardData(image: flImg, label: 'left'),
+//       _WheelCardData(image: frImg, label: 'Front'),
+//       _WheelCardData(image: blImg, label: 'Back'),
+//       _WheelCardData(image: brImg, label: 'Right'),
 //     ];
 
 //     return Scaffold(
-//       backgroundColor: const Color(0xFFF2F6FB),
-//       appBar: AppBar(
-//         elevation: 0,
-//         backgroundColor: Colors.white,
-//         scrolledUnderElevation: 0,
-//         leading: IconButton(
-//           icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: Colors.black),
-//           onPressed: () => Navigator.pop(context),
-//         ),
-//         centerTitle: true,
-//         title: Text(
-//           'Inspection Report',
-//           style: TextStyle(
-//             fontFamily: 'ClashGrotesk',
-//             fontSize: 18 * s,
-//             fontWeight: FontWeight.w900,
-//             color: Colors.black,
-//           ),
-//         ),
-//       ),
-//       body: ListView(
-//         padding: EdgeInsets.fromLTRB(16 * s, 12 * s, 16 * s, 20 * s),
-//         children: [
-//           _TopFourImagesRow(
-//             s: s,
-//             fl: flImg,
-//             fr: frImg,
-//             bl: blImg,
-//             br: brImg,
-//           ),
-//           SizedBox(height: 14 * s),
-
-//           Row(
-//             crossAxisAlignment: CrossAxisAlignment.start,
+//       backgroundColor: _bg,
+//       body: SafeArea(
+//         child: Padding(
+//           padding: EdgeInsets.symmetric(horizontal: 14 * s, vertical: 12 * s),
+//           child: Column(
 //             children: [
-//               Expanded(
-//                 flex: 11,
-//                 child: _MetricCardBig(
-//                   s: s,
-//                   icon: Icons.blur_circular_rounded,
-//                   title: 'Tread Depth',
-//                   value: _bestTreadValue(tyres),
-//                   status: _bestTreadStatus(tyres),
+//               // ======= TOP IMAGES (like model) =======
+//               SizedBox(
+//                 height: 190 * s,
+//                 child: ListView.separated(
+//                   scrollDirection: Axis.horizontal,
+//                   itemCount: wheelImages.length,
+//                   separatorBuilder: (_, __) => SizedBox(width: 12 * s),
+//                   itemBuilder: (_, i) {
+//                     final item = wheelImages[i];
+//                     return _WheelImageCard(
+//                       s: s,
+//                       image: item.image,
+//                       label: item.label,
+//                       gradient: _brandGrad,
+//                     );
+//                   },
 //                 ),
 //               ),
-//               SizedBox(width: 12 * s),
-//               // Expanded(
-//               //   flex: 10,
-//               //   child: Column(
-//               //     children: [
-//               //       _MetricCardSmall(
-//               //         s: s,
-//               //         title: 'Tire Pressure',
-//               //         value: _bestPressureValue(tyres),
-//               //         status: _bestPressureStatus(tyres),
-//               //       ),
-//               //       SizedBox(height: 10 * s),
-//               //       _MetricCardSmall(
-//               //         s: s,
-//               //         title: 'Damage Check',
-//               //         value: _bestDamageValue(tyres),
-//               //         status: _bestDamageStatus(tyres),
-//               //       ),
-//               //     ],
-//               //   ),
-//               // ),
+
+//               SizedBox(height: 12 * s),
+
+//               // ======= CHIPS (same style) =======
+//               _TyreChips(
+//                 s: s,
+//                 labels: const ['Left', 'Front', 'Back', 'Right'],
+//                 selected: _selected,
+//                 gradient: _brandGrad,
+//                 onSelect: (i) => setState(() => _selected = i),
+//               ),
+
+//               SizedBox(height: 14 * s),
+
+//               Expanded(
+//                 child: ListView(
+//                   padding: EdgeInsets.zero,
+//                   children: [
+//                     // ======= METRIC CARDS (same layout) =======
+//                     Row(
+//                       crossAxisAlignment: CrossAxisAlignment.start,
+//                       children: [
+//                         Expanded(
+//                           flex: 11,
+//                           child: _BigTreadCard(
+//                             s: s,
+//                             gradient: _brandGrad,
+//                             treadValue: selectedTyre.treadDepth,
+//                             treadStatus: selectedTyre.tyreStatus,
+//                           ),
+//                         ),
+//                         SizedBox(width: 12 * s),
+//                         Expanded(
+//                           flex: 10,
+//                           child: Column(
+//                             children: [
+//                               _SmallMetricCard(
+//                                 s: s,
+//                                 title: 'Tire Pressure',
+//                                 // value: selectedTyre.pressureValue == '—'
+//                                 //     ? 'Value: —'
+//                                 //     : 'Value: ${selectedTyre.pressureValue}',
+//                                 status: 'Status: ${selectedTyre.pressureStatus}',
+//                               ),
+//                               SizedBox(height: 12 * s),
+//                               _SmallMetricCard(
+//                                 s: s,
+//                                 title: 'Damage Check',
+//                               //  value: 'Value: ${selectedTyre.damageValue}',
+//                                 status: 'Status: ${selectedTyre.damageStatus}',
+//                               ),
+//                             ],
+//                           ),
+//                         ),
+//                       ],
+//                     ),
+
+//                     SizedBox(height: 16 * s),
+
+//                     // ✅ REPORT SUMMARY: show ONLY selected tyre summary (UI same card)
+//                     _ReportSummaryCard(
+//                       summary: selectedTyre.damageValue,
+//                       s: s,
+//                       gradient: _brandGrad,
+//                       tyre: selectedTyre,
+//                     ),
+
+//                     SizedBox(height: 10 * s),
+//                   ],
+//                 ),
+//               ),
 //             ],
 //           ),
-
-//           SizedBox(height: 14 * s),
-
-//           // ✅ Summary section now contains FULL tyre blocks including tire pressure full details
-//           _SectionCard(
-//             s: s,
-//             title: 'Report Summary:',
-//             child: Column(
-//               crossAxisAlignment: CrossAxisAlignment.start,
-//               children: [
-//                 SizedBox(height: 4 * s),
-//                 ...tyres.map((t) => _TyreSummaryFullBlock(s: s, tyre: t)).toList(),
-//               ],
-//             ),
-//           ),
-//         ],
+//         ),
 //       ),
 //     );
 //   }
@@ -1749,39 +3864,57 @@ class _TyreUi {
 //     required String label,
 //     required String keyPrefix,
 //   }) {
-//     final treadDepth = _asNonEmptyString(_pickAny(data, [
+//     final treadDepth = _asNonEmptyString(_pickAnyLoose(data, [
 //       '$keyPrefix Tread depth',
 //       '$keyPrefix Tread Depth',
 //       '${keyPrefix}_tread_depth',
 //       '${keyPrefix.toLowerCase().replaceAll(' ', '_')}_tread_depth',
 //     ]));
 
-//     final tyreStatus = _asNonEmptyString(_pickAny(data, [
+//     final tyreStatus = _asNonEmptyString(_pickAnyLoose(data, [
 //       '$keyPrefix Tyre status',
 //       '$keyPrefix Tire status',
 //       '$keyPrefix tyre status',
 //       '$keyPrefix tire status',
 //     ]));
 
-//     // Damage / wear patterns
-//     final damageValue = _asNonEmptyString(_pickAny(data, [
+//     final damageValue = _asNonEmptyString(_pickAnyLoose(data, [
 //       '$keyPrefix wear patterns',
 //       '$keyPrefix Wear patterns',
 //       '$keyPrefix wearPatterns',
 //       '${keyPrefix}_wear_patterns',
 //     ]));
 
-//     // Pressure object
-//     final pressureObj = _pickAny(data, [
+//     // ✅ Pressure object EXACT from your API:
+//     // "Front Left Tire pressure": { status, reason, confidence }
+//     final pressureObj = _pickAnyLoose(data, [
 //       '$keyPrefix Tire pressure',
 //       '$keyPrefix Tyre pressure',
-//       '$keyPrefix tire pressure',
-//       '$keyPrefix tyre pressure',
 //     ]);
 
-//     final pressure = _parsePressure(pressureObj);
+//     String? pressureStatus;
+//     String? pressureReason;
+//     String? pressureConfidence;
 
-//     final summary = _asNonEmptyString(_pickAny(data, [
+//     // ✅ Value shown in UI (API doesn't provide psi/value -> use status as "Value")
+//     String? pressureValue;
+
+//     if (pressureObj is Map) {
+//       final m = Map<String, dynamic>.from(pressureObj);
+//       pressureStatus = _asNonEmptyString(m['status']);
+//       pressureReason = _asNonEmptyString(m['reason']);
+//       pressureConfidence = _asNonEmptyString(m['confidence']);
+
+//       pressureValue =
+//           _asNonEmptyString(m['value']) ?? _asNonEmptyString(m['psi']) ?? pressureStatus;
+//     } else {
+//       pressureStatus = _asNonEmptyString(pressureObj);
+//       pressureValue = pressureStatus;
+//     }
+
+//     // ✅ Summary EXACT from your API:
+//     // "Front Left Summary": "...."
+//     final summary = _asNonEmptyString(_pickAnyLoose(data, [
 //       '$keyPrefix Summary',
 //       '$keyPrefix summary',
 //       '${keyPrefix}_summary',
@@ -1794,44 +3927,16 @@ class _TyreUi {
 //       tyreStatus: tyreStatus ?? '—',
 //       damageValue: damageValue ?? '—',
 //       damageStatus: tyreStatus ?? '—',
-//       pressure: pressure,
+//       pressureValue: pressureValue ?? '—',
+//       pressureStatus: pressureStatus ?? '—',
+//       pressureReason: pressureReason ?? '',
+//       pressureConfidence: pressureConfidence ?? '',
 //       summary: summary ?? '—',
 //     );
 //   }
 
-//   _PressureUi _parsePressure(dynamic pressureObj) {
-//     // default empty
-//     String value = '—';
-//     String status = '—';
-//     String reason = '';
-//     String confidence = '';
-
-//     if (pressureObj is Map) {
-//       final m = Map<String, dynamic>.from(pressureObj);
-//       status = _asNonEmptyString(m['status']) ?? '—';
-//       reason = _asNonEmptyString(m['reason']) ?? '';
-//       confidence = _asNonEmptyString(m['confidence']) ?? '';
-
-//       // if backend ever returns numeric value/psi
-//       value = _asNonEmptyString(m['value']) ??
-//           _asNonEmptyString(m['psi']) ??
-//           _asNonEmptyString(m['pressure']) ??
-//           '—';
-//     } else {
-//       // sometimes backend might send as string
-//       status = _asNonEmptyString(pressureObj) ?? '—';
-//     }
-
-//     return _PressureUi(
-//       value: value,
-//       status: status,
-//       reason: reason,
-//       confidence: confidence,
-//     );
-//   }
-
 //   // -----------------------------
-//   // Helpers
+//   // Helpers (same behavior)
 //   // -----------------------------
 //   ImageProvider _imgProvider({required String localPath, dynamic apiValue}) {
 //     final apiStr = _asNonEmptyString(apiValue);
@@ -1880,13 +3985,6 @@ class _TyreUi {
 //     return null;
 //   }
 
-//   dynamic _pickAny(Map<String, dynamic> root, List<String> keys) {
-//     for (final k in keys) {
-//       if (root.containsKey(k)) return root[k];
-//     }
-//     return null;
-//   }
-
 //   String? _asNonEmptyString(dynamic v) {
 //     if (v == null) return null;
 //     final s = v.toString().trim();
@@ -1894,1168 +3992,38 @@ class _TyreUi {
 //     return s;
 //   }
 
-//   // --------- top cards ----------
-//   String _bestTreadValue(List<_TyreUi> tyres) {
-//     final t = tyres.map((e) => e.treadDepth).firstWhere((x) => x.trim() != '—', orElse: () => '—');
-//     return 'Value: $t';
-//   }
-
-//   String _bestTreadStatus(List<_TyreUi> tyres) {
-//     final t = tyres.map((e) => e.tyreStatus).firstWhere((x) => x.trim() != '—', orElse: () => '—');
-//     return 'Status: $t';
-//   }
-
-//   String _bestPressureValue(List<_TyreUi> tyres) {
-//     final v =
-//         tyres.map((e) => e.pressure.value).firstWhere((x) => x.trim() != '—', orElse: () => '—');
-//     return v == '—' ? 'Value: —' : 'Value: $v';
-//   }
-
-//   String _bestPressureStatus(List<_TyreUi> tyres) {
-//     final t = tyres
-//         .map((e) => e.pressure.status)
-//         .firstWhere((x) => x.trim() != '—', orElse: () => '—');
-//     return 'Status: $t';
-//   }
-
-//   String _bestDamageValue(List<_TyreUi> tyres) {
-//     final t = tyres.map((e) => e.damageValue).firstWhere((x) => x.trim() != '—', orElse: () => '—');
-//     return 'Value: $t';
-//   }
-
-//   String _bestDamageStatus(List<_TyreUi> tyres) {
-//     final t = tyres.map((e) => e.damageStatus).firstWhere((x) => x.trim() != '—', orElse: () => '—');
-//     return 'Status: $t';
+//   // ✅ New: loose key matcher (handles spaces/case)
+//   dynamic _pickAnyLoose(Map<String, dynamic> root, List<String> keys) {
+//     // direct check first
+//     for (final k in keys) {
+//       if (root.containsKey(k)) return root[k];
+//     }
+//     // loose check
+//     String norm(String x) => x.toLowerCase().replaceAll(RegExp(r'[\s_\-]'), '');
+//     final mapNorm = <String, String>{};
+//     for (final actual in root.keys) {
+//       mapNorm[norm(actual)] = actual;
+//     }
+//     for (final want in keys) {
+//       final hit = mapNorm[norm(want)];
+//       if (hit != null) return root[hit];
+//     }
+//     return null;
 //   }
 // }
 
 // // =============================
-// // UI widgets (same design)
+// // MODEL UI WIDGETS (UI unchanged)
 // // =============================
 
-// class _TopFourImagesRow extends StatelessWidget {
-//   const _TopFourImagesRow({
-//     required this.s,
-//     required this.fl,
-//     required this.fr,
-//     required this.bl,
-//     required this.br,
-//   });
-
-//   final double s;
-//   final ImageProvider fl, fr, bl, br;
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Row(
-//       children: [
-//         Expanded(child: _WheelImageCard(s: s, image: fl, label: 'Front Left')),
-//         SizedBox(width: 10 * s),
-//         Expanded(child: _WheelImageCard(s: s, image: fr, label: 'Front Right')),
-//         SizedBox(width: 10 * s),
-//         Expanded(child: _WheelImageCard(s: s, image: bl, label: 'Back Left')),
-//         SizedBox(width: 10 * s),
-//         Expanded(child: _WheelImageCard(s: s, image: br, label: 'Back Right')),
-//       ],
-//     );
-//   }
+// class _WheelCardData {
+//   const _WheelCardData({required this.image, required this.label});
+//   final ImageProvider image;
+//   final String label;
 // }
 
 // class _WheelImageCard extends StatelessWidget {
 //   const _WheelImageCard({
-//     required this.s,
-//     required this.image,
-//     required this.label,
-//   });
-
-//   final double s;
-//   final ImageProvider image;
-//   final String label;
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Column(
-//       children: [
-//         Container(
-//           height: 150 * s,
-//           decoration: BoxDecoration(
-//             borderRadius: BorderRadius.circular(18 * s),
-//             boxShadow: [
-//               BoxShadow(
-//                 color: Colors.black.withOpacity(.08),
-//                 blurRadius: 18,
-//                 offset: const Offset(0, 10),
-//               ),
-//             ],
-//           ),
-//           child: ClipRRect(
-//             borderRadius: BorderRadius.circular(18 * s),
-//             child: Image(image: image, fit: BoxFit.cover),
-//           ),
-//         ),
-//         SizedBox(height: 8 * s),
-//         Container(
-//           padding: EdgeInsets.symmetric(horizontal: 14 * s, vertical: 7 * s),
-//           decoration: BoxDecoration(
-//             gradient: const LinearGradient(
-//               colors: [Color(0xFF2DA3FF), Color(0xFF6D63FF)],
-//               begin: Alignment.centerLeft,
-//               end: Alignment.centerRight,
-//             ),
-//             borderRadius: BorderRadius.circular(10 * s),
-//           ),
-//           child: Text(
-//             label,
-//             style: TextStyle(
-//               fontFamily: 'ClashGrotesk',
-//               fontSize: 10.5 * s,
-//               fontWeight: FontWeight.w900,
-//               color: Colors.white,
-//             ),
-//           ),
-//         ),
-//       ],
-//     );
-//   }
-// }
-
-// class _MetricCardBig extends StatelessWidget {
-//   const _MetricCardBig({
-//     required this.s,
-//     required this.icon,
-//     required this.title,
-//     required this.value,
-//     required this.status,
-//   });
-
-//   final double s;
-//   final IconData icon;
-//   final String title;
-//   final String value;
-//   final String status;
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Container(
-//       padding: EdgeInsets.all(16 * s),
-//       decoration: BoxDecoration(
-//         color: Colors.white,
-//         borderRadius: BorderRadius.circular(18 * s),
-//         boxShadow: [BoxShadow(color: Colors.black.withOpacity(.06), blurRadius: 18, offset: const Offset(0, 10))],
-//       ),
-//       child: Column(
-//         crossAxisAlignment: CrossAxisAlignment.start,
-//         children: [
-//           Row(
-//             children: [
-//               Container(
-//                 width: 46 * s,
-//                 height: 46 * s,
-//                 decoration: BoxDecoration(
-//                   gradient: const LinearGradient(
-//                     colors: [Color(0xFF2DA3FF), Color(0xFF6D63FF)],
-//                     begin: Alignment.topLeft,
-//                     end: Alignment.bottomRight,
-//                   ),
-//                   borderRadius: BorderRadius.circular(14 * s),
-//                 ),
-//                 child: Icon(icon, color: Colors.white, size: 24 * s),
-//               ),
-//               SizedBox(width: 12 * s),
-//               Expanded(
-//                 child: Text(
-//                   title,
-//                   style: TextStyle(
-//                     fontFamily: 'ClashGrotesk',
-//                     fontSize: 18 * s,
-//                     fontWeight: FontWeight.w900,
-//                     color: const Color(0xFF111827),
-//                   ),
-//                 ),
-//               ),
-//             ],
-//           ),
-//           SizedBox(height: 14 * s),
-//           Text(
-//             value,
-//             style: TextStyle(
-//               fontFamily: 'ClashGrotesk',
-//               fontSize: 14.5 * s,
-//               fontWeight: FontWeight.w700,
-//               color: const Color(0xFF111827),
-//             ),
-//           ),
-//           SizedBox(height: 6 * s),
-//           Text(
-//             status,
-//             style: TextStyle(
-//               fontFamily: 'ClashGrotesk',
-//               fontSize: 14.5 * s,
-//               fontWeight: FontWeight.w700,
-//               color: const Color(0xFF6B7280),
-//             ),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-// }
-
-// class _MetricCardSmall extends StatelessWidget {
-//   const _MetricCardSmall({
-//     required this.s,
-//     required this.title,
-//     required this.value,
-//     required this.status,
-//   });
-
-//   final double s;
-//   final String title;
-//   final String value;
-//   final String status;
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Container(
-//       width: double.infinity,
-//       padding: EdgeInsets.all(14 * s),
-//       decoration: BoxDecoration(
-//         gradient: const LinearGradient(
-//           colors: [Color(0xFF2DA3FF), Color(0xFF6D63FF)],
-//           begin: Alignment.centerLeft,
-//           end: Alignment.centerRight,
-//         ),
-//         borderRadius: BorderRadius.circular(18 * s),
-//         boxShadow: [BoxShadow(color: Colors.black.withOpacity(.06), blurRadius: 18, offset: const Offset(0, 10))],
-//       ),
-//       child: Column(
-//         crossAxisAlignment: CrossAxisAlignment.start,
-//         children: [
-//           Text(
-//             title,
-//             style: TextStyle(
-//               fontFamily: 'ClashGrotesk',
-//               color: Colors.white,
-//               fontWeight: FontWeight.w900,
-//               fontSize: 16 * s,
-//             ),
-//           ),
-//           SizedBox(height: 10 * s),
-//           Text(
-//             value,
-//             style: TextStyle(
-//               fontFamily: 'ClashGrotesk',
-//               color: Colors.white,
-//               fontWeight: FontWeight.w700,
-//               fontSize: 13.5 * s,
-//             ),
-//           ),
-//           SizedBox(height: 6 * s),
-//           Text(
-//             status,
-//             style: TextStyle(
-//               fontFamily: 'ClashGrotesk',
-//               color: Colors.white.withOpacity(.95),
-//               fontWeight: FontWeight.w700,
-//               fontSize: 13.5 * s,
-//             ),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-// }
-
-// class _SectionCard extends StatelessWidget {
-//   const _SectionCard({
-//     required this.s,
-//     required this.title,
-//     required this.child,
-//   });
-
-//   final double s;
-//   final String title;
-//   final Widget child;
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Container(
-//       padding: EdgeInsets.all(16 * s),
-//       decoration: BoxDecoration(
-//         color: Colors.white,
-//         borderRadius: BorderRadius.circular(18 * s),
-//         boxShadow: [BoxShadow(color: Colors.black.withOpacity(.06), blurRadius: 18, offset: const Offset(0, 10))],
-//       ),
-//       child: Column(
-//         crossAxisAlignment: CrossAxisAlignment.start,
-//         children: [
-//           Row(
-//             children: [
-//               Container(
-//                 width: 44 * s,
-//                 height: 44 * s,
-//                 decoration: BoxDecoration(
-//                   gradient: const LinearGradient(
-//                     colors: [Color(0xFF2DA3FF), Color(0xFF6D63FF)],
-//                     begin: Alignment.topLeft,
-//                     end: Alignment.bottomRight,
-//                   ),
-//                   borderRadius: BorderRadius.circular(14 * s),
-//                 ),
-//                 child: Icon(Icons.description_rounded, color: Colors.white, size: 22 * s),
-//               ),
-//               SizedBox(width: 12 * s),
-//               Expanded(
-//                 child: Text(
-//                   title,
-//                   style: TextStyle(
-//                     fontFamily: 'ClashGrotesk',
-//                     fontWeight: FontWeight.w900,
-//                     fontSize: 18 * s,
-//                     color: const Color(0xFF111827),
-//                   ),
-//                 ),
-//               ),
-//             ],
-//           ),
-//           SizedBox(height: 12 * s),
-//           child,
-//         ],
-//       ),
-//     );
-//   }
-// }
-
-// /// ✅ NEW: summary block that includes FULL pressure details + all data required
-// class _TyreSummaryFullBlock extends StatelessWidget {
-//   const _TyreSummaryFullBlock({required this.s, required this.tyre});
-//   final double s;
-//   final _TyreUi tyre;
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Container(
-//       margin: EdgeInsets.only(bottom: 12 * s),
-//       padding: EdgeInsets.all(14 * s),
-//       decoration: BoxDecoration(
-//         color: const Color(0xFFF4F8FF),
-//         borderRadius: BorderRadius.circular(16 * s),
-//         border: Border.all(color: const Color(0xFFE5EEFF)),
-//       ),
-//       child: Column(
-//         crossAxisAlignment: CrossAxisAlignment.start,
-//         children: [
-//           Text(
-//             tyre.label,
-//             style: TextStyle(
-//               fontFamily: 'ClashGrotesk',
-//               fontWeight: FontWeight.w900,
-//               fontSize: 15 * s,
-//               color: const Color(0xFF111827),
-//             ),
-//           ),
-//           SizedBox(height: 10 * s),
-
-//           _line(s, 'Tread Depth', 'Value: ${tyre.treadDepth}'),
-//           _line(s, 'Tyre Status', tyre.tyreStatus),
-
-//           SizedBox(height: 10 * s),
-//           _line(s, 'Damage (Wear Patterns)', tyre.damageValue),
-//           _line(s, 'Damage Status', tyre.damageStatus),
-
-//           SizedBox(height: 12 * s),
-
-//           // ✅ FULL tire pressure details
-//           Container(
-//             width: double.infinity,
-//             padding: EdgeInsets.all(12 * s),
-//             decoration: BoxDecoration(
-//               gradient: const LinearGradient(
-//                 colors: [Color(0xFF2DA3FF), Color(0xFF6D63FF)],
-//                 begin: Alignment.centerLeft,
-//                 end: Alignment.centerRight,
-//               ),
-//               borderRadius: BorderRadius.circular(14 * s),
-//             ),
-//             child: Column(
-//               crossAxisAlignment: CrossAxisAlignment.start,
-//               children: [
-//                 Text(
-//                   'Tire Pressure',
-//                   style: TextStyle(
-//                     fontFamily: 'ClashGrotesk',
-//                     fontWeight: FontWeight.w900,
-//                     fontSize: 14 * s,
-//                     color: Colors.white,
-//                   ),
-//                 ),
-//                 SizedBox(height: 8 * s),
-//                 Text(
-//                   tyre.pressure.value == '—' ? 'Value: —' : 'Value: ${tyre.pressure.value}',
-//                   style: TextStyle(
-//                     fontFamily: 'ClashGrotesk',
-//                     fontWeight: FontWeight.w700,
-//                     fontSize: 13 * s,
-//                     color: Colors.white,
-//                   ),
-//                 ),
-//                 SizedBox(height: 6 * s),
-//                 Text(
-//                   'Status: ${tyre.pressure.status}',
-//                   style: TextStyle(
-//                     fontFamily: 'ClashGrotesk',
-//                     fontWeight: FontWeight.w700,
-//                     fontSize: 13 * s,
-//                     color: Colors.white.withOpacity(.95),
-//                   ),
-//                 ),
-//                 if (tyre.pressure.reason.trim().isNotEmpty) ...[
-//                   SizedBox(height: 6 * s),
-//                   Text(
-//                     'Reason: ${tyre.pressure.reason}',
-//                     style: TextStyle(
-//                       fontFamily: 'ClashGrotesk',
-//                       fontWeight: FontWeight.w600,
-//                       fontSize: 12.5 * s,
-//                       height: 1.25,
-//                       color: Colors.white.withOpacity(.92),
-//                     ),
-//                   ),
-//                 ],
-//                 if (tyre.pressure.confidence.trim().isNotEmpty) ...[
-//                   SizedBox(height: 6 * s),
-//                   Text(
-//                     'Confidence: ${tyre.pressure.confidence}',
-//                     style: TextStyle(
-//                       fontFamily: 'ClashGrotesk',
-//                       fontWeight: FontWeight.w700,
-//                       fontSize: 12.5 * s,
-//                       color: Colors.white.withOpacity(.95),
-//                     ),
-//                   ),
-//                 ],
-//               ],
-//             ),
-//           ),
-
-//           // SizedBox(height: 12 * s),
-//           // Text(
-//           //   'Summary',
-//           //   style: TextStyle(
-//           //     fontFamily: 'ClashGrotesk',
-//           //     fontWeight: FontWeight.w900,
-//           //     fontSize: 13.5 * s,
-//           //     color: const Color(0xFF111827),
-//           //   ),
-//           // ),
-//           // SizedBox(height: 6 * s),
-//           // Text(
-//           //   tyre.summary,
-//           //   style: TextStyle(
-//           //     fontFamily: 'ClashGrotesk',
-//           //     fontWeight: FontWeight.w600,
-//           //     fontSize: 13 * s,
-//           //     height: 1.35,
-//           //     color: const Color(0xFF374151),
-//           //   ),
-//           // ),
-//         ],
-//       ),
-//     );
-//   }
-
-//   Widget _line(double s, String title, String value) {
-//     return Padding(
-//       padding: EdgeInsets.only(bottom: 6 * s),
-//       child: RichText(
-//         text: TextSpan(
-//           style: TextStyle(
-//             fontFamily: 'ClashGrotesk',
-//             fontSize: 13 * s,
-//             height: 1.25,
-//             color: const Color(0xFF111827),
-//           ),
-//           children: [
-//             TextSpan(
-//               text: '$title: ',
-//               style: TextStyle(
-//                 fontWeight: FontWeight.w900,
-//                 color: const Color(0xFF111827),
-//               ),
-//             ),
-//             TextSpan(
-//               text: value,
-//               style: TextStyle(
-//                 fontWeight: FontWeight.w600,
-//                 color: const Color(0xFF374151),
-//               ),
-//             ),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-// }
-
-// // =============================
-// // Data holders
-// // =============================
-
-// class _TyreUi {
-//   _TyreUi({
-//     required this.label,
-//     required this.treadDepth,
-//     required this.tyreStatus,
-//     required this.damageValue,
-//     required this.damageStatus,
-//     required this.pressure,
-//     required this.summary,
-//   });
-
-//   final String label;
-
-//   final String treadDepth;
-//   final String tyreStatus;
-
-//   final String damageValue;
-//   final String damageStatus;
-
-//   final _PressureUi pressure;
-
-//   final String summary;
-// }
-
-// class _PressureUi {
-//   const _PressureUi({
-//     required this.value,
-//     required this.status,
-//     required this.reason,
-//     required this.confidence,
-//   });
-
-//   final String value;
-//   final String status;
-//   final String reason;
-//   final String confidence;
-// }
-
-
-/*
-class InspectionResultScreen extends StatefulWidget {
-  const InspectionResultScreen({
-    super.key,
-    required this.frontLeftPath,
-    required this.frontRightPath,
-    required this.backLeftPath,
-    required this.backRightPath,
-    required this.vehicleId,
-    required this.userId,
-    required this.token,
-    this.response,
-
-    // ✅ NEW: pass raw 4-wheeler API json here (from Dio response)
-    this.fourWheelerRaw,
-  });
-
-  final String frontLeftPath;
-  final String frontRightPath;
-  final String backLeftPath;
-  final String backRightPath;
-
-  final String vehicleId;
-  final String userId;
-  final String token;
-
-  final dynamic response; // keep your type if you want: m.TyreUploadResponse?
-  final Map<String, dynamic>? fourWheelerRaw;
-
-  @override
-  State<InspectionResultScreen> createState() => _InspectionResultScreenState();
-}
-
-class _InspectionResultScreenState extends State<InspectionResultScreen> {
-
-    @override
-  void initState() {
-    super.initState();
-    var userid = context.read<AuthBloc>().state.profile!.userId.toString();
-    context.read<AuthBloc>().add(FetchTyreHistoryRequested(userId: userid));
-  }
-  @override
-  Widget build(BuildContext context) {
-    final s = MediaQuery.sizeOf(context).width / 393;
-
-    // ✅ 1) prefer raw api json, fallback to response?.toJson(), fallback to response?.data
-    final raw = widget.fourWheelerRaw ?? _safeToJson(widget.response) ?? {};
-    final data = _tryReadMap(raw, ['data', 'result', 'payload']) ??
-        _safeToJson((widget.response as dynamic?)?.data) ??
-        {};
-
-    // ✅ URL extraction stays same
-    final flUrl = _pickStringFromData(data, [
-      'frontLeftWheelUrl',
-      'front_left_wheel_url',
-      'front_left_url',
-      'front_left',
-      'frontLeftUrl',
-      'front_left_image',
-      'front_left_image_url',
-    ]);
-
-    final frUrl = _pickStringFromData(data, [
-      'frontRightWheelUrl',
-      'front_right_wheel_url',
-      'front_right_url',
-      'front_right',
-      'frontRightUrl',
-      'front_right_image',
-      'front_right_image_url',
-    ]);
-
-    final blUrl = _pickStringFromData(data, [
-      'backLeftWheelUrl',
-      'back_left_wheel_url',
-      'back_left_url',
-      'back_left',
-      'backLeftUrl',
-      'back_left_image',
-      'back_left_image_url',
-    ]);
-
-    final brUrl = _pickStringFromData(data, [
-      'backRightWheelUrl',
-      'back_right_wheel_url',
-      'back_right_url',
-      'back_right',
-      'backRightUrl',
-      'back_right_image',
-      'back_right_image_url',
-    ]);
-
-    final flImg = _imgProvider(localPath: widget.frontLeftPath, url: flUrl);
-    final frImg = _imgProvider(localPath: widget.frontRightPath, url: frUrl);
-    final blImg = _imgProvider(localPath: widget.backLeftPath, url: blUrl);
-    final brImg = _imgProvider(localPath: widget.backRightPath, url: brUrl);
-
-    // ✅ 2) Extract TEXT from raw/data using deep search
-    // You can add more keys here if backend uses different names
-    final treadDepth = _deepPickString(raw, [
-          'treadDepth',
-          'tread_depth',
-          'tread.depth',
-          'data.treadDepth',
-          'data.tread_depth',
-        ]) ??
-        '—';
-
-    final treadStatus = _deepPickString(raw, [
-          'treadStatus',
-          'tread_status',
-          'tread.status',
-          'data.treadStatus',
-          'data.tread_status',
-        ]) ??
-        '—';
-
-    final tyrePressure = _deepPickString(raw, [
-          'tyrePressure',
-          'tirePressure',
-          'pressure',
-          'data.tyrePressure',
-          'data.pressure',
-        ]) ??
-        '—';
-
-    final tyrePressureStatus = _deepPickString(raw, [
-          'tyrePressureStatus',
-          'tirePressureStatus',
-          'pressure_status',
-          'data.tyrePressureStatus',
-          'data.pressure_status',
-        ]) ??
-        '—';
-
-    final damageCheck = _deepPickString(raw, [
-          'damageCheck',
-          'damage_check',
-          'damage',
-          'data.damageCheck',
-        ]) ??
-        '—';
-
-    final damageStatus = _deepPickString(raw, [
-          'damageStatus',
-          'damage_status',
-          'data.damageStatus',
-        ]) ??
-        '—';
-
-    final summary =
-        _deepPickString(raw, ['message', 'summary', 'reportSummary', 'report_summary']) ??
-            'Report generated.';
-
-    // ✅ 3) Show FULL json string (not only response.toJson)
-    final prettyJson = const JsonEncoder.withIndent('  ').convert(raw.isEmpty ? data : raw);
-
-    return Scaffold(
-      backgroundColor: const Color(0xFFF3F2F8),
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: Colors.white,
-        scrolledUnderElevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded,
-              size: 22, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
-        centerTitle: true,
-        title: Text(
-          'Inspection Report',
-          style: TextStyle(
-            fontFamily: 'ClashGrotesk',
-            fontSize: 20 * s,
-            fontWeight: FontWeight.w800,
-            color: Colors.black,
-          ),
-        ),
-      ),
-      body: ListView(
-        padding: EdgeInsets.fromLTRB(16 * s, 10 * s, 16 * s, 28 * s),
-        children: [
-          _PhotosGrid4(s: s, fl: flImg, fr: frImg, bl: blImg, br: brImg),
-          SizedBox(height: 18 * s),
-
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                flex: 11,
-                child: _BigMetricCard(
-                  s: s,
-                  iconBg: const LinearGradient(
-                    colors: [Color(0xFF4F7BFF), Color(0xFFA6C8FF)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  icon: Icons.sync,
-                  title: 'Tread Depth',
-                  value: 'Value: $treadDepth',
-                  status: 'Status: $treadStatus',
-                ),
-              ),
-              SizedBox(width: 14 * s),
-              Expanded(
-                flex: 10,
-                child: Column(
-                  children: [
-                    _SmallMetricCard(
-                      s: s,
-                      title: 'Tyre Pressure',
-                      value: 'Value: $tyrePressure',
-                      status: 'Status: $tyrePressureStatus',
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF4F7BFF), Color(0xFF80B3FF)],
-                        begin: Alignment.centerLeft,
-                        end: Alignment.centerRight,
-                      ),
-                    ),
-                    SizedBox(height: 12 * s),
-                    _SmallMetricCard(
-                      s: s,
-                      title: 'Damage Check',
-                      value: 'Value: $damageCheck',
-                      status: 'Status: $damageStatus',
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF69A3FF), Color(0xFF9C7FFF)],
-                        begin: Alignment.centerLeft,
-                        end: Alignment.centerRight,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 18 * s),
-
-          _ReportSummaryCard(s: s, title: 'Report Summary:', summary: summary),
-          SizedBox(height: 18 * s),
-
-          _ApiResponseCard(
-            s: s,
-            title: 'Four-wheeler API Response (Full)',
-            jsonText: prettyJson,
-          ),
-          SizedBox(height: 18 * s),
-
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Color(0xFFB8C1D9)),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16 * s),
-                    ),
-                    padding: EdgeInsets.symmetric(vertical: 14 * s),
-                    backgroundColor: Colors.white,
-                  ),
-                  icon: const Icon(Icons.share_rounded, color: Color(0xFF4F7BFF)),
-                  label: Text(
-                    'Share Report',
-                    style: TextStyle(
-                      fontFamily: 'ClashGrotesk',
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF4F7BFF),
-                    ),
-                  ),
-                  onPressed: () => _toast(context, 'Share pressed'),
-                ),
-              ),
-              SizedBox(width: 12 * s),
-              Expanded(
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4F7BFF),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16 * s),
-                    ),
-                    padding: EdgeInsets.symmetric(vertical: 15 * s),
-                    elevation: 4,
-                  ),
-                  icon: const Icon(Icons.download_rounded),
-                  label: Text(
-                    'Download PDF',
-                    style: TextStyle(
-                      fontFamily: 'ClashGrotesk',
-                      fontWeight: FontWeight.w800,
-                      fontSize: 14 * s,
-                    ),
-                  ),
-                  onPressed: () => _toast(context, 'Download pressed'),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ==========================
-  ImageProvider _imgProvider({required String localPath, String? url}) {
-    final u = (url ?? '').trim();
-    if (u.isNotEmpty && (u.startsWith('http://') || u.startsWith('https://'))) {
-      return NetworkImage(u);
-    }
-    return FileImage(File(localPath));
-  }
-
-  Map<String, dynamic>? _safeToJson(dynamic obj) {
-    if (obj == null) return null;
-    if (obj is Map<String, dynamic>) return obj;
-    if (obj is Map) return Map<String, dynamic>.from(obj);
-
-    try {
-      final j = (obj as dynamic).toJson();
-      if (j is Map<String, dynamic>) return j;
-      if (j is Map) return Map<String, dynamic>.from(j);
-    } catch (_) {}
-
-    try {
-      final encoded = jsonEncode(obj);
-      final decoded = jsonDecode(encoded);
-      if (decoded is Map<String, dynamic>) return decoded;
-      if (decoded is Map) return Map<String, dynamic>.from(decoded);
-    } catch (_) {}
-
-    return null;
-  }
-
-  Map<String, dynamic>? _tryReadMap(Map<String, dynamic> root, List<String> keys) {
-    for (final k in keys) {
-      final v = root[k];
-      if (v is Map<String, dynamic>) return v;
-      if (v is Map) return Map<String, dynamic>.from(v);
-    }
-    return null;
-  }
-
-  String? _pickStringFromData(dynamic data, List<String> keys) {
-    if (data == null) return null;
-
-    Map<String, dynamic>? map;
-    if (data is Map) {
-      map = Map<String, dynamic>.from(data as Map);
-    } else {
-      map = _safeToJson(data);
-    }
-    if (map == null) return null;
-
-    for (final k in keys) {
-      final v = map[k];
-      if (v == null) continue;
-      final s = v.toString().trim();
-      if (s.isNotEmpty && s != 'null') return s;
-    }
-    return null;
-  }
-
-  // ✅ Deep search: supports keys like "data.treadDepth" and will also search any nested maps/lists
-  String? _deepPickString(Map<String, dynamic> root, List<String> keys) {
-    // 1) dot-path exact
-    for (final k in keys) {
-      final v = _readByPath(root, k);
-      final s = _asNonEmptyString(v);
-      if (s != null) return s;
-    }
-
-    // 2) fallback: search anywhere (by key name)
-    for (final k in keys) {
-      final keyName = k.contains('.') ? k.split('.').last : k;
-      final v = _findKeyAnywhere(root, keyName);
-      final s = _asNonEmptyString(v);
-      if (s != null) return s;
-    }
-
-    return null;
-  }
-
-  dynamic _readByPath(Map<String, dynamic> root, String path) {
-    if (!path.contains('.')) return root[path];
-
-    dynamic cur = root;
-    for (final part in path.split('.')) {
-      if (cur is Map) {
-        cur = cur[part];
-      } else {
-        return null;
-      }
-    }
-    return cur;
-  }
-
-  dynamic _findKeyAnywhere(dynamic node, String key) {
-    if (node is Map) {
-      if (node.containsKey(key)) return node[key];
-      for (final v in node.values) {
-        final found = _findKeyAnywhere(v, key);
-        if (found != null) return found;
-      }
-    } else if (node is List) {
-      for (final v in node) {
-        final found = _findKeyAnywhere(v, key);
-        if (found != null) return found;
-      }
-    }
-    return null;
-  }
-
-  String? _asNonEmptyString(dynamic v) {
-    if (v == null) return null;
-    final s = v.toString().trim();
-    if (s.isEmpty || s == 'null') return null;
-    return s;
-  }
-
-  void _toast(BuildContext ctx, String msg) =>
-      ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(msg)));
-}
-*/
-
-
-
-  ImageProvider _imgProvider({required String localPath, String? url}) {
-    final u = (url ?? '').trim();
-    if (u.isNotEmpty && (u.startsWith('http://') || u.startsWith('https://'))) {
-      return NetworkImage(u);
-    }
-    return FileImage(File(localPath));
-  }
-
-  String? _pickStringFromData(dynamic data, List<String> keys) {
-    if (data == null) return null;
-
-    Map<String, dynamic>? map;
-
-    if (data is Map) {
-      map = Map<String, dynamic>.from(data as Map);
-    } else {
-      try {
-        final dynamic j = (data as dynamic).toJson();
-        if (j is Map) map = Map<String, dynamic>.from(j as Map);
-      } catch (_) {
-        map = null;
-      }
-    }
-
-    if (map == null) return null;
-
-    for (final k in keys) {
-      final v = map[k];
-      if (v == null) continue;
-      final s = v.toString().trim();
-      if (s.isNotEmpty && s != 'null') return s;
-    }
-    return null;
-  }
-
-  String _prettyResponseJson(m.TyreUploadResponse? response) {
-    if (response == null) return 'No response (null)';
-    try {
-      final dynamic j = (response as dynamic).toJson();
-      return const JsonEncoder.withIndent('  ').convert(j);
-    } catch (_) {
-      return 'message: ${response.message}\n'
-          'data: ${response.data}\n'
-          '(Tip: add toJson() in TyreUploadResponse for full JSON)';
-    }
-  }
-
-  // void _toast(BuildContext ctx, String msg) =>
-  //     ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(msg)));
-
-
-// class _PhotosGrid4 extends StatelessWidget {
-//   const _PhotosGrid4({
-//     required this.s,
-//     required this.fl,
-//     required this.fr,
-//     required this.bl,
-//     required this.br,
-//   });
-
-//   final double s;
-//   final ImageProvider fl, fr, bl, br;
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Column(
-//       children: [
-//         Row(
-//           children: [
-//             Expanded(
-//               child: _PhotoCard(
-//                 s: s,
-//                 image: fl,
-//                 label: 'Front Left',
-//                 gradient: const LinearGradient(
-//                   colors: [Color(0xFF30C5FF), Color(0xFF4676FF)],
-//                   begin: Alignment.topLeft,
-//                   end: Alignment.bottomRight,
-//                 ),
-//               ),
-//             ),
-//             SizedBox(width: 12 * s),
-//             Expanded(
-//               child: _PhotoCard(
-//                 s: s,
-//                 image: fr,
-//                 label: 'Front Right',
-//                 gradient: const LinearGradient(
-//                   colors: [Color(0xFFFF7E6D), Color(0xFFFF57B5)],
-//                   begin: Alignment.topLeft,
-//                   end: Alignment.bottomRight,
-//                 ),
-//               ),
-//             ),
-//           ],
-//         ),
-//         SizedBox(height: 12 * s),
-//         Row(
-//           children: [
-//             Expanded(
-//               child: _PhotoCard(
-//                 s: s,
-//                 image: bl,
-//                 label: 'Back Left',
-//                 gradient: const LinearGradient(
-//                   colors: [Color(0xFF39D2C0), Color(0xFF7993FF)],
-//                   begin: Alignment.topLeft,
-//                   end: Alignment.bottomRight,
-//                 ),
-//               ),
-//             ),
-//             SizedBox(width: 12 * s),
-//             Expanded(
-//               child: _PhotoCard(
-//                 s: s,
-//                 image: br,
-//                 label: 'Back Right',
-//                 gradient: const LinearGradient(
-//                   colors: [Color(0xFF7C3AED), Color(0xFF60A5FA)],
-//                   begin: Alignment.topLeft,
-//                   end: Alignment.bottomRight,
-//                 ),
-//               ),
-//             ),
-//           ],
-//         ),
-//       ],
-//     );
-//   }
-// }
-
-// class _ApiResponseCard extends StatelessWidget {
-//   const _ApiResponseCard({
-//     required this.s,
-//     required this.title,
-//     required this.jsonText,
-//   });
-
-//   final double s;
-//   final String title;
-//   final String jsonText;
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Container(
-//       padding: EdgeInsets.all(14 * s),
-//       decoration: BoxDecoration(
-//         color: Colors.white,
-//         borderRadius: BorderRadius.circular(16 * s),
-//         border: Border.all(color: const Color(0xFFE3E7F3)),
-//       ),
-//       child: Column(
-//         crossAxisAlignment: CrossAxisAlignment.start,
-//         children: [
-//           Text(
-//             title,
-//             style: TextStyle(
-//               fontFamily: 'ClashGrotesk',
-//               fontSize: 15 * s,
-//               fontWeight: FontWeight.w800,
-//               color: Colors.black,
-//             ),
-//           ),
-//           SizedBox(height: 10 * s),
-//           Container(
-//             width: double.infinity,
-//             padding: EdgeInsets.all(12 * s),
-//             decoration: BoxDecoration(
-//               color: const Color(0xFFF6F7FB),
-//               borderRadius: BorderRadius.circular(12 * s),
-//               border: Border.all(color: const Color(0xFFE6EAF6)),
-//             ),
-//             child: SelectableText(
-//               jsonText,
-//               style: TextStyle(
-//                 fontFamily: 'ClashGrotesk',
-//                 fontSize: 12.5 * s,
-//                 height: 1.25,
-//                 color: const Color(0xFF111827),
-//               ),
-//             ),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-// }
-
-// class _PhotoCard extends StatelessWidget {
-//   const _PhotoCard({
 //     required this.s,
 //     required this.image,
 //     required this.label,
@@ -3065,127 +4033,209 @@ class _InspectionResultScreenState extends State<InspectionResultScreen> {
 //   final double s;
 //   final ImageProvider image;
 //   final String label;
-//   final Gradient gradient;
+//   final LinearGradient gradient;
 
 //   @override
 //   Widget build(BuildContext context) {
-//     return Container(
-//       height: 140 * s,
-//       decoration: BoxDecoration(
-//         borderRadius: BorderRadius.circular(18 * s),
-//         gradient: gradient,
-//         boxShadow: [
-//           BoxShadow(
-//             color: Colors.black.withOpacity(.08),
-//             blurRadius: 14,
-//             offset: const Offset(0, 8),
-//           ),
-//         ],
-//       ),
-//       child: ClipRRect(
-//         borderRadius: BorderRadius.circular(18 * s),
-//         child: Stack(
-//           children: [
-//             Positioned.fill(
+//     return SizedBox(
+//       width: 120 * s,
+//       child: Column(
+//         children: [
+//           Container(
+//             height: 140 * s,
+//             decoration: BoxDecoration(
+//               borderRadius: BorderRadius.circular(18 * s),
+//               color: Colors.white,
+//               boxShadow: [
+//                 BoxShadow(
+//                   color: Colors.black.withOpacity(.10),
+//                   blurRadius: 18,
+//                   offset: const Offset(0, 10),
+//                 ),
+//               ],
+//             ),
+//             child: ClipRRect(
+//               borderRadius: BorderRadius.circular(18 * s),
 //               child: Image(image: image, fit: BoxFit.cover),
 //             ),
-//             Positioned(
-//               left: 10 * s,
-//               bottom: 10 * s,
-//               child: Container(
-//                 padding: EdgeInsets.symmetric(horizontal: 10 * s, vertical: 6 * s),
-//                 decoration: BoxDecoration(
-//                   color: Colors.black.withOpacity(.45),
-//                   borderRadius: BorderRadius.circular(999),
-//                 ),
-//                 child: Text(
-//                   label,
-//                   style: TextStyle(
-//                     fontFamily: 'ClashGrotesk',
-//                     color: Colors.white,
-//                     fontWeight: FontWeight.w800,
-//                     fontSize: 12.5 * s,
-//                   ),
+//           ),
+//           SizedBox(height: 10 * s),
+//           Container(
+//             width: double.infinity,
+//             padding: EdgeInsets.symmetric(vertical: 8 * s),
+//             decoration: BoxDecoration(
+//               gradient: gradient,
+//               borderRadius: BorderRadius.circular(10 * s),
+//             ),
+//             child: Center(
+//               child: Text(
+//                 label,
+//                 style: TextStyle(
+//                   fontFamily: 'ClashGrotesk',
+//                   fontWeight: FontWeight.w900,
+//                   fontSize: 14 * s,
+//                   color: Colors.white,
 //                 ),
 //               ),
 //             ),
-//           ],
-//         ),
+//           ),
+//         ],
 //       ),
 //     );
 //   }
 // }
 
-// class _BigMetricCard extends StatelessWidget {
-//   const _BigMetricCard({
+// class _TyreChips extends StatelessWidget {
+//   const _TyreChips({
+//     super.key,
 //     required this.s,
-//     required this.iconBg,
-//     required this.icon,
-//     required this.title,
-//     required this.value,
-//     required this.status,
+//     required this.labels,
+//     required this.selected,
+//     required this.gradient,
+//     required this.onSelect,
 //   });
 
 //   final double s;
-//   final Gradient iconBg;
-//   final IconData icon;
-//   final String title;
-//   final String value;
-//   final String status;
+//   final List<String> labels;
+//   final int selected;
+//   final LinearGradient gradient;
+//   final ValueChanged<int> onSelect;
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Row(
+//       children: List.generate(labels.length, (i) {
+//         final isSel = i == selected;
+//         return Expanded(
+//           child: Padding(
+//             padding: EdgeInsets.only(right: i == labels.length - 1 ? 0 : 10 * s),
+//             child: InkWell(
+//               onTap: () => onSelect(i),
+//               borderRadius: BorderRadius.circular(12 * s),
+//               child: AnimatedContainer(
+//                 duration: const Duration(milliseconds: 180),
+//                 padding: EdgeInsets.symmetric(vertical: 10 * s),
+//                 decoration: BoxDecoration(
+//                   gradient: isSel ? gradient : null,
+//                   color: isSel ? null : Colors.white,
+//                   borderRadius: BorderRadius.circular(12 * s),
+//                   border: Border.all(
+//                     color: isSel ? Colors.transparent : const Color(0xFFE7E7E7),
+//                   ),
+//                   boxShadow: [
+//                     BoxShadow(
+//                       color: Colors.black.withOpacity(isSel ? .10 : .05),
+//                       blurRadius: isSel ? 16 : 10,
+//                       offset: const Offset(0, 8),
+//                     ),
+//                   ],
+//                 ),
+//                 child: Center(
+//                   child: Text(
+//                     labels[i],
+//                     style: TextStyle(
+//                       fontFamily: 'ClashGrotesk',
+//                       fontSize: 13.5 * s,
+//                       fontWeight: FontWeight.w900,
+//                       color: isSel ? Colors.white : const Color(0xFF111827),
+//                     ),
+//                   ),
+//                 ),
+//               ),
+//             ),
+//           ),
+//         );
+//       }),
+//     );
+//   }
+// }
+
+// class _BigTreadCard extends StatelessWidget {
+//   const _BigTreadCard({
+//     required this.s,
+//     required this.gradient,
+//     required this.treadValue,
+//     required this.treadStatus,
+//   });
+
+//   final double s;
+//   final LinearGradient gradient;
+//   final String treadValue;
+//   final String treadStatus;
 
 //   @override
 //   Widget build(BuildContext context) {
 //     return Container(
-//       padding: EdgeInsets.all(14 * s),
+//       padding: EdgeInsets.all(16 * s),
 //       decoration: BoxDecoration(
 //         color: Colors.white,
 //         borderRadius: BorderRadius.circular(18 * s),
+//         boxShadow: [
+//           BoxShadow(
+//             color: Colors.black.withOpacity(.10),
+//             blurRadius: 18,
+//             offset: const Offset(0, 10),
+//           )
+//         ],
 //       ),
 //       child: Column(
 //         crossAxisAlignment: CrossAxisAlignment.start,
 //         children: [
-//           Row(
-//             children: [
-//               Container(
-//                 width: 40 * s,
-//                 height: 40 * s,
-//                 decoration: BoxDecoration(
-//                   gradient: iconBg,
-//                   borderRadius: BorderRadius.circular(12 * s),
+//           // icon circle
+//           Container(
+//             width: 62 * s,
+//             height: 62 * s,
+//             decoration: BoxDecoration(
+//               shape: BoxShape.circle,
+//               color: Colors.white,
+//               boxShadow: [
+//                 BoxShadow(
+//                   color: Colors.black.withOpacity(.10),
+//                   blurRadius: 18,
+//                   offset: const Offset(0, 10),
+//                 )
+//               ],
+//             ),
+//             child: Center(
+//               child: ShaderMask(
+//                 shaderCallback: (r) => gradient.createShader(r),
+//                 child: Image.asset(
+//                   "assets/thread_depth.png",
+//                   height: 34,
+//                   width: 34,
 //                 ),
-//                 child: Icon(icon, color: Colors.white, size: 22 * s),
 //               ),
-//               SizedBox(width: 10 * s),
-//               Expanded(
-//                 child: Text(
-//                   title,
-//                   style: TextStyle(
-//                     fontFamily: 'ClashGrotesk',
-//                     fontSize: 14.5 * s,
-//                     fontWeight: FontWeight.w800,
-//                   ),
-//                 ),
-//               ),
-//             ],
+//             ),
 //           ),
 //           SizedBox(height: 12 * s),
 //           Text(
-//             value,
+//             'Tread Depth',
 //             style: TextStyle(
 //               fontFamily: 'ClashGrotesk',
-//               fontSize: 13 * s,
+//               fontSize: 20 * s,
+//               fontWeight: FontWeight.w900,
+//               foreground: Paint()
+//                 ..shader = gradient.createShader(const Rect.fromLTWH(0, 0, 200, 40)),
+//             ),
+//           ),
+//           SizedBox(height: 12 * s),
+//           Text(
+//             'Value: $treadValue',
+//             style: TextStyle(
+//               fontFamily: 'ClashGrotesk',
+//               fontSize: 16 * s,
 //               fontWeight: FontWeight.w700,
 //               color: const Color(0xFF111827),
 //             ),
 //           ),
-//           SizedBox(height: 6 * s),
+//           SizedBox(height: 8 * s),
 //           Text(
-//             status,
+//             'Status: $treadStatus',
 //             style: TextStyle(
 //               fontFamily: 'ClashGrotesk',
-//               fontSize: 13 * s,
+//               fontSize: 16 * s,
 //               fontWeight: FontWeight.w700,
-//               color: const Color(0xFF6B7280),
+//               color: const Color(0xFF111827),
 //             ),
 //           ),
 //         ],
@@ -3198,24 +4248,29 @@ class _InspectionResultScreenState extends State<InspectionResultScreen> {
 //   const _SmallMetricCard({
 //     required this.s,
 //     required this.title,
-//     required this.value,
+//    /// required this.value,
 //     required this.status,
-//     required this.gradient,
 //   });
 
 //   final double s;
 //   final String title;
-//   final String value;
+//   //final String value;
 //   final String status;
-//   final Gradient gradient;
 
 //   @override
 //   Widget build(BuildContext context) {
 //     return Container(
-//       padding: EdgeInsets.all(14 * s),
+//       padding: EdgeInsets.all(16 * s),
 //       decoration: BoxDecoration(
-//         gradient: gradient,
+//         color: Colors.white,
 //         borderRadius: BorderRadius.circular(18 * s),
+//         boxShadow: [
+//           BoxShadow(
+//             color: Colors.black.withOpacity(.10),
+//             blurRadius: 18,
+//             offset: const Offset(0, 10),
+//           )
+//         ],
 //       ),
 //       child: Column(
 //         crossAxisAlignment: CrossAxisAlignment.start,
@@ -3224,29 +4279,29 @@ class _InspectionResultScreenState extends State<InspectionResultScreen> {
 //             title,
 //             style: TextStyle(
 //               fontFamily: 'ClashGrotesk',
-//               color: Colors.white,
-//               fontWeight: FontWeight.w800,
-//               fontSize: 13.5 * s,
+//               fontSize: 22 * s,
+//               fontWeight: FontWeight.w900,
+//               color: const Color(0xFF00C6FF),
 //             ),
 //           ),
-//           SizedBox(height: 10 * s),
-//           Text(
-//             value,
-//             style: TextStyle(
-//               fontFamily: 'ClashGrotesk',
-//               color: Colors.white,
-//               fontWeight: FontWeight.w700,
-//               fontSize: 12.5 * s,
-//             ),
-//           ),
-//           SizedBox(height: 6 * s),
+//           SizedBox(height: 12 * s),
+//           // Text(
+//           //   value,
+//           //   style: TextStyle(
+//           //     fontFamily: 'ClashGrotesk',
+//           //     fontSize: 16 * s,
+//           //     fontWeight: FontWeight.w700,
+//           //     color: const Color(0xFF111827),
+//           //   ),
+//           // ),
+//           // SizedBox(height: 8 * s),
 //           Text(
 //             status,
 //             style: TextStyle(
 //               fontFamily: 'ClashGrotesk',
-//               color: Colors.white.withOpacity(.9),
+//               fontSize: 16 * s,
 //               fontWeight: FontWeight.w700,
-//               fontSize: 12.5 * s,
+//               color: const Color(0xFF111827),
 //             ),
 //           ),
 //         ],
@@ -3258,12 +4313,14 @@ class _InspectionResultScreenState extends State<InspectionResultScreen> {
 // class _ReportSummaryCard extends StatelessWidget {
 //   const _ReportSummaryCard({
 //     required this.s,
-//     required this.title,
-//     required this.summary,
+//     required this.gradient,
+//     required this.tyre,
+//     required this.summary
 //   });
 
 //   final double s;
-//   final String title;
+//   final LinearGradient gradient;
+//   final _TyreUi tyre;
 //   final String summary;
 
 //   @override
@@ -3273,28 +4330,66 @@ class _InspectionResultScreenState extends State<InspectionResultScreen> {
 //       decoration: BoxDecoration(
 //         color: Colors.white,
 //         borderRadius: BorderRadius.circular(18 * s),
+//         boxShadow: [
+//           BoxShadow(
+//             color: Colors.black.withOpacity(.10),
+//             blurRadius: 18,
+//             offset: const Offset(0, 10),
+//           )
+//         ],
 //       ),
 //       child: Column(
 //         crossAxisAlignment: CrossAxisAlignment.start,
 //         children: [
+//           // header row like model
+//           Row(
+//             children: [
+//               Container(
+//                 width: 52 * s,
+//                 height: 52 * s,
+//                 decoration: BoxDecoration(
+//                   shape: BoxShape.circle,
+//                   gradient: gradient,
+//                 ),
+//                 child: Icon(Icons.description_outlined, color: Colors.white, size: 26 * s),
+//               ),
+//               SizedBox(width: 12 * s),
+//               Expanded(
+//                 child: Text(
+//                   'Report Summary:',
+//                   style: TextStyle(
+//                     fontFamily: 'ClashGrotesk',
+//                     fontSize: 26 * s,
+//                     fontWeight: FontWeight.w900,
+//                     color: const Color(0xFF111827),
+//                   ),
+//                 ),
+//               ),
+//               Icon(Icons.chevron_right_rounded, size: 30 * s, color: const Color(0xFF111827)),
+//             ],
+//           ),
+
+//           SizedBox(height: 12 * s),
+
+//           // ✅ Only selected tyre summary (no UI change)
 //           Text(
-//             title,
+//             tyre.label,
 //             style: TextStyle(
 //               fontFamily: 'ClashGrotesk',
-//               fontWeight: FontWeight.w800,
-//               fontSize: 15 * s,
-//               color: Colors.black,
+//               fontSize: 14.5 * s,
+//               fontWeight: FontWeight.w900,
+//               foreground: Paint()..shader = gradient.createShader(const Rect.fromLTWH(0, 0, 220, 40)),
 //             ),
 //           ),
-//           SizedBox(height: 10 * s),
+//           SizedBox(height: 6 * s),
 //           Text(
 //             summary,
 //             style: TextStyle(
 //               fontFamily: 'ClashGrotesk',
+//               fontSize: 14.5 * s,
 //               fontWeight: FontWeight.w600,
-//               fontSize: 13.5 * s,
 //               height: 1.35,
-//               color: const Color(0xFF374151),
+//               color: const Color(0xFF222222),
 //             ),
 //           ),
 //         ],
@@ -3302,6 +4397,41 @@ class _InspectionResultScreenState extends State<InspectionResultScreen> {
 //     );
 //   }
 // }
+
+// // =============================
+// // Data holder
+// // =============================
+// class _TyreUi {
+//   _TyreUi({
+//     required this.label,
+//     required this.treadDepth,
+//     required this.tyreStatus,
+//     required this.damageValue,
+//     required this.damageStatus,
+//     required this.pressureValue,
+//     required this.pressureStatus,
+//     required this.pressureReason,
+//     required this.pressureConfidence,
+//     required this.summary,
+//   });
+
+//   final String label;
+
+//   final String treadDepth;
+//   final String tyreStatus;
+
+//   final String damageValue;
+//   final String damageStatus;
+
+//   final String pressureValue;
+//   final String pressureStatus;
+//   final String pressureReason;
+//   final String pressureConfidence;
+
+//   final String summary;
+// }
+
+
 
 class GenerateReportScreen extends StatefulWidget {
   const GenerateReportScreen({
@@ -4236,3 +5366,4 @@ class _GenerateReportScreenState extends State<GenerateReportScreen>
 //     );
 //   }
 // }
+*/
