@@ -6,17 +6,7 @@ import 'package:ios_tiretest_ai/Bloc/auth_state.dart';
 import 'package:ios_tiretest_ai/models/two_wheeler_tyre_upload_response.dart';
 import 'dart:convert';
 
-import 'dart:convert';
 
-import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-
-import 'package:ios_tiretest_ai/Bloc/auth_bloc.dart';
-import 'package:ios_tiretest_ai/Bloc/auth_event.dart';
-import 'package:ios_tiretest_ai/Bloc/auth_state.dart';
-
-// ✅ IMPORTANT: this must be your NEW upload response model (data: { record_id, front, back })
-import 'package:ios_tiretest_ai/models/two_wheeler_tyre_upload_response.dart';
 
 enum _BikeTyrePos { front, back }
 
