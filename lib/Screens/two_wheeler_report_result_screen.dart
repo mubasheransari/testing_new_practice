@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_bloc.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_event.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_state.dart';
+import 'package:ios_tiretest_ai/Screens/app_shell.dart';
 import 'package:ios_tiretest_ai/models/two_wheeler_tyre_upload_response.dart';
 import 'dart:convert';
 
@@ -12,8 +13,6 @@ enum _BikeTyrePos { front, back }
 
 class TwoWheelerReportResultScreen extends StatefulWidget {
   final String title;
-
-  // required for upload
   final String userId;
   final String vehicleId;
   final String token;
@@ -30,7 +29,7 @@ class TwoWheelerReportResultScreen extends StatefulWidget {
 
   const TwoWheelerReportResultScreen({
     super.key,
-    this.title = "Bike Report",
+    this.title = "Inspection Report",
     required this.userId,
     required this.vehicleId,
     required this.token,
@@ -122,7 +121,19 @@ class _TwoWheelerReportResultScreenState
                 _TopBar(
                   s: s,
                   title: widget.title,
-                  onBack: () => Navigator.of(context).pop(),
+                  onBack: () {
+     Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (_) =>  AppShell() 
+              
+        ),
+        (route) => false,
+      );
+
+                  //  Navigator.of(context).pop();
+                  //  Navigator.of(context).pop();
+                  //   Navigator.of(context).pop();
+                  }
                 ),
                 Expanded(
                   child: SingleChildScrollView(
@@ -130,12 +141,12 @@ class _TwoWheelerReportResultScreenState
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _HeaderCard(
-                          s: s,
-                          title: "Tyre Inspection Report",
-                          subtitle: "Bike • Front + Back",
-                        ),
-                        SizedBox(height: 12 * s),
+                        // _HeaderCard(
+                        //   s: s,
+                        //   title: "Tyre Inspection Report",
+                        //   subtitle: "Bike • Front + Back",
+                        // ),
+                        //SizedBox(height: 5 * s),
 
                         _SegmentToggle(
                           s: s,
@@ -392,11 +403,17 @@ class _TopBar extends StatelessWidget {
               title,
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontFamily: 'ClashGrotesk',
-                fontSize: 18 * s,
-                fontWeight: FontWeight.w900,
-                color: const Color(0xFF111827),
-              ),
+                          fontFamily: 'ClashGrotesk',
+                          fontSize: 20 * s,
+                          fontWeight: FontWeight.w900,
+                      color: const Color(0xFF111827),
+                        ),
+              // style: TextStyle(
+              //   fontFamily: 'ClashGrotesk',
+              //   fontSize: 18 * s,
+              //   fontWeight: FontWeight.w900,
+              //   color: const Color(0xFF111827),
+              // ),
             ),
           ),
           const SizedBox(width: 48),

@@ -11,22 +11,39 @@ import 'package:ios_tiretest_ai/Models/bottom_tab.dart' hide BottomTab;
 import 'package:ios_tiretest_ai/Widgets/bottom_bar.dart';
 
 import 'package:flutter/material.dart';
+
+
 // import 'package:ios_tiretest_ai/Models/bottom_tab.dart';
 // import 'package:ios_tiretest_ai/Widgets/bottom_bar.dart';
 
 
 
+// class AppShell extends StatefulWidget {
+//   const AppShell({super.key});
+
+//   /// ✅ Access AppShell state from any child widget
+//   static _AppShellState? of(BuildContext context) {
+//     return context.findAncestorStateOfType<_AppShellState>();
+//   }
+
+//   @override
+//   State<AppShell> createState() => _AppShellState();
+// }
+
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
 
   /// ✅ Access AppShell state from any child widget
-  static _AppShellState? of(BuildContext context) {
-    return context.findAncestorStateOfType<_AppShellState>();
+  static _AppShellState? of(BuildContext context, {bool root = false}) {
+    return root
+        ? context.findRootAncestorStateOfType<_AppShellState>()
+        : context.findAncestorStateOfType<_AppShellState>();
   }
 
   @override
   State<AppShell> createState() => _AppShellState();
 }
+
 
 class _AppShellState extends State<AppShell> {
   BottomTab _tab = BottomTab.home;

@@ -88,7 +88,7 @@ class _InspectionResultScreenState extends State<InspectionResultScreen> {
         ),
       ),
       body: ListView(
-        padding: EdgeInsets.fromLTRB(16 * s, 10 * s, 16 * s, 28 * s),
+        padding: EdgeInsets.fromLTRB(16 * s, 30 * s, 16 * s, 28 * s),
         children: [
           // top images
           /*  Row(

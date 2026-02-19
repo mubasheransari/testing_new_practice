@@ -264,7 +264,7 @@ _dividerLine(s),
                 InkWell(
                                     onTap: () {
     // ✅ go to tab 2 (reports)
-    AppShell.of(context)?.goToTab(BottomTab.map, popToRoot: true);
+    AppShell.of(context,)?.goToTab(BottomTab.map, popToRoot: true);
   },
                   child: _menuRow(s: s, icon: Icons.add_location_alt_outlined, label: 'Location')),
                 _dividerLine(s),

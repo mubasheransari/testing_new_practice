@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_bloc.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_event.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_state.dart';
+import 'package:ios_tiretest_ai/Screens/app_shell.dart' show AppShell;
 import 'package:ios_tiretest_ai/models/response_four_wheeler.dart' as m;
 import 'dart:io';
 import 'dart:convert';
@@ -118,16 +119,51 @@ class _InspectionResultScreenState extends State<InspectionResultScreen> {
     final brImg = _imgProvider(localPath: widget.backRightPath, apiValue: d?.backRightWheel);
 
     final wheelImages = <_WheelCardData>[
-      _WheelCardData(image: flImg, label: 'left'),
-      _WheelCardData(image: frImg, label: 'Front'),
-      _WheelCardData(image: blImg, label: 'Back'),
-      _WheelCardData(image: brImg, label: 'Right'),
+      _WheelCardData(image: flImg, label: 'Front Left'),
+      _WheelCardData(image: frImg, label: 'Front Right'),
+      _WheelCardData(image: blImg, label: 'Back Left'),
+      _WheelCardData(image: brImg, label: 'Back Right'),
     ];
 
     final summaryText = _composeSelectedSummary(selectedTyre);
 
     return Scaffold(
       backgroundColor: _bg,
+         appBar: AppBar(
+        elevation: 0,
+        backgroundColor: Colors.white,
+        scrolledUnderElevation: 0,
+        leading: IconButton(
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            size: 22,
+            color: Colors.black,
+          ),
+          onPressed: () {
+     Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (_) =>  AppShell() 
+              
+        ),
+        (route) => false,
+      );
+
+                  //  Navigator.of(context).pop();
+                  //  Navigator.of(context).pop();
+                  //   Navigator.of(context).pop();
+                  }//=> Navigator.pop(context),
+        ),
+        centerTitle: true,
+        title: Text(
+          'Inspection Report',
+          style: TextStyle(
+            fontFamily: 'ClashGrotesk',
+            fontSize: 20 * s,
+            fontWeight: FontWeight.w800,
+            color: Colors.black,
+          ),
+        ),
+      ),
       body: SafeArea(
         child: Padding(
           padding: EdgeInsets.symmetric(horizontal: 14 * s, vertical: 12 * s),
@@ -153,7 +189,7 @@ class _InspectionResultScreenState extends State<InspectionResultScreen> {
               SizedBox(height: 12 * s),
               _TyreChips(
                 s: s,
-                labels: const ['Left', 'Front', 'Back', 'Right'],
+                labels: const ['Front Left', 'Front Right', 'Back Left', 'Back Right'],
                 selected: _selected,
                 gradient: _brandGrad,
                 onSelect: (i) => setState(() => _selected = i),
@@ -167,12 +203,12 @@ class _InspectionResultScreenState extends State<InspectionResultScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
-                          flex: 11,
+                          flex: 12,
                           child: _BigTreadCard(
                             s: s,
                             gradient: _brandGrad,
                             treadValue: selectedTyre.treadDepth,
-                            treadStatus: selectedTyre.tyreStatus,
+                            treadStatus: selectedTyre.tyreStatus, reason: '', confidence: '',
                           ),
                         ),
                         SizedBox(width: 12 * s),
@@ -181,6 +217,7 @@ class _InspectionResultScreenState extends State<InspectionResultScreen> {
                           child: Column(
                             children: [
                           _SmallMetricCardPressure(
+                            gradient: _brandGrad,
   s: s,
   title: 'Tire Pressure',
   // value: 'Value: ${selectedTyre.pressureValue}',
@@ -194,17 +231,24 @@ class _InspectionResultScreenState extends State<InspectionResultScreen> {
 ),
 
                               SizedBox(height: 12 * s),
-                              _SmallMetricCard(
-                                s: s,
-                                title: 'Damage Check',
-                                value: 'Value: ${selectedTyre.damageValue}',
-                                status: 'Status: ${selectedTyre.damageStatus}',
-                              ),
+                              // _SmallMetricCard(
+                              //   s: s,
+                              //   title: 'Damage Check',
+                              //   value: 'Value: ${selectedTyre.damageValue}',
+                              //   status: 'Status: ${selectedTyre.damageStatus}',
+                              // ),
                             ],
                           ),
                         ),
                       ],
                     ),
+                        SizedBox(height: 12 * s),
+                      _SmallMetricCard(
+                                s: s,
+                                title: 'Damage Check',
+                                value: 'Value: ${selectedTyre.damageValue}',
+                                status: 'Status: ${selectedTyre.damageStatus}',
+                              ),
                     SizedBox(height: 16 * s),
                     _ReportSummaryCard(
                       s: s,
@@ -497,22 +541,164 @@ class _TyreChips extends StatelessWidget {
     );
   }
 }
-
 class _BigTreadCard extends StatelessWidget {
   const _BigTreadCard({
     required this.s,
     required this.gradient,
     required this.treadValue,
     required this.treadStatus,
+    required this.reason,
+    required this.confidence,
   });
 
   final double s;
   final LinearGradient gradient;
   final String treadValue;
   final String treadStatus;
+  final String reason;
+  final String confidence;
 
   @override
   Widget build(BuildContext context) {
+    final hasReason =
+        reason.trim().isNotEmpty && reason.trim() != 'Reason: —';
+    final hasConfidence =
+        confidence.trim().isNotEmpty && confidence.trim() != 'Confidence: —';
+
+    return Container(
+      padding: EdgeInsets.all(16 * s),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18 * s),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(.10),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
+          )
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min, // 🔑 critical
+        children: [
+          /// ✅ Title row (same as pressure)
+          Row(
+            children: [
+              ShaderMask(
+                shaderCallback: (r) => gradient.createShader(r),
+                child: Image.asset(
+                  "assets/thread_depth.png",
+                  height: 30 * s,
+                  width: 30 * s,
+                  color: Colors.white,
+                ),
+              ),
+              SizedBox(width: 8 * s),
+              Text(
+                'Tread Depth',
+                style: TextStyle(
+                  fontFamily: 'ClashGrotesk',
+                  fontSize: 22 * s,
+                  fontWeight: FontWeight.w900,
+                  foreground: Paint()
+                    ..shader = gradient.createShader(
+                      const Rect.fromLTWH(0, 0, 200, 40),
+                    ),
+                ),
+              ),
+            ],
+          ),
+
+          SizedBox(height: 8 * s),
+
+          /// ✅ SINGLE combined line (same vertical count as pressure)
+          Text(
+            'Value: $treadValue',
+          //  maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontFamily: 'ClashGrotesk',
+              fontSize: 16 * s,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF111827),
+            ),
+          ),
+               Text(
+            'Status: $treadStatus',
+      
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontFamily: 'ClashGrotesk',
+              fontSize: 16 * s,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF111827),
+            ),
+          ),
+
+          /// ✅ Reason (only if pressure also shows it)
+          if (hasReason) ...[
+            SizedBox(height: 8 * s),
+            Text(
+              reason,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontFamily: 'ClashGrotesk',
+                fontSize: 14.5 * s,
+                fontWeight: FontWeight.w600,
+                height: 1.25,
+                color: const Color(0xFF111827),
+              ),
+            ),
+          ],
+
+          /// ✅ Confidence (same rule)
+          if (hasConfidence) ...[
+            SizedBox(height: 8 * s),
+            Text(
+              confidence,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontFamily: 'ClashGrotesk',
+                fontSize: 14.5 * s,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF111827),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/*
+class _BigTreadCard extends StatelessWidget {
+  const _BigTreadCard({
+    required this.s,
+    required this.gradient,
+    required this.treadValue,
+    required this.treadStatus,
+    required this.reason,
+    required this.confidence,
+  });
+
+  final double s;
+  final LinearGradient gradient;
+  final String treadValue;
+  final String treadStatus;
+  final String reason;
+  final String confidence;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasReason =
+        reason.trim().isNotEmpty && reason.trim() != 'Reason: —';
+    final hasConfidence =
+        confidence.trim().isNotEmpty && confidence.trim() != 'Confidence: —';
+
     return Container(
       padding: EdgeInsets.all(16 * s),
       decoration: BoxDecoration(
@@ -529,39 +715,38 @@ class _BigTreadCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 62 * s,
-            height: 62 * s,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(.10),
-                  blurRadius: 18,
-                  offset: const Offset(0, 10),
-                )
-              ],
-            ),
-            child: Center(
-              child: ShaderMask(
+          /// ✅ Title row with SMALL thread icon (same height as pressure)
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              ShaderMask(
                 shaderCallback: (r) => gradient.createShader(r),
-                child: Image.asset("assets/thread_depth.png", height: 34, width: 34),
+                child: Image.asset(
+                  "assets/thread_depth.png",
+                  height: 28 * s, // 🔑 same visual weight as text
+                  width: 28 * s,
+                  color: Colors.white,
+                ),
               ),
-            ),
+              SizedBox(width: 8 * s),
+              Text(
+                'Tread Depth',
+                style: TextStyle(
+                  fontFamily: 'ClashGrotesk',
+                  fontSize: 22 * s,
+                  fontWeight: FontWeight.w900,
+                  foreground: Paint()
+                    ..shader = gradient.createShader(
+                      const Rect.fromLTWH(0, 0, 200, 40),
+                    ),
+                ),
+              ),
+            ],
           ),
-          SizedBox(height: 12 * s),
-          Text(
-            'Tread Depth',
-            style: TextStyle(
-              fontFamily: 'ClashGrotesk',
-              fontSize: 20 * s,
-              fontWeight: FontWeight.w900,
-              foreground: Paint()
-                ..shader = gradient.createShader(const Rect.fromLTWH(0, 0, 200, 40)),
-            ),
-          ),
-          SizedBox(height: 12 * s),
+
+          SizedBox(height: 8 * s),
+
+          /// ✅ Value
           Text(
             'Value: $treadValue',
             style: TextStyle(
@@ -571,7 +756,10 @@ class _BigTreadCard extends StatelessWidget {
               color: const Color(0xFF111827),
             ),
           ),
+
           SizedBox(height: 8 * s),
+
+          /// ✅ Status
           Text(
             'Status: $treadStatus',
             style: TextStyle(
@@ -581,30 +769,147 @@ class _BigTreadCard extends StatelessWidget {
               color: const Color(0xFF111827),
             ),
           ),
+
+          /// ✅ Reason
+          if (hasReason) ...[
+            SizedBox(height: 8 * s),
+            Text(
+              reason,
+              style: TextStyle(
+                fontFamily: 'ClashGrotesk',
+                fontSize: 14.5 * s,
+                fontWeight: FontWeight.w600,
+                height: 1.25,
+                color: const Color(0xFF111827),
+              ),
+            ),
+          ],
+
+          /// ✅ Confidence
+          if (hasConfidence) ...[
+            SizedBox(height: 8 * s),
+            Text(
+              confidence,
+              style: TextStyle(
+                fontFamily: 'ClashGrotesk',
+                fontSize: 14.5 * s,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF111827),
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
 }
+*/
 
+
+// class _BigTreadCard extends StatelessWidget {
+//   const _BigTreadCard({
+//     required this.s,
+//     required this.gradient,
+//     required this.treadValue,
+//     required this.treadStatus,
+//   });
+
+//   final double s;
+//   final LinearGradient gradient;
+//   final String treadValue;
+//   final String treadStatus;
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Container(
+//       padding: EdgeInsets.all(16 * s),
+//       decoration: BoxDecoration(
+//         color: Colors.white,
+//         borderRadius: BorderRadius.circular(18 * s),
+//         boxShadow: [
+//           BoxShadow(
+//             color: Colors.black.withOpacity(.10),
+//             blurRadius: 18,
+//             offset: const Offset(0, 10),
+//           )
+//         ],
+//       ),
+//       child: Column(
+//         crossAxisAlignment: CrossAxisAlignment.start,
+//         children: [
+//           Container(
+//             width: 62 * s,
+//             height: 62 * s,
+//             decoration: BoxDecoration(
+//               shape: BoxShape.circle,
+//               color: Colors.white,
+//               boxShadow: [
+//                 BoxShadow(
+//                   color: Colors.black.withOpacity(.10),
+//                   blurRadius: 18,
+//                   offset: const Offset(0, 10),
+//                 )
+//               ],
+//             ),
+//             child: Center(
+//               child: ShaderMask(
+//                 shaderCallback: (r) => gradient.createShader(r),
+//                 child: Image.asset("assets/thread_depth.png", height: 34, width: 34),
+//               ),
+//             ),
+//           ),
+//           SizedBox(height: 12 * s),
+//           Text(
+//             'Tread Depth',
+//             style: TextStyle(
+//               fontFamily: 'ClashGrotesk',
+//               fontSize: 20 * s,
+//               fontWeight: FontWeight.w900,
+//               foreground: Paint()
+//                 ..shader = gradient.createShader(const Rect.fromLTWH(0, 0, 200, 40)),
+//             ),
+//           ),
+//           SizedBox(height: 12 * s),
+//           Text(
+//             'Value: $treadValue',
+//             style: TextStyle(
+//               fontFamily: 'ClashGrotesk',
+//               fontSize: 16 * s,
+//               fontWeight: FontWeight.w700,
+//               color: const Color(0xFF111827),
+//             ),
+//           ),
+//           SizedBox(height: 8 * s),
+//           Text(
+//             'Status: $treadStatus',
+//             style: TextStyle(
+//               fontFamily: 'ClashGrotesk',
+//               fontSize: 16 * s,
+//               fontWeight: FontWeight.w700,
+//               color: const Color(0xFF111827),
+//             ),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+// }
 class _SmallMetricCardPressure extends StatelessWidget {
   const _SmallMetricCardPressure({
     required this.s,
     required this.title,
-   // required this.value,
     required this.status,
     required this.reason,
     required this.confidence,
+    required this.gradient,
   });
 
   final double s;
   final String title;
-
-  // keep same idea as previous card
- // final String value;       // e.g. "Value: Normal"
-  final String status;      // e.g. "Status: Normal"
-  final String reason;      // e.g. "Reason: Even wear detected..."
-  final String confidence;  // e.g. "Confidence: Medium"
+  final String status;
+  final String reason;
+  final String confidence;
+  final LinearGradient gradient;
 
   @override
   Widget build(BuildContext context) {
@@ -628,30 +933,23 @@ class _SmallMetricCardPressure extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          /// ✅ Gradient title (same visual weight as tread card)
           Text(
             title,
             style: TextStyle(
               fontFamily: 'ClashGrotesk',
               fontSize: 22 * s,
               fontWeight: FontWeight.w900,
-              color: const Color(0xFF00C6FF),
+              foreground: Paint()
+                ..shader = gradient.createShader(
+                  const Rect.fromLTWH(0, 0, 200, 40),
+                ),
             ),
           ),
-          // SizedBox(height: 12 * s),
 
-          // // ✅ Value (line 1)
-          // Text(
-          //   value,
-          //   style: TextStyle(
-          //     fontFamily: 'ClashGrotesk',
-          //     fontSize: 16 * s,
-          //     fontWeight: FontWeight.w700,
-          //     color: const Color(0xFF111827),
-          //   ),
-          // ),
           SizedBox(height: 8 * s),
 
-          // ✅ Status (line 2)
+          /// ✅ Status
           Text(
             status,
             style: TextStyle(
@@ -662,7 +960,7 @@ class _SmallMetricCardPressure extends StatelessWidget {
             ),
           ),
 
-          // ✅ Reason (line 3)
+          /// ✅ Reason
           if (hasReason) ...[
             SizedBox(height: 8 * s),
             Text(
@@ -677,7 +975,7 @@ class _SmallMetricCardPressure extends StatelessWidget {
             ),
           ],
 
-          // ✅ Confidence (line 4)
+          /// ✅ Confidence
           if (hasConfidence) ...[
             SizedBox(height: 8 * s),
             Text(
@@ -695,6 +993,116 @@ class _SmallMetricCardPressure extends StatelessWidget {
     );
   }
 }
+
+
+// class _SmallMetricCardPressure extends StatelessWidget {
+//   const _SmallMetricCardPressure({
+//     required this.s,
+//     required this.title,
+//    // required this.value,
+//     required this.status,
+//     required this.reason,
+//     required this.confidence,
+//   });
+
+//   final double s;
+//   final String title;
+
+//   // keep same idea as previous card
+//  // final String value;       // e.g. "Value: Normal"
+//   final String status;      // e.g. "Status: Normal"
+//   final String reason;      // e.g. "Reason: Even wear detected..."
+//   final String confidence;  // e.g. "Confidence: Medium"
+
+//   @override
+//   Widget build(BuildContext context) {
+//     final hasReason = reason.trim().isNotEmpty && reason.trim() != 'Reason: —';
+//     final hasConfidence =
+//         confidence.trim().isNotEmpty && confidence.trim() != 'Confidence: —';
+
+//     return Container(
+//       padding: EdgeInsets.all(16 * s),
+//       decoration: BoxDecoration(
+//         color: Colors.white,
+//         borderRadius: BorderRadius.circular(18 * s),
+//         boxShadow: [
+//           BoxShadow(
+//             color: Colors.black.withOpacity(.10),
+//             blurRadius: 18,
+//             offset: const Offset(0, 10),
+//           )
+//         ],
+//       ),
+//       child: Column(
+//         crossAxisAlignment: CrossAxisAlignment.start,
+//         children: [
+//           Text(
+//             title,
+//             style: TextStyle(
+//               fontFamily: 'ClashGrotesk',
+//               fontSize: 22 * s,
+//               fontWeight: FontWeight.w900,
+//               color: const Color(0xFF00C6FF),
+//             ),
+//           ),
+//           // SizedBox(height: 12 * s),
+
+//           // // ✅ Value (line 1)
+//           // Text(
+//           //   value,
+//           //   style: TextStyle(
+//           //     fontFamily: 'ClashGrotesk',
+//           //     fontSize: 16 * s,
+//           //     fontWeight: FontWeight.w700,
+//           //     color: const Color(0xFF111827),
+//           //   ),
+//           // ),
+//           SizedBox(height: 8 * s),
+
+//           // ✅ Status (line 2)
+//           Text(
+//             status,
+//             style: TextStyle(
+//               fontFamily: 'ClashGrotesk',
+//               fontSize: 16 * s,
+//               fontWeight: FontWeight.w700,
+//               color: const Color(0xFF111827),
+//             ),
+//           ),
+
+//           // ✅ Reason (line 3)
+//           if (hasReason) ...[
+//             SizedBox(height: 8 * s),
+//             Text(
+//               reason,
+//               style: TextStyle(
+//                 fontFamily: 'ClashGrotesk',
+//                 fontSize: 14.5 * s,
+//                 fontWeight: FontWeight.w600,
+//                 height: 1.25,
+//                 color: const Color(0xFF111827),
+//               ),
+//             ),
+//           ],
+
+//           // ✅ Confidence (line 4)
+//           if (hasConfidence) ...[
+//             SizedBox(height: 8 * s),
+//             Text(
+//               confidence,
+//               style: TextStyle(
+//                 fontFamily: 'ClashGrotesk',
+//                 fontSize: 14.5 * s,
+//                 fontWeight: FontWeight.w600,
+//                 color: const Color(0xFF111827),
+//               ),
+//             ),
+//           ],
+//         ],
+//       ),
+//     );
+//   }
+// }
 
 
 class _SmallMetricCard extends StatelessWidget {
