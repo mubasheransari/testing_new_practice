@@ -8,7 +8,6 @@ import 'package:ios_tiretest_ai/models/two_wheeler_tyre_upload_response.dart';
 import 'dart:convert';
 
 
-
 enum _BikeTyrePos { front, back }
 
 class TwoWheelerReportResultScreen extends StatefulWidget {

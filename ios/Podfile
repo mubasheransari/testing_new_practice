@@ -28,9 +28,12 @@ require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelpe
 flutter_ios_podfile_setup
 
 target 'Runner' do
-  use_frameworks!
+  # Recommended for Flutter: static frameworks (avoids several linking/symbol edge cases)
+  use_frameworks! :linkage => :static
+  use_modular_headers!
 
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
+
   target 'RunnerTests' do
     inherit! :search_paths
   end
@@ -38,6 +41,12 @@ end
 
 post_install do |installer|
   installer.pods_project.targets.each do |target|
+    # Flutter required iOS build settings
     flutter_additional_ios_build_settings(target)
+
+    # Force dSYM generation for Release/Profile/Debug to avoid missing Flutter.framework dSYM on archive upload
+    target.build_configurations.each do |config|
+      config.build_settings['DEBUG_INFORMATION_FORMAT'] = 'dwarf-with-dsym'
+    end
   end
 end
