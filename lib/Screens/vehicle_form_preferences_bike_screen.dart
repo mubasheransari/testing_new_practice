@@ -6,13 +6,7 @@ import 'package:ios_tiretest_ai/Bloc/auth_event.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_state.dart';
 import 'package:ios_tiretest_ai/Screens/two_wheeler_scanner_screen.dart';
 
-import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:get_storage/get_storage.dart';
-import 'package:ios_tiretest_ai/Bloc/auth_bloc.dart';
-import 'package:ios_tiretest_ai/Bloc/auth_event.dart';
-import 'package:ios_tiretest_ai/Bloc/auth_state.dart';
-import 'package:ios_tiretest_ai/Screens/two_wheeler_scanner_screen.dart';
+
 
 const kBg = Color(0xFFF6F7FA);
 
@@ -112,18 +106,27 @@ class _VehicleFormPreferencesBikeScreenState
             return;
           }
 
-          Navigator.of(context, rootNavigator: true).push(
-            MaterialPageRoute(
-              builder: (_) => TwoWheelerScannerScreen(
-                title: "Bike Tyre Scanner",
-                userId: userId.toString(),
-                vehicleId: vehicleIds.toString(),
-                token: tok,
-                vin: 'kjbjk',
-                vehicleType: "bike",
-              ),
-            ),
-          );
+final stored = pref!.storedData.first;
+
+// NOTE: replace these names with your actual response keys
+final frontTyreId = stored.frontTyreId.toString();
+final backTyreId  = stored.backTyreId.toString();
+
+Navigator.of(context, rootNavigator: true).push(
+  MaterialPageRoute(
+    builder: (_) => TwoWheelerGenerateReportScreen( // <-- your camera screen
+      title: "Bike Tyre Scanner",
+      userId: userId.toString(),
+      vehicleId: vehicleIds.toString(),
+      token: tok,
+      vin: 'kjbjk',
+      vehicleType: "bike",
+      frontTyreId: frontTyreId,
+      backTyreId: backTyreId, 
+    ),
+  ),
+);
+
         }
 
         if (state.addVehiclePreferencesStatus ==

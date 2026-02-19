@@ -17,36 +17,36 @@ const kBg = Color(0xFFF6F7FA);
 class InspectionHomePixelPerfect extends StatelessWidget {
   const InspectionHomePixelPerfect({super.key});
 
-  void _toast(BuildContext ctx, String msg) =>
-      ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(msg)));
+  // void _toast(BuildContext ctx, String msg) =>
+  //     ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(msg)));
 
-  Future<void> _openTwoWheelerScanner(BuildContext context) async {
-    final result = await Navigator.of(context, rootNavigator: true).push(
-      MaterialPageRoute(builder: (_) =>  ScannerFrontTireScreen(vehicleID: '',)),
-    );
-    if (result == null) return;
+  // Future<void> _openTwoWheelerScanner(BuildContext context) async {
+  //   final result = await Navigator.of(context, rootNavigator: true).push(
+  //     MaterialPageRoute(builder: (_) =>  ScannerFrontTireScreen(vehicleID: '',)),
+  //   );
+  //   if (result == null) return;
 
-    final authState = context.read<AuthBloc>().state;
-    final box = GetStorage();
-    final token = (box.read<String>('auth_token') ?? '').trim();
+  //   final authState = context.read<AuthBloc>().state;
+  //   final box = GetStorage();
+  //   final token = (box.read<String>('auth_token') ?? '').trim();
 
-    if (token.isEmpty) {
-      _toast(context, 'Please login again.');
-      return;
-    }
+  //   if (token.isEmpty) {
+  //     _toast(context, 'Please login again.');
+  //     return;
+  //   }
 
-    context.read<AuthBloc>().add(
-          UploadTwoWheelerRequested(
-            userId: authState.profile!.userId.toString(),
-            vehicleId: '993163bd-01a1-4c3b-9f18-4df2370ed954',
-            token: token,
-            frontPath: result.frontPath,
-            backPath: result.backPath,
-            vehicleType: 'bike',
-            vin: result.vin,
-          ),
-        );
-  }
+  //   context.read<AuthBloc>().add(
+  //         UploadTwoWheelerRequested(
+  //           userId: authState.profile!.userId.toString(),
+  //           vehicleId: '993163bd-01a1-4c3b-9f18-4df2370ed954',
+  //           token: token,
+  //           frontPath: result.frontPath,
+  //           backPath: result.backPath,
+  //           vehicleType: 'bike',
+  //           vin: result.vin,
+  //         ),
+  //       );
+  // }
 
   @override
   Widget build(BuildContext context) {

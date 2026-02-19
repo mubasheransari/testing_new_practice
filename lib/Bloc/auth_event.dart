@@ -495,15 +495,51 @@ class AdsSelectRequested extends AuthEvent {
   List<Object?> get props => [adId];
 }
 
+// class UploadTwoWheelerRequested extends AuthEvent {
+//   final String userId;
+//   final String vehicleId;
+//   final String vehicleType; // bike, motorcycle, etc
+//   final String token;
+//   final String? vin;
+
+//   final String frontPath;
+//   final String backPath;
+
+//   const UploadTwoWheelerRequested({
+//     required this.userId,
+//     required this.vehicleId,
+//     required this.vehicleType,
+//     required this.token,
+//     this.vin,
+//     required this.frontPath,
+//     required this.backPath,
+//   });
+
+//   @override
+//   List<Object?> get props => [
+//         userId,
+//         vehicleId,
+//         vehicleType,
+//         token,
+//         vin,
+//         frontPath,
+//         backPath,
+//       ];
+// }
+
 class UploadTwoWheelerRequested extends AuthEvent {
   final String userId;
   final String vehicleId;
-  final String vehicleType; // bike, motorcycle, etc
+  final String vehicleType;
   final String token;
   final String? vin;
 
   final String frontPath;
   final String backPath;
+
+  // ✅ NEW
+  final String frontTyreId;
+  final String backTyreId;
 
   const UploadTwoWheelerRequested({
     required this.userId,
@@ -513,6 +549,10 @@ class UploadTwoWheelerRequested extends AuthEvent {
     this.vin,
     required this.frontPath,
     required this.backPath,
+
+    // ✅ REQUIRED
+    required this.frontTyreId,
+    required this.backTyreId,
   });
 
   @override
@@ -524,5 +564,7 @@ class UploadTwoWheelerRequested extends AuthEvent {
         vin,
         frontPath,
         backPath,
+        frontTyreId,
+        backTyreId,
       ];
 }

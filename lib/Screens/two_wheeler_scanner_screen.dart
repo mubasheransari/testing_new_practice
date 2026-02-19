@@ -3,65 +3,50 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:ios_tiretest_ai/Screens/scanner_front_tire_screen.dart';
-import 'package:ios_tiretest_ai/Screens/two_wheeler_generate_report_screen.dart';
 import 'package:ios_tiretest_ai/Widgets/bottom_action_bar.dart' show BottomActionBar;
-
-import 'dart:io';
-import 'package:camera/camera.dart';
-import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:ios_tiretest_ai/Screens/scanner_front_tire_screen.dart';
-import 'package:ios_tiretest_ai/Screens/two_wheeler_generate_report_screen.dart';
-import 'package:ios_tiretest_ai/Widgets/bottom_action_bar.dart' show BottomActionBar;
+import 'package:ios_tiretest_ai/Screens/two_wheeler_report_result_screen.dart';
 
 
-// TwoWheelerScannerScreen.dart
-//
-// ✅ FIXES INCLUDED
-// 1) Allows uploading 2 images (Front + Back) reliably (camera OR gallery).
-// 2) Gallery button stays enabled even if camera is not ready.
-// 3) Capture button shows a friendly error if camera isn't ready.
-// 4) Bulletproof logic: first image always goes to FRONT, second always to BACK.
-// 5) Clear UI hint: "Select FRONT" / "Now select BACK".
-// 6) Retake works correctly and returns to correct active position.
-// 7) Camera preview is ALWAYS bounded (no AspectRatio unbounded crash).
-
-import 'dart:io';
-import 'package:camera/camera.dart';
-import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-
-// ✅ Update these imports to match your project paths
-import 'package:ios_tiretest_ai/Screens/two_wheeler_generate_report_screen.dart';
-import 'package:ios_tiretest_ai/Widgets/bottom_action_bar.dart' show BottomActionBar;
-import 'package:ios_tiretest_ai/Screens/scanner_front_tire_screen.dart'; // contains ScanOverlay in your project? (if not, remove)
-/// If ScanOverlay is in another file, update import accordingly.
 
 enum TwoTyrePos { front, back }
 
-class TwoWheelerScannerScreen extends StatefulWidget {
+class TwoWheelerGenerateReportScreen extends StatefulWidget {
   final String title;
+
   final String userId;
   final String vehicleId;
   final String token;
-  final String? vin;
-  final String vehicleType; // usually "bike"
+  final String vin;
+  final String vehicleType;
 
-  const TwoWheelerScannerScreen({
+  // ✅ REMOVE THESE (they don't exist yet in scanner)
+  // final String frontPath;
+  // final String backPath;
+
+  // ✅ KEEP THESE
+  final String frontTyreId;
+  final String backTyreId;
+
+  const TwoWheelerGenerateReportScreen({
     super.key,
-    this.title = "Two Wheeler Tyre Scanner",
+    this.title = "Bike Tyre Scanner",
     required this.userId,
     required this.vehicleId,
     required this.token,
-    this.vin,
+    required this.vin,
     this.vehicleType = "bike",
+    required this.frontTyreId,
+    required this.backTyreId,
   });
 
   @override
-  State<TwoWheelerScannerScreen> createState() => _TwoWheelerScannerScreenState();
+  State<TwoWheelerGenerateReportScreen> createState() =>
+      _TwoWheelerGenerateReportScreenState();
 }
 
-class _TwoWheelerScannerScreenState extends State<TwoWheelerScannerScreen>
+
+
+class _TwoWheelerGenerateReportScreenState extends State<TwoWheelerGenerateReportScreen>
     with WidgetsBindingObserver {
   CameraController? _controller;
 
@@ -255,46 +240,77 @@ class _TwoWheelerScannerScreenState extends State<TwoWheelerScannerScreen>
     }
   }
 
+  
+  
   Future<void> _goGenerateReport() async {
-    if (_navigated) return;
-    if (_front == null || _back == null) return;
+  if (_navigated) return;
+  if (_front == null || _back == null) return;
 
-    _navigated = true;
+  _navigated = true;
 
-    await _stopCameraSafely();
-    if (!mounted) return;
+  await _stopCameraSafely();
+  if (!mounted) return;
 
-    await Navigator.of(context)
-        .push(
-      MaterialPageRoute(
-        builder: (_) => TwoWheelerGenerateReportScreen(
-          frontPath: _front!.path,
-          backPath: _back!.path,
-          userId: widget.userId,
-          vehicleId: widget.vehicleId,
-          token: widget.token,
-          vin: widget.vin ?? '',
-          vehicleType: widget.vehicleType,
-        ),
+  await Navigator.of(context).push(
+    MaterialPageRoute(
+      builder: (_) => TwoWheelerReportResultScreen(
+        frontPath: _front!.path,
+        backPath: _back!.path,
+        userId: widget.userId,
+        vehicleId: widget.vehicleId,
+        token: widget.token,
+        vin: widget.vin,
+        vehicleType: widget.vehicleType,
+        frontTyreId: widget.frontTyreId,
+        backTyreId: widget.backTyreId,
       ),
-    )
-        .then((_) {
-      _navigated = false;
+    ),
+  );
 
-      // ✅ Optional: after returning, reset for next scan
-      if (mounted) {
-        setState(() {
-          _front = null;
-          _back = null;
-          _active = TwoTyrePos.front;
-          _error = null;
-        });
-      }
+  // ✅ when coming back from report screen
+  _navigated = false;
 
-      // Re-init camera for next scan
-      if (mounted) _initCam();
+  // optional reset
+  if (mounted) {
+    setState(() {
+      _front = null;
+      _back = null;
+      _active = TwoTyrePos.front;
+      _error = null;
     });
   }
+
+  if (mounted) _initCam();
+}
+
+
+//   Future<void> _goGenerateReport() async {
+//     if (_navigated) return;
+//     if (_front == null || _back == null) return;
+
+//     _navigated = true;
+
+//     await _stopCameraSafely();
+//     if (!mounted) return;
+
+//  await Navigator.of(context).push(
+//   MaterialPageRoute(
+//     builder: (_) => TwoWheelerGenerateReportScreen(
+
+//       userId: widget.userId,
+//       vehicleId: widget.vehicleId,
+//       token: widget.token,
+//       vin: widget.vin ?? '',
+//       vehicleType: widget.vehicleType,
+
+//       // ✅ ADD THESE (FIX)
+//       frontTyreId: widget.frontTyreId,
+//       backTyreId: widget.backTyreId,
+//     ),
+//   ),
+// );
+
+//   }
 
   void _retake(TwoTyrePos pos) {
     setState(() {

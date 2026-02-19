@@ -1,8 +1,6 @@
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-
 import 'package:ios_tiretest_ai/Bloc/auth_bloc.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_event.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_state.dart';
@@ -18,7 +16,11 @@ class TwoWheelerGenerateReportScreen extends StatefulWidget {
   final String vehicleId;
   final String token;
   final String vin;
-  final String vehicleType; // "bike"
+  final String vehicleType;
+
+  // ✅ NEW: tyre ids (come from preferences API response)
+  final String frontTyreId;
+  final String backTyreId;
 
   // images
   final String frontPath;
@@ -32,6 +34,11 @@ class TwoWheelerGenerateReportScreen extends StatefulWidget {
     required this.token,
     required this.vin,
     this.vehicleType = "bike",
+
+    // ✅ REQUIRED
+    required this.frontTyreId,
+    required this.backTyreId,
+
     required this.frontPath,
     required this.backPath,
   });
@@ -40,6 +47,12 @@ class TwoWheelerGenerateReportScreen extends StatefulWidget {
   State<TwoWheelerGenerateReportScreen> createState() =>
       _TwoWheelerGenerateReportScreenState();
 }
+
+
+  @override
+  State<TwoWheelerGenerateReportScreen> createState() =>
+      _TwoWheelerGenerateReportScreenState();
+
 
 class _TwoWheelerGenerateReportScreenState
     extends State<TwoWheelerGenerateReportScreen> {
@@ -52,23 +65,53 @@ class _TwoWheelerGenerateReportScreenState
     // Dispatch after first frame to avoid context issues
     WidgetsBinding.instance.addPostFrameCallback((_) => _upload());
   }
+void _upload() {
+  if (_dispatched) return;
+  _dispatched = true;
 
-  void _upload() {
-    if (_dispatched) return;
-    _dispatched = true;
-
-    context.read<AuthBloc>().add(
-          UploadTwoWheelerRequested(
-            userId: widget.userId,
-            vehicleId: widget.vehicleId,
-            token: widget.token,
-            vin: widget.vin,
-            vehicleType: widget.vehicleType,
-            frontPath: widget.frontPath,
-            backPath: widget.backPath,
-          ),
-        );
+  // ✅ guard (prevents useless API call + gives clear message)
+  if (widget.frontTyreId.trim().isEmpty || widget.backTyreId.trim().isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Missing tyre ids. Save preferences again.'),
+      ),
+    );
+    return;
   }
+
+  context.read<AuthBloc>().add(
+        UploadTwoWheelerRequested(
+          userId: widget.userId,
+          vehicleId: widget.vehicleId,
+          token: widget.token,
+          vin: widget.vin,
+          vehicleType: widget.vehicleType,
+          frontPath: widget.frontPath,
+          backPath: widget.backPath,
+
+          // ✅ NEW REQUIRED FIELDS
+          frontTyreId: widget.frontTyreId,
+          backTyreId: widget.backTyreId,
+        ),
+      );
+}
+
+  // void _upload() {
+  //   if (_dispatched) return;
+  //   _dispatched = true;
+
+  //   context.read<AuthBloc>().add(
+  //         UploadTwoWheelerRequested(
+  //           userId: widget.userId,
+  //           vehicleId: widget.vehicleId,
+  //           token: widget.token,
+  //           vin: widget.vin,
+  //           vehicleType: widget.vehicleType,
+  //           frontPath: widget.frontPath,
+  //           backPath: widget.backPath,
+  //         ),
+  //       );
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -238,7 +281,7 @@ class _TyreReportSection extends StatelessWidget {
 
   _TyreUi _uiFor(_BikeTyrePos pos, TwoWheelerTyreUploadResponse resp) {
     final data = resp.data;
-    final tyre = pos == _BikeTyrePos.front ? data.front : data.back;
+    final tyre = pos == _BikeTyrePos.front ? data!.front : data!.back;
 
     return _TyreUi(
       title: pos == _BikeTyrePos.front ? "Front Tyre" : "Back Tyre",
@@ -247,9 +290,9 @@ class _TyreReportSection extends StatelessWidget {
       wearPatterns: tyre.wearPatterns,
       summary: tyre.summary,
       imageUrl: tyre.imageUrl,
-      pressureStatus: tyre.pressureAdvisory.status,
-      pressureReason: tyre.pressureAdvisory.reason,
-      pressureConfidence: tyre.pressureAdvisory.confidence,
+      pressureStatus: tyre.pressureAdvisory!.status,
+      pressureReason: tyre.pressureAdvisory!.reason,
+      pressureConfidence: tyre.pressureAdvisory!.confidence,
       pressureValue: "—", // backend doesn’t provide numeric PSI in your model
     );
   }

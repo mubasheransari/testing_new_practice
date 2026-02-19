@@ -97,14 +97,18 @@ on<AdsSelectRequested>(_onAdsSelect);
     return list.where((n) => !readIds.contains(n.id)).length;
   }
 
-Future<void> _onUploadTwoWheeler(
+  Future<void> _onUploadTwoWheeler(
   UploadTwoWheelerRequested e,
   Emitter<AuthState> emit,
 ) async {
+  // prevent double upload
   if (state.twoWheelerStatus == TwoWheelerStatus.uploading) return;
 
   final box = GetStorage();
-  final token = (box.read<String>('auth_token') ?? box.read<String>('token') ?? '').trim();
+
+  // ✅ same token handling style (auth_token first, then token)
+  final token =
+      (box.read<String>('auth_token') ?? box.read<String>('token') ?? '').trim();
 
   if (token.isEmpty) {
     emit(state.copyWith(
@@ -114,6 +118,7 @@ Future<void> _onUploadTwoWheeler(
     return;
   }
 
+  // ✅ get userId from profile (single source of truth)
   final userId = (state.profile?.userId?.toString() ?? '').trim();
   if (userId.isEmpty) {
     emit(state.copyWith(
@@ -123,6 +128,7 @@ Future<void> _onUploadTwoWheeler(
     return;
   }
 
+  // ✅ required fields
   if (e.vehicleId.trim().isEmpty) {
     emit(state.copyWith(
       twoWheelerStatus: TwoWheelerStatus.failure,
@@ -135,6 +141,23 @@ Future<void> _onUploadTwoWheeler(
     emit(state.copyWith(
       twoWheelerStatus: TwoWheelerStatus.failure,
       twoWheelerError: 'Missing front/back tyre images.',
+    ));
+    return;
+  }
+
+  // ✅ REQUIRED: tyre ids must come from preferences response
+  if (e.frontTyreId.trim().isEmpty) {
+    emit(state.copyWith(
+      twoWheelerStatus: TwoWheelerStatus.failure,
+      twoWheelerError: 'Missing front_tyre_id. Save preferences again.',
+    ));
+    return;
+  }
+
+  if (e.backTyreId.trim().isEmpty) {
+    emit(state.copyWith(
+      twoWheelerStatus: TwoWheelerStatus.failure,
+      twoWheelerError: 'Missing back_tyre_id. Save preferences again.',
     ));
     return;
   }
@@ -152,6 +175,10 @@ Future<void> _onUploadTwoWheeler(
     vin: (e.vin ?? '').trim().isEmpty ? null : e.vin!.trim(),
     frontPath: e.frontPath.trim(),
     backPath: e.backPath.trim(),
+
+    // ✅ REQUIRED
+    frontTyreId: e.frontTyreId.trim(),
+    backTyreId: e.backTyreId.trim(),
   );
 
   final result = await repo.uploadTwoWheeler(req);
@@ -169,6 +196,85 @@ Future<void> _onUploadTwoWheeler(
     ));
   }
 }
+
+
+// Future<void> _onUploadTwoWheeler(
+//   UploadTwoWheelerRequested e,
+//   Emitter<AuthState> emit,
+// ) async {
+//   if (state.twoWheelerStatus == TwoWheelerStatus.uploading) return;
+
+//   final box = GetStorage();
+//   final token = (box.read<String>('auth_token') ?? box.read<String>('token') ?? '').trim();
+
+//   if (token.isEmpty) {
+//     emit(state.copyWith(
+//       twoWheelerStatus: TwoWheelerStatus.failure,
+//       twoWheelerError: 'Missing auth token. Please log in again.',
+//     ));
+//     return;
+//   }
+
+//   final userId = (state.profile?.userId?.toString() ?? '').trim();
+//   if (userId.isEmpty) {
+//     emit(state.copyWith(
+//       twoWheelerStatus: TwoWheelerStatus.failure,
+//       twoWheelerError: 'User profile not loaded. Please login again.',
+//     ));
+//     return;
+//   }
+
+//   if (e.vehicleId.trim().isEmpty) {
+//     emit(state.copyWith(
+//       twoWheelerStatus: TwoWheelerStatus.failure,
+//       twoWheelerError: 'Missing vehicle_id.',
+//     ));
+//     return;
+//   }
+
+//   if (e.frontPath.trim().isEmpty || e.backPath.trim().isEmpty) {
+//     emit(state.copyWith(
+//       twoWheelerStatus: TwoWheelerStatus.failure,
+//       twoWheelerError: 'Missing front/back tyre images.',
+//     ));
+//     return;
+//   }
+
+//   emit(state.copyWith(
+//     twoWheelerStatus: TwoWheelerStatus.uploading,
+//     twoWheelerError: '',
+//   ));
+
+//  final req = TyreUploadRequest(
+//   token: token,
+//   userId: userId,
+//   vehicleType: (e.vehicleType.trim().isEmpty ? 'bike' : e.vehicleType.trim()),
+//   vehicleId: e.vehicleId.trim(),
+//   vin: (e.vin ?? '').trim().isEmpty ? null : e.vin!.trim(),
+//   frontPath: e.frontPath.trim(),
+//   backPath: e.backPath.trim(),
+
+//   // ✅ REQUIRED
+//   frontTyreId: e.frontTyreId.trim(),
+//   backTyreId: e.backTyreId.trim(),
+// );
+
+
+//   final result = await repo.uploadTwoWheeler(req);
+
+//   if (result.isSuccess) {
+//     emit(state.copyWith(
+//       twoWheelerStatus: TwoWheelerStatus.success,
+//       twoWheelerResponse: result.data,
+//       twoWheelerError: '',
+//     ));
+//   } else {
+//     emit(state.copyWith(
+//       twoWheelerStatus: TwoWheelerStatus.failure,
+//       twoWheelerError: result.failure?.message ?? 'Upload failed',
+//     ));
+//   }
+// }
 
 
 
