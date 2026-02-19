@@ -192,7 +192,6 @@ Future<Result<TwoWheelerTyreUploadResponse>> uploadTwoWheeler(
       ? '${req.token.substring(0, 4)}…${req.token.substring(req.token.length - 4)}'
       : '***';
 
-  // ✅ sanitize token
   final token = req.token.trim();
   if (token.isEmpty) {
     return Result.fail(const Failure(
@@ -201,15 +200,20 @@ Future<Result<TwoWheelerTyreUploadResponse>> uploadTwoWheeler(
     ));
   }
 
-  // ✅ sanitize fields (same approach as 4W)
   final userId = req.userId.trim();
   final vehicleId = req.vehicleId.trim();
 
   if (userId.isEmpty) {
-    return Result.fail(const Failure(code: 'validation', message: 'Missing user_id.'));
+    return Result.fail(const Failure(
+      code: 'validation',
+      message: 'Missing user_id.',
+    ));
   }
   if (vehicleId.isEmpty) {
-    return Result.fail(const Failure(code: 'validation', message: 'Missing vehicle_id.'));
+    return Result.fail(const Failure(
+      code: 'validation',
+      message: 'Missing vehicle_id.',
+    ));
   }
 
   final vehicleTypeValue =
@@ -217,48 +221,38 @@ Future<Result<TwoWheelerTyreUploadResponse>> uploadTwoWheeler(
 
   final vinValue = (req.vin ?? '').trim().isEmpty ? 'UNKNOWN' : req.vin!.trim();
 
-  // ✅ tyre ids (must come from another API)
   final frontTyreId = req.frontTyreId.trim();
   final backTyreId = req.backTyreId.trim();
 
   if (frontTyreId.isEmpty) {
-    return Result.fail(const Failure(code: 'validation', message: 'Missing front_tyre_id.'));
+    return Result.fail(const Failure(
+      code: 'validation',
+      message: 'Missing front_tyre_id.',
+    ));
   }
   if (backTyreId.isEmpty) {
-    return Result.fail(const Failure(code: 'validation', message: 'Missing back_tyre_id.'));
+    return Result.fail(const Failure(
+      code: 'validation',
+      message: 'Missing back_tyre_id.',
+    ));
   }
 
-  // ✅ check files exist + log raw sizes (like 4W)
+  // ✅ check files exist
   try {
     final paths = [req.frontPath, req.backPath];
-
-    int total = 0;
     for (final path in paths) {
       final f = File(path);
       if (!await f.exists()) {
-        return Result.fail(Failure(
-          code: 'file',
-          message: 'File not found: $path',
-        ));
+        return Result.fail(
+          Failure(code: 'file', message: 'File not found: $path'),
+        );
       }
-      final bytes = await f.length();
-      total += bytes;
-
-      // ignore: avoid_print
-      print(
-        'FILE ${p.basename(path)}: ${(bytes / 1024 / 1024).toStringAsFixed(2)} MB',
-      );
     }
-
-    // ignore: avoid_print
-    print('TOTAL UPLOAD (RAW): ${(total / 1024 / 1024).toStringAsFixed(2)} MB');
   } catch (_) {}
 
-  // ✅ keep same pattern as 4W (toggle)
   const bool enableCompression = true;
 
   try {
-    // ✅ compress safely (plug your own compression method if you already have it)
     final frontFile = enableCompression
         ? await _compressSafe(req.frontPath)
         : File(req.frontPath);
@@ -267,35 +261,14 @@ Future<Result<TwoWheelerTyreUploadResponse>> uploadTwoWheeler(
         ? await _compressSafe(req.backPath)
         : File(req.backPath);
 
-    // ✅ log sizes after compression
-    try {
-      final files = [frontFile, backFile];
-      int total = 0;
-      for (final f in files) {
-        final bytes = await f.length();
-        total += bytes;
-        // ignore: avoid_print
-        print(
-          'CMP FILE ${p.basename(f.path)}: ${(bytes / 1024 / 1024).toStringAsFixed(2)} MB',
-        );
-      }
-      // ignore: avoid_print
-      print(
-        'TOTAL UPLOAD (COMPRESSED): ${(total / 1024 / 1024).toStringAsFixed(2)} MB',
-      );
-    } catch (_) {}
-
-    // ✅ Build multipart request
     final uri = Uri.parse(url);
     final request = http.MultipartRequest('POST', uri);
 
-    // ✅ headers
     request.headers.addAll({
       HttpHeaders.authorizationHeader: 'Bearer $token',
       HttpHeaders.acceptHeader: 'application/json',
     });
 
-    // ✅ fields (match Postman keys EXACTLY)
     request.fields.addAll({
       'user_id': userId,
       'vehicle_id': vehicleId,
@@ -305,7 +278,6 @@ Future<Result<TwoWheelerTyreUploadResponse>> uploadTwoWheeler(
       'back_tyre_id': backTyreId,
     });
 
-    // ✅ files (match Postman keys EXACTLY)
     request.files.addAll([
       await http.MultipartFile.fromPath(
         'frontimage',
@@ -328,17 +300,9 @@ Future<Result<TwoWheelerTyreUploadResponse>> uploadTwoWheeler(
       'Fields: {user_id:$userId, vehicle_id:$vehicleId, vehicle_type:$vehicleTypeValue, vin:$vinValue, '
       'front_tyre_id:$frontTyreId, back_tyre_id:$backTyreId}',
     );
-    // ignore: avoid_print
-    print('Files: frontimage=${frontFile.path} | backimage=${backFile.path}');
 
-    // ✅ send
-    final streamed = await request.send().timeout(
-          const Duration(seconds: 200),
-        );
-
+    final streamed = await request.send().timeout(const Duration(seconds: 200));
     final status = streamed.statusCode;
-
-    // ✅ read full response body
     final body = await streamed.stream.bytesToString();
 
     // ignore: avoid_print
@@ -346,47 +310,57 @@ Future<Result<TwoWheelerTyreUploadResponse>> uploadTwoWheeler(
     // ignore: avoid_print
     print('<= Body: $body');
 
-    // ✅ parse JSON safely (same as 4W)
-    Map<String, dynamic> parsed = const {};
-    if (body.trim().isNotEmpty) {
-      try {
-        final decoded = jsonDecode(body);
-        if (decoded is Map<String, dynamic>) {
-          parsed = decoded;
-        } else {
-          return Result.fail(const Failure(
-            code: 'parse',
-            message: 'Invalid JSON response (expected object)',
-          ));
-        }
-      } catch (_) {
-        parsed = const {};
-      }
+    // ✅ empty body guard
+    if (body.trim().isEmpty) {
+      return Result.fail(Failure(
+        code: 'parse',
+        message: 'Empty response from server ($status).',
+        statusCode: status,
+      ));
     }
+
+    // ✅ decode JSON object
+    final decoded = jsonDecode(body);
+    if (decoded is! Map<String, dynamic>) {
+      return Result.fail(const Failure(
+        code: 'parse',
+        message: 'Invalid JSON response (expected object).',
+      ));
+    }
+
+    final parsed = decoded;
 
     // ✅ success
     if (status == 200 || status == 201) {
-      if (parsed.isNotEmpty) {
+      try {
         final resp = TwoWheelerTyreUploadResponse.fromJson(parsed);
 
-        // ✅ if backend says success but data missing
+        // ✅ NEW MODEL: data is OBJECT, so validate like this:
         if (resp.data == null) {
           final msg = resp.message.trim().isNotEmpty
               ? resp.message
-              : 'Upload succeeded but data is missing.';
+              : 'Upload succeeded but report data is missing.';
+          return Result.fail(Failure(code: 'parse', message: msg));
+        }
+
+        // optional (recommended): ensure at least one side exists
+        if (resp.data!.front == null && resp.data!.back == null) {
+          final msg = resp.message.trim().isNotEmpty
+              ? resp.message
+              : 'Upload succeeded but tyre details are missing.';
           return Result.fail(Failure(code: 'parse', message: msg));
         }
 
         return Result.ok(resp);
+      } catch (e) {
+        return Result.fail(Failure(
+          code: 'parse',
+          message: 'Failed to parse upload response: $e',
+        ));
       }
-
-      return Result.fail(const Failure(
-        code: 'parse',
-        message: 'Success response is not valid JSON',
-      ));
     }
 
-    // ✅ special auth mapping
+    // ✅ auth mapping
     if (status == 401 || status == 403) {
       return Result.fail(const Failure(
         code: 'auth',
@@ -394,19 +368,13 @@ Future<Result<TwoWheelerTyreUploadResponse>> uploadTwoWheeler(
       ));
     }
 
-    // ✅ error message extraction (same as 4W)
+    // ✅ error message extraction
     String msg = 'Server error ($status)';
-    try {
-      if (parsed['message'] != null) msg = parsed['message'].toString();
-      else if (parsed['error'] != null) msg = parsed['error'].toString();
-      else if (parsed['detail'] != null) msg = parsed['detail'].toString();
-      else if (body.trim().isNotEmpty) {
-        msg = body.length > 200 ? body.substring(0, 200) : body;
-      }
-    } catch (_) {
-      if (body.trim().isNotEmpty) {
-        msg = body.length > 200 ? body.substring(0, 200) : body;
-      }
+    if (parsed['message'] != null) msg = parsed['message'].toString();
+    else if (parsed['error'] != null) msg = parsed['error'].toString();
+    else if (parsed['detail'] != null) msg = parsed['detail'].toString();
+    else if (body.trim().isNotEmpty) {
+      msg = body.length > 200 ? body.substring(0, 200) : body;
     }
 
     return Result.fail(Failure(code: 'server', message: msg, statusCode: status));
@@ -431,6 +399,8 @@ Future<Result<TwoWheelerTyreUploadResponse>> uploadTwoWheeler(
     return Result.fail(Failure(code: 'unknown', message: e.toString()));
   }
 }
+
+
 
 
 
