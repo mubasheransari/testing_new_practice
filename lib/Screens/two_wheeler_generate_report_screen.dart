@@ -1,15 +1,6 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:ios_tiretest_ai/Bloc/auth_bloc.dart';
-import 'package:ios_tiretest_ai/Bloc/auth_event.dart';
-import 'package:ios_tiretest_ai/Bloc/auth_state.dart';
 import 'package:ios_tiretest_ai/Screens/scanner_front_tire_screen.dart';
 import 'package:ios_tiretest_ai/Widgets/bottom_action_bar.dart';
-import 'package:ios_tiretest_ai/models/two_wheeler_tyre_upload_response.dart'; // <-- your model file
-
-
-
 import 'dart:io';
 
 import 'package:camera/camera.dart';
