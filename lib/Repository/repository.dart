@@ -82,11 +82,11 @@ Future<Result<List<NotificationItem>>> fetchNotifications({
 
   Future<Result<ResponseFourWheeler>> uploadFourWheeler(FourWheelerUploadRequest req);
 
-   Future<Result<List<TyreRecord>>> fetchUserRecords({
-    required String userId,
-    required String vehicleType, // "car" | "bike"
-    String vehicleId = "ALL",
-  });
+  Future<Result<List<TyreRecord>>> fetchUserRecords({
+  required String userId,
+  required String vehicleType,
+  String vehicleId = "ALL",
+});
     Future<UpdateUserDetailsResponse> updateUserDetails({
     required String token,
     required UpdateUserDetailsRequest request,
@@ -1236,57 +1236,127 @@ Future<Result<List<ShopVendorModel>>> fetchNearbyShops({
     return Result.fail(Failure(code: 'unknown', message: e.toString()));
   }}
 
-  @override
+@override
 Future<Result<List<TyreRecord>>> fetchUserRecords({
   required String userId,
-  required String vehicleType,
+  required String vehicleType, // "car" | "bike"
   String vehicleId = "ALL",
 }) async {
   try {
-    final uri = Uri.parse(ApiConfig.fetchUserRecord).replace(queryParameters: {
-      "vehicle_type": vehicleType.trim(),
-      "user_id": userId.trim(),
-      "vehicle_id": vehicleId.trim().isEmpty ? "ALL" : vehicleId.trim(),
-    });
+    final uid = userId.trim();
+    final vType = vehicleType.trim().isEmpty ? "car" : vehicleType.trim();
+    final vId = vehicleId.trim().isEmpty ? "ALL" : vehicleId.trim();
 
-    final res = await http.get(uri).timeout(timeout);
+    if (uid.isEmpty) {
+      return Result.fail(const Failure(
+        code: "validation",
+        message: "Missing user_id",
+      ));
+    }
+
+    // ✅ token (consistent with your bloc)
+    final box = GetStorage();
+    final token =
+        (box.read<String>('auth_token') ?? box.read<String>('token') ?? '').trim();
+
+    final uri = Uri.parse(ApiConfig.fetchUserRecord).replace(
+      queryParameters: {
+        "vehicle_type": vType, // car/bike
+        "user_id": uid,
+        "vehicle_id": vId,
+      },
+    );
+
+    final headers = <String, String>{
+      ..._jsonHeaders(),
+      if (token.isNotEmpty) HttpHeaders.authorizationHeader: "Bearer $token",
+    };
+
+    // ignore: avoid_print
+    print("==[TYRE-HISTORY]=> GET $uri");
+    // ignore: avoid_print
+    print("Headers: {Accept: application/json, Content-Type: application/json"
+        "${token.isNotEmpty ? ", Authorization: Bearer ****" : ""}}");
+
+    final res = await http.get(uri, headers: headers).timeout(timeout);
+
+    // ignore: avoid_print
+    print("<= [TYRE-HISTORY] ${res.statusCode}");
+    // ignore: avoid_print
+    print("<= Body: ${res.body}");
 
     if (res.statusCode >= 200 && res.statusCode < 300) {
-      final parsed = jsonDecode(res.body);
-      if (parsed is! Map<String, dynamic>) {
-        return Result.fail(const Failure(code: 'parse', message: 'Invalid response format'));
+      if (res.body.trim().isEmpty) {
+        return Result.ok(const <TyreRecord>[]);
       }
 
-      final data = parsed['data'];
-      if (data is! List) {
-        return Result.fail(const Failure(code: 'parse', message: 'Missing data list'));
+      final decoded = jsonDecode(res.body);
+
+      if (decoded is! Map<String, dynamic>) {
+        return Result.fail(const Failure(
+          code: "parse",
+          message: "Invalid response format (expected object)",
+        ));
       }
 
-      final list = data
+      final raw = decoded["data"];
+      if (raw is! List) {
+        return Result.fail(const Failure(
+          code: "parse",
+          message: "Missing data list",
+        ));
+      }
+
+      final list = raw
           .whereType<Map>()
-          .map((e) => TyreRecord.fromJson(Map<String, dynamic>.from(e)))
+          .map((e) => TyreRecord.fromApi(Map<String, dynamic>.from(e)))
           .toList();
 
-      // sort latest first
+      // ✅ latest first
       list.sort((a, b) => b.uploadedAt.compareTo(a.uploadedAt));
 
       return Result.ok(list);
     }
 
+    // ✅ show backend message if present
+    String msg = "Server error (${res.statusCode})";
+    try {
+      final parsed = jsonDecode(res.body);
+      if (parsed is Map && parsed["message"] != null) {
+        msg = parsed["message"].toString();
+      } else if (parsed is Map && parsed["error"] != null) {
+        msg = parsed["error"].toString();
+      }
+    } catch (_) {
+      if (res.body.trim().isNotEmpty) {
+        msg = res.body.length > 200 ? res.body.substring(0, 200) : res.body;
+      }
+    }
+
     return Result.fail(Failure(
-      code: 'server',
-      message: 'Server error (${res.statusCode})',
+      code: "server",
+      message: msg,
       statusCode: res.statusCode,
     ));
   } on SocketException {
-    return Result.fail(const Failure(code: 'network', message: 'No internet connection'));
+    return Result.fail(const Failure(
+      code: "network",
+      message: "No internet connection",
+    ));
   } on TimeoutException {
-    return Result.fail(const Failure(code: 'timeout', message: 'Request timed out'));
+    return Result.fail(const Failure(
+      code: "timeout",
+      message: "Request timed out",
+    ));
+  } on FormatException {
+    return Result.fail(const Failure(
+      code: "parse",
+      message: "Invalid JSON response",
+    ));
   } catch (e) {
-    return Result.fail(Failure(code: 'unknown', message: e.toString()));
+    return Result.fail(Failure(code: "unknown", message: e.toString()));
   }
 }
-
 
 
   @override
