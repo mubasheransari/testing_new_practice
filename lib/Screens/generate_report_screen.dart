@@ -5,27 +5,11 @@ import 'package:ios_tiretest_ai/Bloc/auth_bloc.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_event.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_state.dart';
 import 'package:ios_tiretest_ai/Screens/app_shell.dart' show AppShell;
-import 'package:ios_tiretest_ai/models/response_four_wheeler.dart' as m;
 import 'dart:io';
 import 'dart:convert';
 import 'package:video_player/video_player.dart';
 import 'package:ios_tiretest_ai/models/response_four_wheeler.dart' as fw;
 
-
-import 'dart:async';
-import 'dart:convert';
-import 'dart:io';
-
-import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:ios_tiretest_ai/Bloc/auth_bloc.dart';
-import 'package:ios_tiretest_ai/Bloc/auth_event.dart';
-import 'package:ios_tiretest_ai/Bloc/auth_state.dart';
-import 'package:ios_tiretest_ai/Screens/app_shell.dart' show AppShell;
-import 'package:video_player/video_player.dart';
-
-// Keep your model import exactly like you had (aliased)
-import 'package:ios_tiretest_ai/models/response_four_wheeler.dart' as fw;
 
 class InspectionResultScreen extends StatefulWidget {
   const InspectionResultScreen({
