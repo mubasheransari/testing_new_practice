@@ -85,6 +85,14 @@ import 'package:equatable/equatable.dart';
 //       ];
 // }
 // tyre_record.dart
+
+
+
+
+
+
+
+
 class TyreRecord {
   // common
   final String userId;
