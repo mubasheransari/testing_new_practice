@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:ios_tiretest_ai/Screens/app_shell.dart';
+import 'package:ios_tiretest_ai/Screens/location_google_maos.dart';
 import 'auth_screen.dart';         
 
 
@@ -26,6 +27,10 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   @override
   void initState() {
     super.initState();
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+    LocationVendorsMapScreen.prewarm(context);
+  });
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await Future.delayed(const Duration(milliseconds: 1200));
