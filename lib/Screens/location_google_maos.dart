@@ -13,37 +13,17 @@ import '../Bloc/auth_event.dart';
 import '../Bloc/auth_state.dart';
 import 'dart:async';
 import 'package:geolocator/geolocator.dart';
-
-// ✅ FULL UPDATED FILE (NO UI CHANGE)
-// Goal:
-// 1) Keep your EXISTING UI EXACTLY the same (same widgets, same layout, same cards, same popup)
-// 2) Show your API markers with your custom icon (unchanged)
-// 3) ALSO show Google Places tyre/tire related shops as RED markers from CURRENT LOCATION (no hardcode)
-// 4) Maximum coverage: multi-strategy Places search + strong debug logs
-//
-// IMPORTANT:
-// - Put your real Google Places key in _googlePlacesApiKey
-// - Ensure "Places API" enabled + Billing enabled on the same Google project as this key
-// - Also ensure Android app has proper API key restrictions (package name + SHA1)
-//
-// NOTE: This file includes EVERYTHING (screen + widgets + helpers) as you requested.
-
+/// LocationVendorsMapScreen.dart
 import 'dart:async';
-import 'dart:convert';
-import 'dart:ui' as ui;
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:http/http.dart' as http;
 
-// keep your existing imports/models/bloc enums
-// import 'auth_bloc.dart';
-// import 'shop_vendor_model.dart';
-// import 'auth_state.dart';
-// import 'auth_event.dart';
+import 'package:ios_tiretest_ai/Bloc/auth_bloc.dart';
+import 'package:ios_tiretest_ai/Bloc/auth_event.dart';
+import 'package:ios_tiretest_ai/Bloc/auth_state.dart';
+import 'package:ios_tiretest_ai/Models/shop_vendor.dart';
+
 
 class LocationVendorsMapScreen extends StatefulWidget {
   const LocationVendorsMapScreen({super.key, this.showFirstTooltipOnLoad = true});
@@ -1430,3 +1410,6 @@ Future<BitmapDescriptor> markerFromAssetAtDp(
   final bytes = await frame.image.toByteData(format: ui.ImageByteFormat.png);
   return BitmapDescriptor.fromBytes(bytes!.buffer.asUint8List());
 }
+
+
+

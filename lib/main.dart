@@ -11,16 +11,34 @@ import 'package:ios_tiretest_ai/Screens/splash_screen.dart';
 
 
 
+// void main() async {
+//   WidgetsFlutterBinding.ensureInitialized();
+//   await GetStorage.init();                    
+//   final authRepo = AuthRepositoryHttp();
+
+//   runApp(
+//     MultiBlocProvider(
+//       providers: [
+//         BlocProvider<AuthBloc>(
+//           create: (_) => AuthBloc(authRepo)..add(AppStarted()),
+//         ),
+//       ],
+//       child: const MyApp(),
+//     ),
+//   );
+// }
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await GetStorage.init();                    
+  await GetStorage.init();
+
   final authRepo = AuthRepositoryHttp();
 
   runApp(
     MultiBlocProvider(
       providers: [
         BlocProvider<AuthBloc>(
-          create: (_) => AuthBloc(authRepo)..add(AppStarted()),
+          create: (_) => AuthBloc(authRepo)..add(const AppStarted()),
         ),
       ],
       child: const MyApp(),

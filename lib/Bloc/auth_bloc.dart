@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_event.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_state.dart';
@@ -14,6 +15,7 @@ import 'package:ios_tiretest_ai/Repository/repository.dart';
 import 'package:ios_tiretest_ai/models/update_user_details_model.dart' show UpdateUserDetailsRequest;
 import 'package:ios_tiretest_ai/models/user_profile.dart';
 import 'package:ios_tiretest_ai/models/verify_otp_model.dart';
+import 'package:ios_tiretest_ai/utils/location_helper.dart';
 import '../models/auth_models.dart';
 import 'package:bloc/bloc.dart';
 import 'dart:async';
@@ -22,6 +24,9 @@ import 'dart:async';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   AuthBloc(this.repo) : super(const AuthState()) {
+        on<CurrentLocationRequested>(_onCurrentLocationRequested);
+    on<NearbyShopsRefreshRequested>(_onNearbyShopsRefreshRequested);
+    on<HomeMapBootRequested>(_onHomeMapBootRequested);
     on<AdsFetchRequested>(_onAdsFetch);
 on<AdsSelectRequested>(_onAdsSelect);
     // ✅ OTP
@@ -71,6 +76,26 @@ on<AdsSelectRequested>(_onAdsSelect);
       (e, emit) => emit(state.copyWith(changePasswordError: null)),
     );
   }
+  static const _kHomeLat = "home_last_lat";
+static const _kHomeLng = "home_last_lng";
+static const _kHomeLocTs = "home_last_loc_ts"; // millis
+Map<String, double>? _readCachedHomeLoc() {
+  final box = GetStorage();
+  final lat = box.read(_kHomeLat);
+  final lng = box.read(_kHomeLng);
+
+  if (lat is num && lng is num) {
+    return {"lat": lat.toDouble(), "lng": lng.toDouble()};
+  }
+  return null;
+}
+
+Future<void> _saveCachedHomeLoc(double lat, double lng) async {
+  final box = GetStorage();
+  await box.write(_kHomeLat, lat);
+  await box.write(_kHomeLng, lng);
+  await box.write(_kHomeLocTs, DateTime.now().millisecondsSinceEpoch);
+}
 
   final AuthRepository repo;
 
@@ -80,6 +105,123 @@ on<AdsSelectRequested>(_onAdsSelect);
   static const _kNotifReadIds = "notif_read_ids"; // List<String>
 
   Timer? _notifTimer;
+
+  Future<void> _onHomeMapBootRequested(
+  HomeMapBootRequested e,
+  Emitter<AuthState> emit,
+) async {
+  emit(state.copyWith(
+    homeMapStatus: HomeMapStatus.preparing,
+    homeMapError: null,
+  ));
+
+  // 1) ✅ instant: use cached lat/lng if present (unless forceRefresh)
+  if (!e.forceRefresh) {
+    final cached = _readCachedHomeLoc();
+    if (cached != null) {
+      final lat = cached["lat"]!;
+      final lng = cached["lng"]!;
+
+      emit(state.copyWith(
+        homeMapStatus: HomeMapStatus.ready,
+        homeLat: lat,
+        homeLng: lng,
+        homeMapError: null,
+      ));
+
+      // ✅ Fetch markers immediately WITHOUT changing UI to loading
+      add(FetchNearbyShopsRequested(
+        latitude: lat,
+        longitude: lng,
+        silent: true,
+      ));
+    }
+  }
+
+  // 2) ✅ background: last known position (fast)
+  try {
+    final last = await Geolocator.getLastKnownPosition();
+    if (last != null) {
+      final lat = last.latitude;
+      final lng = last.longitude;
+
+      // update state if not set yet
+      if (state.homeLat == null || state.homeLng == null) {
+        emit(state.copyWith(
+          homeMapStatus: HomeMapStatus.ready,
+          homeLat: lat,
+          homeLng: lng,
+          homeMapError: null,
+        ));
+        add(FetchNearbyShopsRequested(
+          latitude: lat,
+          longitude: lng,
+          silent: true,
+        ));
+      }
+
+      await _saveCachedHomeLoc(lat, lng);
+    }
+  } catch (_) {}
+
+  // 3) ✅ background: current GPS (accurate but slower) with timeout
+  try {
+    final enabled = await Geolocator.isLocationServiceEnabled();
+    if (!enabled) return;
+
+    var perm = await Geolocator.checkPermission();
+    if (perm == LocationPermission.denied) {
+      perm = await Geolocator.requestPermission();
+    }
+    if (perm == LocationPermission.denied ||
+        perm == LocationPermission.deniedForever) {
+      return;
+    }
+
+    final p = await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.best,
+      timeLimit: const Duration(seconds: 8),
+    );
+
+    final lat = p.latitude;
+    final lng = p.longitude;
+
+    // only update if changed enough (avoid spam)
+    final oldLat = state.homeLat;
+    final oldLng = state.homeLng;
+
+    final changed = oldLat == null ||
+        oldLng == null ||
+        (oldLat - lat).abs() > 0.0003 ||
+        (oldLng - lng).abs() > 0.0003;
+
+    if (changed) {
+      emit(state.copyWith(
+        homeMapStatus: HomeMapStatus.ready,
+        homeLat: lat,
+        homeLng: lng,
+        homeMapError: null,
+      ));
+
+      await _saveCachedHomeLoc(lat, lng);
+
+      // ✅ refresh markers silently
+      add(FetchNearbyShopsRequested(
+        latitude: lat,
+        longitude: lng,
+        silent: true,
+      ));
+    }
+  } catch (_) {
+    // If we already had cached/last-known, don’t mark failure.
+    if (state.homeLat == null || state.homeLng == null) {
+      emit(state.copyWith(
+        homeMapStatus: HomeMapStatus.failure,
+        homeMapError: "Failed to get location",
+      ));
+    }
+  }
+}
 
   Set<String> _readIds() {
     final box = GetStorage();
@@ -526,20 +668,125 @@ Future<void> _onAdsSelect(AdsSelectRequested e, Emitter<AuthState> emit) async {
   // ============================================================
   // ✅ App Started
   // ============================================================
+  // Future<void> _onAppStarted(AppStarted e, Emitter<AuthState> emit) async {
+  //   final tok = await repo.getSavedToken();
+
+  //   if (tok != null && tok.isNotEmpty) {
+  //     add(const FetchProfileRequested());
+
+  //     add(const FetchNearbyShopsRequested(
+  //       latitude: 24.91767709433974,
+  //       longitude: 67.1005464655281,
+  //     ));
+
+  //     add(const NotificationStartListening(intervalSeconds: 15));
+  //   }
+  // }
+Future<void> _onCurrentLocationRequested(
+    CurrentLocationRequested e,
+    Emitter<AuthState> emit,
+  ) async {
+    // ✅ if already have location & not forced => do nothing
+    if (!e.force &&
+        state.currentLat != null &&
+        state.currentLng != null &&
+        state.locationStatus == LocationStatus.success) {
+      // ✅ but make sure shops are loaded at least once
+      if (state.shops.isEmpty && state.shopsStatus != ShopsStatus.loading) {
+        add(FetchNearbyShopsRequested(
+          latitude: state.currentLat!,
+          longitude: state.currentLng!,
+        ));
+      }
+      return;
+    }
+
+    emit(state.copyWith(
+      locationStatus: LocationStatus.loading,
+      locationError: null,
+    ));
+
+    try {
+      final pos = await LocationHelper.getCurrentLocation();
+
+      if (pos == null) {
+        emit(state.copyWith(
+          locationStatus: LocationStatus.failure,
+          locationError:
+              "Location unavailable. Enable GPS and allow location permission.",
+        ));
+     //   return;
+      }
+
+      emit(state.copyWith(
+        locationStatus: LocationStatus.success,
+        currentLat: pos!.latitude,
+        currentLng: pos!.longitude,
+        locationError: null,
+      ));
+
+      // ✅ Immediately fetch shops so markers appear fast on Home/BottomNav
+      add(FetchNearbyShopsRequested(
+        latitude: pos.latitude,
+        longitude: pos.longitude,
+      ));
+    } catch (ex) {
+      emit(state.copyWith(
+        locationStatus: LocationStatus.failure,
+        locationError: ex.toString(),
+      ));
+    }
+  }
+
+  Future<void> _onNearbyShopsRefreshRequested(
+    NearbyShopsRefreshRequested e,
+    Emitter<AuthState> emit,
+  ) async {
+    // ✅ refresh using cached location (no hardcode)
+    final lat = state.currentLat;
+    final lng = state.currentLng;
+
+    if (lat == null || lng == null) {
+      add(const CurrentLocationRequested(force: true));
+      return;
+    }
+
+    add(FetchNearbyShopsRequested(latitude: lat, longitude: lng));
+  }
+
+  // ✅ Update your existing AppStarted to use GPS (NO HARDCODE)
   Future<void> _onAppStarted(AppStarted e, Emitter<AuthState> emit) async {
     final tok = await repo.getSavedToken();
 
     if (tok != null && tok.isNotEmpty) {
       add(const FetchProfileRequested());
-
-      add(const FetchNearbyShopsRequested(
-        latitude: 24.91767709433974,
-        longitude: 67.1005464655281,
-      ));
-
       add(const NotificationStartListening(intervalSeconds: 15));
+
+      // ✅ Instead of hardcoded lat/lng:
+      add(const CurrentLocationRequested());
     }
   }
+//   Future<void> _onAppStarted(AppStarted e, Emitter<AuthState> emit) async {
+//   final tok = await repo.getSavedToken();
+
+//   if (tok != null && tok.isNotEmpty) {
+//     add(const FetchProfileRequested());
+
+//     // 🔥 GET REAL USER LOCATION
+//     final position = await LocationHelper.getCurrentLocation();
+
+//     if (position != null) {
+//       add(
+//         FetchNearbyShopsRequested(
+//           latitude: position.latitude,
+//           longitude: position.longitude,
+//         ),
+//       );
+//     }
+
+//     add(const NotificationStartListening(intervalSeconds: 15));
+//   }
+// }
 
   // ============================================================
   // ✅ Notifications
@@ -632,33 +879,68 @@ Future<void> _onAdsSelect(AdsSelectRequested e, Emitter<AuthState> emit) async {
   // ============================================================
   // ✅ Shops
   // ============================================================
+  // Future<void> _onFetchNearbyShops(
+  //   FetchNearbyShopsRequested e,
+  //   Emitter<AuthState> emit,
+  // ) async {
+  //   emit(state.copyWith(
+  //     shopsStatus: ShopsStatus.loading,
+  //     shopsError: null,
+  //   ));
+
+  //   final r = await repo.fetchNearbyShops(
+  //     latitude: e.latitude,
+  //     longitude: e.longitude,
+  //   );
+
+  //   if (r.isSuccess) {
+  //     emit(state.copyWith(
+  //       shopsStatus: ShopsStatus.success,
+  //       shops: r.data ?? <ShopVendorModel>[],
+  //       shopsError: null,
+  //     ));
+  //   } else {
+  //     emit(state.copyWith(
+  //       shopsStatus: ShopsStatus.failure,
+  //       shopsError: r.failure?.message ?? 'Failed to load shops',
+  //     ));
+  //   }
+  // }
+
   Future<void> _onFetchNearbyShops(
-    FetchNearbyShopsRequested e,
-    Emitter<AuthState> emit,
-  ) async {
+  FetchNearbyShopsRequested e,
+  Emitter<AuthState> emit,
+) async {
+  // ✅ Only show loading if NOT silent
+  if (!e.silent) {
     emit(state.copyWith(
       shopsStatus: ShopsStatus.loading,
       shopsError: null,
     ));
-
-    final r = await repo.fetchNearbyShops(
-      latitude: e.latitude,
-      longitude: e.longitude,
-    );
-
-    if (r.isSuccess) {
-      emit(state.copyWith(
-        shopsStatus: ShopsStatus.success,
-        shops: r.data ?? <ShopVendorModel>[],
-        shopsError: null,
-      ));
-    } else {
-      emit(state.copyWith(
-        shopsStatus: ShopsStatus.failure,
-        shopsError: r.failure?.message ?? 'Failed to load shops',
-      ));
-    }
+  } else {
+    // keep existing markers on UI, just clear error
+    emit(state.copyWith(shopsError: null));
   }
+
+  final r = await repo.fetchNearbyShops(
+    latitude: e.latitude,
+    longitude: e.longitude,
+  );
+
+  if (r.isSuccess) {
+    emit(state.copyWith(
+      shopsStatus: ShopsStatus.success,
+      shops: r.data ?? <ShopVendorModel>[],
+      shopsError: null,
+    ));
+  } else {
+    // ✅ If silent: don’t wipe existing markers; only set error optionally
+    emit(state.copyWith(
+      shopsStatus: e.silent ? state.shopsStatus : ShopsStatus.failure,
+      shopsError: r.failure?.message ?? 'Failed to load shops',
+    ));
+  }
+}
 
   // ============================================================
   // ✅ Login/Signup

@@ -321,7 +321,22 @@ class AddVehiclePreferenccesEvent extends AuthEvent {
         tireDimension,
       ];
 }
+class FetchNearbyShopsRequested extends AuthEvent {
+  final double latitude;
+  final double longitude;
 
+  // ✅ NEW: if silent, don’t flip UI loading states
+  final bool silent;
+
+  const FetchNearbyShopsRequested({
+    required this.latitude,
+    required this.longitude,
+    this.silent = false,
+  });
+
+  @override
+  List<Object?> get props => [latitude, longitude, silent];
+}
 class FetchTyreHistoryRequested extends AuthEvent {
   final String userId;
   final String vehicleId; // default ALL
@@ -335,18 +350,18 @@ class FetchTyreHistoryRequested extends AuthEvent {
   List<Object?> get props => [userId, vehicleId];
 }
 
-class FetchNearbyShopsRequested extends AuthEvent {
-  final double latitude;
-  final double longitude;
+// class FetchNearbyShopsRequested extends AuthEvent {
+//   final double latitude;
+//   final double longitude;
 
-  const FetchNearbyShopsRequested({
-    required this.latitude,
-    required this.longitude,
-  });
+//   const FetchNearbyShopsRequested({
+//     required this.latitude,
+//     required this.longitude,
+//   });
 
-  @override
-  List<Object?> get props => [latitude, longitude];
-}
+//   @override
+//   List<Object?> get props => [latitude, longitude];
+// }
 
 /// ✅ NEW EVENT: Update user details (Edit Profile)
 class UpdateUserDetailsRequested extends AuthEvent {
@@ -567,4 +582,25 @@ class UploadTwoWheelerRequested extends AuthEvent {
         frontTyreId,
         backTyreId,
       ];
+}
+class HomeMapBootRequested extends AuthEvent {
+  final bool forceRefresh; // if true skip cache
+  const HomeMapBootRequested({this.forceRefresh = false});
+
+  @override
+  List<Object?> get props => [forceRefresh];
+}
+
+
+class CurrentLocationRequested extends AuthEvent {
+  final bool force; // re-fetch even if already exists
+  const CurrentLocationRequested({this.force = false});
+
+  @override
+  List<Object?> get props => [force];
+}
+
+// Optional: if you want manual refresh of shops without forcing GPS again
+class NearbyShopsRefreshRequested extends AuthEvent {
+  const NearbyShopsRefreshRequested();
 }

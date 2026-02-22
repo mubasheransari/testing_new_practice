@@ -15,11 +15,12 @@ import 'package:ios_tiretest_ai/models/notification_models.dart';
 import 'package:ios_tiretest_ai/models/verify_email_response.dart';
 import 'package:ios_tiretest_ai/models/verify_otp_model.dart';
 
-
+enum HomeMapStatus { initial, preparing, ready, failure }
 enum TwoWheelerStatus { idle, uploading, success, failure }
 enum AdsStatus { initial, loading, success, failure }
 
 
+enum LocationStatus { initial, loading, success, failure }
 enum ForgotEmailStatus { initial, loading, success, failure }
 enum ForgotResetStatus { initial, loading, success, failure }
 
@@ -37,6 +38,15 @@ enum NotificationStatus { initial, loading, success, failure }
 enum ChangePasswordStatus { initial, loading, success, failure }
 
 class AuthState extends Equatable {
+    final LocationStatus locationStatus;
+  final double? currentLat;
+  final double? currentLng;
+  final String? locationError;
+  final HomeMapStatus homeMapStatus;
+    final DateTime? shopsFetchedAt;
+final double? homeLat;
+final double? homeLng;
+final String? homeMapError;
     final TwoWheelerStatus twoWheelerStatus;
   final TwoWheelerTyreUploadResponse? twoWheelerResponse;
   final String twoWheelerError;
@@ -140,6 +150,15 @@ final String? adsError;
   final String recordsVehicleType;
 
   const AuthState({
+    this.locationStatus = LocationStatus.initial,
+    this.currentLat,
+    this.currentLng,
+    this.locationError,
+    this.shopsFetchedAt,
+      this.homeMapStatus = HomeMapStatus.initial,
+  this.homeLat,
+  this.homeLng,
+  this.homeMapError,
        this.twoWheelerStatus = TwoWheelerStatus.idle,
     this.twoWheelerResponse,
     this.twoWheelerError = '',
@@ -227,6 +246,15 @@ final String? adsError;
   }
 
   AuthState copyWith({
+        LocationStatus? locationStatus,
+    double? currentLat,
+    double? currentLng,
+    String? locationError,
+    DateTime? shopsFetchedAt,
+      HomeMapStatus? homeMapStatus,
+  double? homeLat,
+  double? homeLng,
+  String? homeMapError,
         TwoWheelerStatus? twoWheelerStatus,
     TwoWheelerTyreUploadResponse? twoWheelerResponse,
     String? twoWheelerError,
@@ -305,7 +333,15 @@ final String? adsError;
     String? recordsVehicleType,
   }) {
     return AuthState(
-
+            locationStatus: locationStatus ?? this.locationStatus,
+      currentLat: currentLat ?? this.currentLat,
+      currentLng: currentLng ?? this.currentLng,
+      locationError: locationError ?? this.locationError,
+      shopsFetchedAt: shopsFetchedAt ?? this.shopsFetchedAt,
+    homeMapStatus: homeMapStatus ?? this.homeMapStatus,
+    homeLat: homeLat ?? this.homeLat,
+    homeLng: homeLng ?? this.homeLng,
+    homeMapError: homeMapError ?? this.homeMapError,
       twoWheelerStatus: twoWheelerStatus ?? this.twoWheelerStatus,
       twoWheelerResponse: twoWheelerResponse ?? this.twoWheelerResponse,
       twoWheelerError: twoWheelerError ?? this.twoWheelerError,
@@ -393,6 +429,15 @@ final String? adsError;
 
   @override
   List<Object?> get props => [
+           locationStatus,
+        currentLat,
+        currentLng,
+        locationError,
+        shopsFetchedAt,
+      homeMapStatus,
+  homeLat,
+  homeLng,
+  homeMapError,
             twoWheelerStatus,
         twoWheelerResponse,
         twoWheelerError,
