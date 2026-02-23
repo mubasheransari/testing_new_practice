@@ -357,9 +357,11 @@ await TokenStore().clear();
   static void _openChangePasswordSheet(BuildContext context, {required double s}) {
     final newCtrl = TextEditingController();
     final confirmCtrl = TextEditingController();
+    final oldCtrl = TextEditingController();
 
     bool obscure1 = true;
     bool obscure2 = true;
+    bool obscure3 = true;
 
     showModalBottomSheet(
       context: context,
@@ -439,6 +441,17 @@ await TokenStore().clear();
                       fontWeight: FontWeight.w800,
                     ),
                   ),
+                   const SizedBox(height: 14),
+                   TextField(
+                    controller: oldCtrl,
+                    obscureText: obscure3,
+                    style: inputStyle(),
+                    decoration: dec(
+                      "Old Password",
+                      obscure: obscure3,
+                      onEyeTap: () => setSheetState(() => obscure3 = !obscure3),
+                    ),
+                  ),
                   const SizedBox(height: 14),
 
                   TextField(
@@ -476,6 +489,7 @@ await TokenStore().clear();
                           : () {
                               final a = newCtrl.text.trim();
                               final b = confirmCtrl.text.trim();
+                              final oldPassword = oldCtrl.text.trim();
 
                               if (a.isEmpty || b.isEmpty) {
                                 ScaffoldMessenger.of(context).showSnackBar(
@@ -492,6 +506,7 @@ await TokenStore().clear();
 
                               context.read<AuthBloc>().add(
                                     ChangePasswordRequested(
+                                      oldPassword: oldPassword,
                                       newPassword: a,
                                       confirmNewPassword: b,
                                     ),
@@ -512,9 +527,7 @@ await TokenStore().clear();
     );
   }
 
-  // ===========================
-  // (Your existing Edit Profile Sheet code stays SAME)
-  // ===========================
+
   static void _openEditProfileSheet(
     BuildContext context, {
     required double s,

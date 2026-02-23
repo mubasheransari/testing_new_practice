@@ -1525,6 +1525,7 @@ Future<void> _onCurrentLocationRequested(
 
     final r = await repo.resetPassword(
       request: ResetPasswordRequest(
+        oldPassword: e.oldPassword,
         userId: userId.trim(),
         newPassword: e.newPassword.trim(),
         confirmNewPassword: e.confirmNewPassword.trim(),

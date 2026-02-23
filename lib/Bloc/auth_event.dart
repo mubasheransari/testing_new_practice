@@ -386,16 +386,18 @@ class ClearUpdateProfileError extends AuthEvent {
   const ClearUpdateProfileError();
 }
 class ChangePasswordRequested extends AuthEvent {
+  final String oldPassword;
   final String newPassword;
   final String confirmNewPassword;
 
   const ChangePasswordRequested({
+     required this.oldPassword,
     required this.newPassword,
     required this.confirmNewPassword,
   });
 
   @override
-  List<Object?> get props => [newPassword, confirmNewPassword];
+  List<Object?> get props => [oldPassword,newPassword, confirmNewPassword];
 }
 
 class ClearChangePasswordError extends AuthEvent {
