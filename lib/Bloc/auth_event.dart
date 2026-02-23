@@ -365,12 +365,14 @@ class FetchTyreHistoryRequested extends AuthEvent {
 
 /// ✅ NEW EVENT: Update user details (Edit Profile)
 class UpdateUserDetailsRequested extends AuthEvent {
+  final String email;
   final String firstName;
   final String lastName;
   final String phone;
   final String profileImage; // URL string
 
   const UpdateUserDetailsRequested({
+    required this.email,
     required this.firstName,
     required this.lastName,
     required this.phone,
@@ -378,7 +380,7 @@ class UpdateUserDetailsRequested extends AuthEvent {
   });
 
   @override
-  List<Object?> get props => [firstName, lastName, phone, profileImage];
+  List<Object?> get props => [email,firstName, lastName, phone, profileImage];
 }
 
 /// ✅ Optional: clear update profile error

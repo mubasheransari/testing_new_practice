@@ -1446,6 +1446,7 @@ Future<void> _onCurrentLocationRequested(
       final r = await repo.updateUserDetails(
         token: token,
         request: UpdateUserDetailsRequest(
+          email: e.email.trim(),
           firstName: e.firstName.trim(),
           lastName: e.lastName.trim(),
           profileImage: e.profileImage.trim(),

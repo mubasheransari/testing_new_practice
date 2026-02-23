@@ -182,6 +182,7 @@ class ProfilePage extends StatelessWidget {
                                 _openEditProfileSheet(
                                   context,
                                   s: s,
+                                  email: profile?.email ?? "",
                                   firstName: profile?.firstName ?? '',
                                   lastName: profile?.lastName ?? '',
                                   phone: profile?.phone ?? '',
@@ -531,14 +532,18 @@ await TokenStore().clear();
   static void _openEditProfileSheet(
     BuildContext context, {
     required double s,
+    required String email,
     required String firstName,
     required String lastName,
     required String phone,
     required String profileImage,
   }) {
+        final emailCtrl = TextEditingController(text: email);
+
     final fnCtrl = TextEditingController(text: firstName);
     final lnCtrl = TextEditingController(text: lastName);
     final phoneCtrl = TextEditingController(text: phone);
+
 
     String pickedImagePath = profileImage;
 
@@ -738,6 +743,12 @@ await TokenStore().clear();
                       ),
                     ),
                   ),
+                    TextField(
+                    controller: emailCtrl,
+                    style: inputStyle(),
+                    keyboardType: TextInputType.phone,
+                    decoration: dec("Email", Icons.phone_outlined),
+                  ),
                   const SizedBox(height: 14),
                   TextField(controller: fnCtrl, style: inputStyle(), decoration: dec("First Name", Icons.person_outline)),
                   const SizedBox(height: 10),
@@ -761,6 +772,7 @@ await TokenStore().clear();
                           : () {
                               context.read<AuthBloc>().add(
                                     UpdateUserDetailsRequested(
+                                      email: emailCtrl.text,
                                       firstName: fnCtrl.text,
                                       lastName: lnCtrl.text,
                                       phone: phoneCtrl.text,

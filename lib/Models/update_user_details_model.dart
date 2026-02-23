@@ -1,10 +1,12 @@
 class UpdateUserDetailsRequest {
+  final String email;
   final String firstName;
   final String lastName;
   final String profileImage;
   final String phone;
 
   const UpdateUserDetailsRequest({
+    required this.email,
     required this.firstName,
     required this.lastName,
     required this.profileImage,
@@ -12,6 +14,7 @@ class UpdateUserDetailsRequest {
   });
 
   Map<String, dynamic> toJson() => {
+     "email": email,
         "firstName": firstName,
         "lastName": lastName,
         "profileImage": profileImage,
