@@ -14,22 +14,6 @@ import 'dart:async';
 import 'package:geolocator/geolocator.dart';
 
 
-import 'dart:async';
-import 'dart:ui' as ui;
-
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:get_storage/get_storage.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
-
-import '../Bloc/auth_bloc.dart';
-import '../Bloc/auth_event.dart';
-import '../Bloc/auth_state.dart';
-import '../Models/shop_vendor.dart';
-import '../Models/place_marker_data.dart';
-
 class LocationVendorsMapScreen extends StatefulWidget {
   const LocationVendorsMapScreen({super.key, this.showFirstTooltipOnLoad = true});
   final bool showFirstTooltipOnLoad;
