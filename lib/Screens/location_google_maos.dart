@@ -1,5 +1,3 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -7,6 +5,7 @@ import 'dart:ui' as ui;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:ios_tiretest_ai/Models/shop_vendor.dart';
 import 'package:get_storage/get_storage.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../Bloc/auth_bloc.dart';
 import '../Bloc/auth_event.dart';
 import '../Bloc/auth_state.dart';
@@ -17,7 +16,15 @@ import 'package:geolocator/geolocator.dart';
 class LocationVendorsMapScreen extends StatefulWidget {
   const LocationVendorsMapScreen({super.key, this.showFirstTooltipOnLoad = true});
   final bool showFirstTooltipOnLoad;
-
+  
+  Future<void> _makePhoneCall(String phone) async {
+  final uri = Uri(scheme: 'tel', path: phone);
+  if (await canLaunchUrl(uri)) {
+    await launchUrl(uri);
+  } else {
+    debugPrint('❌ Could not launch dialer');
+  }
+}
   static void prewarm(BuildContext context) {
     try {
       _LocationVendorsMapScreenState._preloadVendorIcon(context);
@@ -642,6 +649,14 @@ class _VendorPopupCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+
+      Future<void> _makePhoneCall(String phone) async {
+  final uri = Uri(scheme: 'tel', path: phone);
+  if (await canLaunchUrl(uri)) {
+    await launchUrl(uri);
+  } else {
+    debugPrint('❌ Could not launch dialer');
+  }}
     return Material(
       color: Colors.transparent,
       child: Container(
@@ -702,9 +717,13 @@ class _VendorPopupCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 10),
-                _circleBlueIcon(Icons.call_rounded),
-                const SizedBox(width: 10),
-                _circleBlueIcon(Icons.navigation_rounded),
+                InkWell(
+                  onTap: (){
+                    _makePhoneCall(vendor.phoneNumber.toString());
+                  },
+                  child: _circleBlueIcon(Icons.call_rounded)),
+                // const SizedBox(width: 10),
+                // _circleBlueIcon(Icons.navigation_rounded),
               ],
             ),
             const SizedBox(height: 6),
