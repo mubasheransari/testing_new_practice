@@ -4,6 +4,8 @@ import 'package:ios_tiretest_ai/Bloc/auth_bloc.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_state.dart';
 import 'package:ios_tiretest_ai/Models/shop_vendor.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+
 Future<void> _makePhoneCall(String phone) async {
   final uri = Uri(scheme: 'tel', path: phone);
   if (await canLaunchUrl(uri)) {
