@@ -16,27 +16,6 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/services.dart';
 
 
-
-import 'dart:convert';
-import 'dart:io';
-import 'dart:ui';
-
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:get_storage/get_storage.dart';
-import 'package:google_sign_in/google_sign_in.dart' as gsi;
-import 'package:http/http.dart' as http;
-
-import 'package:ios_tiretest_ai/Bloc/auth_bloc.dart';
-import 'package:ios_tiretest_ai/Bloc/auth_event.dart';
-import 'package:ios_tiretest_ai/Bloc/auth_state.dart';
-import 'package:ios_tiretest_ai/Screens/forgot_password_email_screen.dart';
-import 'package:ios_tiretest_ai/Screens/otp_verification.dart';
-import 'package:ios_tiretest_ai/Screens/splash_screen.dart';
-
-// ===================== CONFIG =====================
-
 const String kBaseUrl = 'http://54.162.208.215/backend';
 const String kGoogleLoginUrl = '$kBaseUrl/api/google-login';
 

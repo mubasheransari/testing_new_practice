@@ -4,10 +4,12 @@ import 'package:geolocator/geolocator.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_event.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_state.dart';
+import 'package:ios_tiretest_ai/Data/places_service.dart';
 import 'package:ios_tiretest_ai/Models/shop_vendor.dart';
 import 'package:ios_tiretest_ai/models/ad_models.dart';
 import 'package:ios_tiretest_ai/models/four_wheeler_uploads_request.dart';
 import 'package:ios_tiretest_ai/models/notification_models.dart';
+import 'package:ios_tiretest_ai/models/place_marker_data.dart';
 import 'package:ios_tiretest_ai/models/reset_password_request.dart';
 import 'package:ios_tiretest_ai/models/tyre_record.dart';
 import 'package:ios_tiretest_ai/models/tyre_upload_request.dart';
@@ -24,6 +26,8 @@ import 'dart:async';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   AuthBloc(this.repo) : super(const AuthState()) {
+    on<PlacesPrewarmRequested>(_onPlacesPrewarmRequested);
+on<FetchNearbyPlacesRequested>(_onFetchNearbyPlacesRequested);
         on<CurrentLocationRequested>(_onCurrentLocationRequested);
     on<NearbyShopsRefreshRequested>(_onNearbyShopsRefreshRequested);
     on<HomeMapBootRequested>(_onHomeMapBootRequested);
@@ -99,12 +103,122 @@ Future<void> _saveCachedHomeLoc(double lat, double lng) async {
 
   final AuthRepository repo;
 
-  // =========================
-  // Notifications local store
-  // =========================
+  static const _kPlacesCache = "places_cache";
+static const _kPlacesCacheLat = "places_cache_lat";
+static const _kPlacesCacheLng = "places_cache_lng";
+static const _kPlacesCacheTs = "places_cache_ts";
+
+// NOTE: move your key to env later. For now using same key.
+static const String _googlePlacesApiKey = 'AIzaSyBFIEDQXjgT6djAIrXB466aR1oG5EmXojQ';
+
+final _placesSvc = PlacesService(apiKey: _googlePlacesApiKey);
+
+ 
   static const _kNotifReadIds = "notif_read_ids"; // List<String>
 
   Timer? _notifTimer;
+
+  Future<void> _onFetchNearbyPlacesRequested(
+  FetchNearbyPlacesRequested e,
+  Emitter<AuthState> emit,
+) async {
+  final box = GetStorage();
+
+  // ---- CACHE RULES ----
+  // If already have places & fetched recently -> skip unless force
+  if (!e.force && state.places.isNotEmpty) {
+    // optional: refresh after 10 minutes
+    final ts = state.placesFetchedAt;
+    if (ts != null && DateTime.now().difference(ts).inMinutes < 10) {
+      return;
+    }
+  }
+
+  // Try storage cache first (fast boot)
+  if (!e.force) {
+    try {
+      final raw = box.read(_kPlacesCache);
+      if (raw is List && raw.isNotEmpty) {
+        final cached = raw
+            .whereType<Map>()
+            .map((x) => PlaceMarkerData.fromJson(Map<String, dynamic>.from(x)))
+            .toList();
+
+        if (cached.isNotEmpty) {
+          emit(state.copyWith(
+            placesStatus: PlacesStatus.success,
+            places: cached,
+            placesError: null,
+            placesFetchedAt: DateTime.now(),
+          ));
+          // do not return: continue background refresh silently if needed
+        }
+      }
+    } catch (_) {}
+  }
+
+  // show loading ONLY if user opens tab and we have nothing
+  final shouldShowLoading = !e.silent && state.places.isEmpty;
+
+  if (shouldShowLoading) {
+    emit(state.copyWith(
+      placesStatus: PlacesStatus.loading,
+      placesError: null,
+    ));
+  }
+
+  try {
+    final list = await _placesSvc.fetchAll(lat: e.latitude, lng: e.longitude);
+
+    // save cache
+    try {
+      await box.write(_kPlacesCache, list.map((p) => p.toJson()).toList());
+      await box.write(_kPlacesCacheLat, e.latitude);
+      await box.write(_kPlacesCacheLng, e.longitude);
+      await box.write(_kPlacesCacheTs, DateTime.now().millisecondsSinceEpoch);
+    } catch (_) {}
+
+    emit(state.copyWith(
+      placesStatus: PlacesStatus.success,
+      places: list,
+      placesError: null,
+      placesFetchedAt: DateTime.now(),
+    ));
+  } catch (ex) {
+    emit(state.copyWith(
+      placesStatus: state.places.isEmpty ? PlacesStatus.failure : state.placesStatus,
+      placesError: ex.toString(),
+    ));
+  }
+}
+
+
+Future<void> _onPlacesPrewarmRequested(
+  PlacesPrewarmRequested e,
+  Emitter<AuthState> emit,
+) async {
+  // 1) Try cached HOME location from your HomeMapBoot flow
+  final lat = state.homeLat ?? state.currentLat;
+  final lng = state.homeLng ?? state.currentLng;
+
+  // 2) If still null, try GetStorage last saved
+  double? useLat = lat;
+  double? useLng = lng;
+
+  final box = GetStorage();
+  useLat ??= (box.read(_kHomeLat) as num?)?.toDouble();
+  useLng ??= (box.read(_kHomeLng) as num?)?.toDouble();
+
+  if (useLat == null || useLng == null) return;
+
+  // fire silently
+  add(FetchNearbyPlacesRequested(
+    latitude: useLat,
+    longitude: useLng,
+    silent: true,
+    force: false,
+  ));
+}
 
   Future<void> _onHomeMapBootRequested(
   HomeMapBootRequested e,

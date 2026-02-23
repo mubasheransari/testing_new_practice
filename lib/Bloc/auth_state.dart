@@ -3,6 +3,7 @@ import 'package:ios_tiretest_ai/Models/shop_vendor.dart';
 import 'package:ios_tiretest_ai/models/ad_models.dart';
 import 'package:ios_tiretest_ai/models/add_verhicle_preferences_model.dart';
 import 'package:ios_tiretest_ai/models/auth_models.dart';
+import 'package:ios_tiretest_ai/models/place_marker_data.dart';
 import 'package:ios_tiretest_ai/models/reset_password_response.dart';
 import 'package:ios_tiretest_ai/models/response_four_wheeler.dart';
 import 'package:ios_tiretest_ai/models/shop_vendor.dart' hide ShopVendorModel;
@@ -15,15 +16,14 @@ import 'package:ios_tiretest_ai/models/notification_models.dart';
 import 'package:ios_tiretest_ai/models/verify_email_response.dart';
 import 'package:ios_tiretest_ai/models/verify_otp_model.dart';
 
+
+enum PlacesStatus { initial, loading, success, failure }
 enum HomeMapStatus { initial, preparing, ready, failure }
 enum TwoWheelerStatus { idle, uploading, success, failure }
 enum AdsStatus { initial, loading, success, failure }
-
-
 enum LocationStatus { initial, loading, success, failure }
 enum ForgotEmailStatus { initial, loading, success, failure }
 enum ForgotResetStatus { initial, loading, success, failure }
-
 enum VerifyOtpStatus { initial, verifying, success, failure }
 enum AuthStatus { initial, loading, success, failure }
 enum FourWheelerStatus { initial, uploading, success, failure }
@@ -38,6 +38,10 @@ enum NotificationStatus { initial, loading, success, failure }
 enum ChangePasswordStatus { initial, loading, success, failure }
 
 class AuthState extends Equatable {
+  final PlacesStatus placesStatus;
+final List<PlaceMarkerData> places;
+final String? placesError;
+final DateTime? placesFetchedAt;
     final LocationStatus locationStatus;
   final double? currentLat;
   final double? currentLng;
@@ -150,6 +154,10 @@ final String? adsError;
   final String recordsVehicleType;
 
   const AuthState({
+    this.placesStatus = PlacesStatus.initial,
+this.places = const <PlaceMarkerData>[],
+this.placesError,
+this.placesFetchedAt,
     this.locationStatus = LocationStatus.initial,
     this.currentLat,
     this.currentLng,
@@ -234,6 +242,8 @@ final String? adsError;
     this.recordsVehicleType = 'car',
   });
 
+  
+
   List<TyreRecord> get carRecords =>
       tyreRecordsByType['car'] ?? const <TyreRecord>[];
   List<TyreRecord> get bikeRecords =>
@@ -246,6 +256,10 @@ final String? adsError;
   }
 
   AuthState copyWith({
+    PlacesStatus? placesStatus,
+List<PlaceMarkerData>? places,
+String? placesError,
+DateTime? placesFetchedAt,
         LocationStatus? locationStatus,
     double? currentLat,
     double? currentLng,
@@ -333,6 +347,10 @@ final String? adsError;
     String? recordsVehicleType,
   }) {
     return AuthState(
+      placesStatus: placesStatus ?? this.placesStatus,
+places: places ?? this.places,
+placesError: placesError ?? this.placesError,
+placesFetchedAt: placesFetchedAt ?? this.placesFetchedAt,
             locationStatus: locationStatus ?? this.locationStatus,
       currentLat: currentLat ?? this.currentLat,
       currentLng: currentLng ?? this.currentLng,
@@ -429,6 +447,10 @@ final String? adsError;
 
   @override
   List<Object?> get props => [
+    placesStatus,
+places,
+placesError,
+placesFetchedAt,
            locationStatus,
         currentLat,
         currentLng,

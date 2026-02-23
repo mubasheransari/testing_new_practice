@@ -604,3 +604,32 @@ class CurrentLocationRequested extends AuthEvent {
 class NearbyShopsRefreshRequested extends AuthEvent {
   const NearbyShopsRefreshRequested();
 }
+
+
+class FetchNearbyPlacesRequested extends AuthEvent {
+  final double latitude;
+  final double longitude;
+
+  /// silent=true means do not disturb other UI flows
+  final bool silent;
+
+  /// force=true ignores cache and refetches
+  final bool force;
+
+  const FetchNearbyPlacesRequested({
+    required this.latitude,
+    required this.longitude,
+    this.silent = true,
+    this.force = false,
+  });
+
+  @override
+  List<Object?> get props => [latitude, longitude, silent, force];
+}
+
+class PlacesPrewarmRequested extends AuthEvent {
+  const PlacesPrewarmRequested();
+
+  @override
+  List<Object?> get props => [];
+}
