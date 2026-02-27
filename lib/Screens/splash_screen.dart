@@ -5,7 +5,6 @@ import 'package:get_storage/get_storage.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_bloc.dart';
 import 'package:ios_tiretest_ai/Bloc/auth_event.dart';
 import 'package:ios_tiretest_ai/Screens/app_shell.dart';
-import 'package:ios_tiretest_ai/Screens/location_google_maos.dart';
 import 'auth_screen.dart';         
 
 
@@ -30,14 +29,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   @override
   void initState() {
     super.initState();
-
-  //     WidgetsBinding.instance.addPostFrameCallback((_) {
-  //   LocationVendorsMapScreen.prewarm(context);
-  // });
    final bloc = context.read<AuthBloc>();
-
-  // already doing AppStarted in main
-  // Now prewarm HomeMap + Places as early as possible
   bloc.add(const HomeMapBootRequested(forceRefresh: false));
   bloc.add(const PlacesPrewarmRequested());
 
@@ -59,30 +51,21 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     });
   }
 
-  // @override
-  // void dispose() {
-  //   _fadeCtrl.dispose();
-  //   super.dispose();
-  // }
 
   @override
   Widget build(BuildContext context) {
-    // Full-bleed canvas; no SafeArea cropping to keep exact look
     return Scaffold(
     
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // UPPER BACKGROUND (full bleed)
           const _UpperBackground(imagePath: _upperPath),
-      
-          // CENTER LOGO (fixed width relative to screen; tweak if needed)
-          Align(
-            alignment: const Alignment(0, -0.05), // slight optical lift
+                Align(
+            alignment: const Alignment(0, -0.05), 
             child: LayoutBuilder(
               builder: (context, c) {
                 final w = MediaQuery.of(context).size.width;
-                final logoW = w * 0.64; // 64% of screen width (looks like your mock)
+                final logoW = w * 0.64;
                 return Image.asset(
                   _logoPath,
                   width: logoW,
@@ -92,12 +75,10 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
               },
             ),
           ),
-      
-          // BOTTOM DECOR (stick to bottom, match width, keep aspect)
-          const _BottomDecor(imagePath: _bottomPath),
+                const _BottomDecor(imagePath: _bottomPath),
         ],
       ),
-      backgroundColor: Colors.white, // exact white canvas under images
+      backgroundColor: Colors.white, 
     );
   }
 }
@@ -110,7 +91,7 @@ class _UpperBackground extends StatelessWidget {
   Widget build(BuildContext context) {
     return Image.asset(
       imagePath,
-      fit: BoxFit.cover,               // fill entire screen like your design
+      fit: BoxFit.cover,        
       filterQuality: FilterQuality.high,
     );
   }

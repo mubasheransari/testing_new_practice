@@ -298,11 +298,14 @@ class _AuthScreenState extends State<AuthScreen> {
           _snack(state.error!.trim());
           return;
         }
+        
 
         // ✅ Keep your OTP navigation behavior EXACTLY same (no snack)
         if (state.error != null && state.error!.trim().isNotEmpty) {
           final msg = state.error!.trim();
           print("AUTH MESSAGE (no snack) => $msg");
+               _snack(msg);
+
 
           if (msg == "Signup successful. OTP sent successfully!") {
             context.read<AuthBloc>().add(const OtpIssuedNow());
