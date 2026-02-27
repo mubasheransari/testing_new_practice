@@ -114,7 +114,7 @@ static const String _googlePlacesApiKey = 'AIzaSyBFIEDQXjgT6djAIrXB466aR1oG5EmXo
 final _placesSvc = PlacesService(apiKey: _googlePlacesApiKey);
 
  
-  static const _kNotifReadIds = "notif_read_ids"; // List<String>
+  static const _kNotifReadIds = "notif_read_ids"; 
 
   Timer? _notifTimer;
 
@@ -134,7 +134,6 @@ final _placesSvc = PlacesService(apiKey: _googlePlacesApiKey);
     }
   }
 
-  // Try storage cache first (fast boot)
   if (!e.force) {
     try {
       final raw = box.read(_kPlacesCache);
