@@ -161,7 +161,6 @@ class _LocationVendorsMapScreenState extends State<LocationVendorsMapScreen>
       ..repeat(reverse: true);
     _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeInOut);
 
-    // ✅ Never null => no infinite spinner
     _seedInitialLatLngNoPermission();
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -837,6 +836,7 @@ class _LocationVendorsMapScreenState extends State<LocationVendorsMapScreen>
 class _PlaceDetailsVm {
   final String placeId;
   final String name;
+   final String? phoneNumber;
   final String? address;
   final double? rating;
   final bool? openNow;
@@ -846,6 +846,7 @@ class _PlaceDetailsVm {
   const _PlaceDetailsVm({
     required this.placeId,
     required this.name,
+    this.phoneNumber,
     this.address,
     this.rating,
     this.openNow,
@@ -854,10 +855,6 @@ class _PlaceDetailsVm {
   });
 }
 
-// ==============================
-// NEW: Place custom popup card
-// - Uses Google details (image + hours)
-// ==============================
 class _PlacePopupCard extends StatelessWidget {
   const _PlacePopupCard({
     required this.place,
@@ -890,24 +887,28 @@ class _PlacePopupCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final title = (details?.name?.trim().isNotEmpty == true)
+    final title = (details?.name.trim().isNotEmpty == true)
         ? details!.name
         : (place.name ?? 'Nearby Shop').toString();
 
-    final rating = details?.rating;
+    final rating = details?.rating ?? 0.0;
+    final phone = details?.phoneNumber?.trim();
     final openNow = details?.openNow;
     final todayLine = _todayTimingLine(details?.weekdayText ?? const []);
+    final address = (details?.address?.trim().isNotEmpty == true) ? details!.address!.trim() : '';
+
     final imgUrl = _photoUrl(details?.photoRef);
 
-    final address = (details?.address?.trim().isNotEmpty == true) ? details!.address! : '';
+    // ✅ same behavior as vendor card: main button is Call if phone exists else Directions
+    final bool canCall = phone != null && phone.isNotEmpty;
 
     return Material(
       color: Colors.transparent,
       child: Container(
-        width: 260,
+        width: 230, // ✅ SAME as vendor popup
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(16), // ✅ SAME as vendor popup
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(.12),
@@ -916,118 +917,132 @@ class _PlacePopupCard extends StatelessWidget {
             )
           ],
         ),
-        clipBehavior: Clip.antiAlias,
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(
-              height: 140,
-              width: double.infinity,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  if (imgUrl != null)
-                    Image.network(
-                      imgUrl,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _fallbackHeader(loading: false),
-                      loadingBuilder: (ctx, child, prog) {
-                        if (prog == null) return child;
-                        return _fallbackHeader(loading: true);
-                      },
-                    )
-                  else
-                    _fallbackHeader(loading: loading),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: SizedBox(
+                height: 118, // ✅ SAME as vendor popup
+                width: MediaQuery.of(context).size.width,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    if (imgUrl != null)
+                      Image.network(
+                        imgUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => _fallbackHeader(loading: false),
+                        loadingBuilder: (ctx, child, prog) {
+                          if (prog == null) return child;
+                          return _fallbackHeader(loading: true);
+                        },
+                      )
+                    else
+                      _fallbackHeader(loading: loading),
 
-                  Positioned(
-                    left: 14,
-                    top: 14,
-                    child: _ratingPillBig(
-                      loading: loading || rating == null,
-                      rating: rating,
+                    Positioned(
+                      left: 10,
+                      top: 10,
+                      child: _ratingPillSmall(loading ? 0.0 : rating),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontFamily: 'ClashGrotesk',
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF111827),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      InkWell(
-                        onTap: onTapDirections,
-                        child: _circleBlueIcon(Icons.navigation_rounded),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
+            const SizedBox(height: 10),
 
-                  if (address.isNotEmpty)
-                    Text(
-                      address,
-                      maxLines: 2,
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    title,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontFamily: 'ClashGrotesk',
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF111827),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                InkWell(
+                  onTap: () async {
+                    if (canCall) {
+                      await LocationVendorsMapScreen._makePhoneCall(phone!);
+                    } else {
+                      onTapDirections();
+                    }
+                  },
+                  child: _circleBlueIcon(
+                    canCall ? Icons.call_rounded : Icons.navigation_rounded,
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 6),
+
+            // ✅ same “subtitle” style as vendor card (services line)
+            Text(
+              address.isNotEmpty ? address : 'Tyre shop / vehicle service',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontFamily: 'ClashGrotesk',
+                fontSize: 13.5,
+                color: Color(0xFF9CA3AF),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+
+            const SizedBox(height: 6),
+
+            // ✅ same “open/closed” row feel (but dynamic from Google)
+            Row(
+              children: [
+                Text(
+                  openNow == null ? 'Hours' : (openNow ? 'Open' : 'Closed'),
+                  style: TextStyle(
+                    fontFamily: 'ClashGrotesk',
+                    fontSize: 13.5,
+                    color: openNow == null
+                        ? const Color(0xFF111827)
+                        : (openNow ? const Color(0xFF10B981) : const Color(0xFFEF4444)),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                if (todayLine != null) ...[
+                  Text(
+                    ' - ',
+                    style: TextStyle(
+                      fontFamily: 'ClashGrotesk',
+                      fontSize: 13.5,
+                      color: openNow == null
+                          ? const Color(0xFF111827)
+                          : (openNow ? const Color(0xFF10B981) : const Color(0xFFEF4444)),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      todayLine.replaceFirst(RegExp(r'^\w+:\s*'), ''), // remove "Monday:"
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontFamily: 'ClashGrotesk',
-                        fontSize: 14,
-                        color: Color(0xFF9CA3AF),
-                        fontWeight: FontWeight.w500,
+                        fontSize: 13.5,
+                        color: Color(0xFF111827),
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
-
-                  const SizedBox(height: 12),
-
-                  Row(
-                    children: [
-                      Text(
-                        openNow == null ? 'Hours' : (openNow ? 'Open' : 'Closed'),
-                        style: TextStyle(
-                          fontFamily: 'ClashGrotesk',
-                          fontSize: 16,
-                          color: openNow == null
-                              ? const Color(0xFF111827)
-                              : (openNow ? const Color(0xFF10B981) : const Color(0xFFEF4444)),
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      if (todayLine != null) ...[
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            // remove "Monday:"
-                            todayLine.replaceFirst(RegExp(r'^\w+:\s*'), ''),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontFamily: 'ClashGrotesk',
-                              fontSize: 16,
-                              color: Color(0xFF111827),
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
                   ),
                 ],
-              ),
+              ],
             ),
           ],
         ),
@@ -1048,49 +1063,254 @@ class _PlacePopupCard extends StatelessWidget {
 
   static Widget _circleBlueIcon(IconData icon) {
     return Container(
-      width: 46,
-      height: 46,
+      width: 34,
+      height: 34,
       decoration: const BoxDecoration(
         color: Color(0xFF3B82F6),
         shape: BoxShape.circle,
       ),
-      child: Icon(icon, size: 22, color: Colors.white),
-    );
-  }
-
-  static Widget _ratingPillBig({required bool loading, required double? rating}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(999),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(.08),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
-          )
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.star_rounded, size: 20, color: Color(0xFFFBBF24)),
-          const SizedBox(width: 8),
-          Text(
-            loading ? '--' : (rating ?? 0).toStringAsFixed(1),
-            style: const TextStyle(
-              fontFamily: 'ClashGrotesk',
-              fontWeight: FontWeight.w700,
-              fontSize: 18,
-              color: Color(0xFF111827),
-            ),
-          ),
-        ],
-      ),
+      child: Icon(icon, size: 18, color: Colors.white),
     );
   }
 }
+
+// ==============================
+// NEW: Place custom popup card
+// - Uses Google details (image + hours)
+// ==============================
+// class _PlacePopupCard extends StatelessWidget {
+//   const _PlacePopupCard({
+//     required this.place,
+//     required this.details,
+//     required this.loading,
+//     required this.onTapDirections,
+//     required this.placesApiKey,
+//   });
+
+//   final dynamic place; // PlaceMarkerData
+//   final _PlaceDetailsVm? details;
+//   final bool loading;
+//   final VoidCallback onTapDirections;
+//   final String placesApiKey;
+
+//   String? _todayTimingLine(List<String> weekdayText) {
+//     if (weekdayText.isEmpty) return null;
+//     final idx = DateTime.now().weekday - 1; // Mon=0..Sun=6
+//     if (idx < 0 || idx >= weekdayText.length) return null;
+//     return weekdayText[idx]; // "Friday: 9:00 AM – 6:00 PM"
+//   }
+
+//   String? _photoUrl(String? photoRef) {
+//     if (photoRef == null || photoRef.isEmpty) return null;
+//     return 'https://maps.googleapis.com/maps/api/place/photo'
+//         '?maxwidth=900'
+//         '&photoreference=$photoRef'
+//         '&key=$placesApiKey';
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     final title = (details?.name?.trim().isNotEmpty == true)
+//         ? details!.name
+//         : (place.name ?? 'Nearby Shop').toString();
+
+//     final rating = details?.rating;
+//     final openNow = details?.openNow;
+//     final todayLine = _todayTimingLine(details?.weekdayText ?? const []);
+//     final imgUrl = _photoUrl(details?.photoRef);
+
+//     final address = (details?.address?.trim().isNotEmpty == true) ? details!.address! : '';
+
+//     return Material(
+//       color: Colors.transparent,
+//       child: Container(
+//         width: 260,
+//         decoration: BoxDecoration(
+//           color: Colors.white,
+//           borderRadius: BorderRadius.circular(18),
+//           boxShadow: [
+//             BoxShadow(
+//               color: Colors.black.withOpacity(.12),
+//               blurRadius: 18,
+//               offset: const Offset(0, 10),
+//             )
+//           ],
+//         ),
+//         clipBehavior: Clip.antiAlias,
+//         child: Column(
+//           mainAxisSize: MainAxisSize.min,
+//           children: [
+//             SizedBox(
+//               height: 140,
+//               width: double.infinity,
+//               child: Stack(
+//                 fit: StackFit.expand,
+//                 children: [
+//                   if (imgUrl != null)
+//                     Image.network(
+//                       imgUrl,
+//                       fit: BoxFit.cover,
+//                       errorBuilder: (_, __, ___) => _fallbackHeader(loading: false),
+//                       loadingBuilder: (ctx, child, prog) {
+//                         if (prog == null) return child;
+//                         return _fallbackHeader(loading: true);
+//                       },
+//                     )
+//                   else
+//                     _fallbackHeader(loading: loading),
+
+//                   Positioned(
+//                     left: 14,
+//                     top: 14,
+//                     child: _ratingPillBig(
+//                       loading: loading || rating == null,
+//                       rating: rating,
+//                     ),
+//                   ),
+//                 ],
+//               ),
+//             ),
+//             Padding(
+//               padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+//               child: Column(
+//                 crossAxisAlignment: CrossAxisAlignment.start,
+//                 children: [
+//                   Row(
+//                     children: [
+//                       Expanded(
+//                         child: Text(
+//                           title,
+//                           maxLines: 1,
+//                           overflow: TextOverflow.ellipsis,
+//                           style: const TextStyle(
+//                             fontFamily: 'ClashGrotesk',
+//                             fontSize: 18,
+//                             fontWeight: FontWeight.w700,
+//                             color: Color(0xFF111827),
+//                           ),
+//                         ),
+//                       ),
+//                       const SizedBox(width: 12),
+//                       InkWell(
+//                         onTap: onTapDirections,
+//                         child: _circleBlueIcon(Icons.navigation_rounded),
+//                       ),
+//                     ],
+//                   ),
+//                   const SizedBox(height: 10),
+
+//                   if (address.isNotEmpty)
+//                     Text(
+//                       address,
+//                       maxLines: 2,
+//                       overflow: TextOverflow.ellipsis,
+//                       style: const TextStyle(
+//                         fontFamily: 'ClashGrotesk',
+//                         fontSize: 14,
+//                         color: Color(0xFF9CA3AF),
+//                         fontWeight: FontWeight.w500,
+//                       ),
+//                     ),
+
+//                   const SizedBox(height: 12),
+
+//                   Row(
+//                     children: [
+//                       Text(
+//                         openNow == null ? 'Hours' : (openNow ? 'Open' : 'Closed'),
+//                         style: TextStyle(
+//                           fontFamily: 'ClashGrotesk',
+//                           fontSize: 16,
+//                           color: openNow == null
+//                               ? const Color(0xFF111827)
+//                               : (openNow ? const Color(0xFF10B981) : const Color(0xFFEF4444)),
+//                           fontWeight: FontWeight.w700,
+//                         ),
+//                       ),
+//                       if (todayLine != null) ...[
+//                         const SizedBox(width: 8),
+//                         Expanded(
+//                           child: Text(
+//                             // remove "Monday:"
+//                             todayLine.replaceFirst(RegExp(r'^\w+:\s*'), ''),
+//                             maxLines: 1,
+//                             overflow: TextOverflow.ellipsis,
+//                             style: const TextStyle(
+//                               fontFamily: 'ClashGrotesk',
+//                               fontSize: 16,
+//                               color: Color(0xFF111827),
+//                               fontWeight: FontWeight.w600,
+//                             ),
+//                           ),
+//                         ),
+//                       ],
+//                     ],
+//                   ),
+//                 ],
+//               ),
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+
+//   Widget _fallbackHeader({required bool loading}) {
+//     return Container(
+//       color: const Color(0xFFF3F4F6),
+//       child: Center(
+//         child: loading
+//             ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
+//             : const Icon(Icons.storefront, size: 42, color: Color(0xFF9CA3AF)),
+//       ),
+//     );
+//   }
+
+//   static Widget _circleBlueIcon(IconData icon) {
+//     return Container(
+//       width: 46,
+//       height: 46,
+//       decoration: const BoxDecoration(
+//         color: Color(0xFF3B82F6),
+//         shape: BoxShape.circle,
+//       ),
+//       child: Icon(icon, size: 22, color: Colors.white),
+//     );
+//   }
+
+//   static Widget _ratingPillBig({required bool loading, required double? rating}) {
+//     return Container(
+//       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+//       decoration: BoxDecoration(
+//         color: Colors.white,
+//         borderRadius: BorderRadius.circular(999),
+//         boxShadow: [
+//           BoxShadow(
+//             color: Colors.black.withOpacity(.08),
+//             blurRadius: 12,
+//             offset: const Offset(0, 6),
+//           )
+//         ],
+//       ),
+//       child: Row(
+//         mainAxisSize: MainAxisSize.min,
+//         children: [
+//           const Icon(Icons.star_rounded, size: 20, color: Color(0xFFFBBF24)),
+//           const SizedBox(width: 8),
+//           Text(
+//             loading ? '--' : (rating ?? 0).toStringAsFixed(1),
+//             style: const TextStyle(
+//               fontFamily: 'ClashGrotesk',
+//               fontWeight: FontWeight.w700,
+//               fontSize: 18,
+//               color: Color(0xFF111827),
+//             ),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+// }
 
 // =======================
 // Your existing UI/helpers
