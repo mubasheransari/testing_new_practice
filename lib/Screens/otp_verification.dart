@@ -51,7 +51,6 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   final GetStorage _box = GetStorage();
   bool _successDialogShowing = false;
 
-  // ✅ Splash background assets (same as your SplashScreen)
   static const String _upperPath = 'assets/splash_upper_view.png';
   static const String _bottomPath = 'assets/splash_bottom_view.png';
 
@@ -179,15 +178,17 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
       return;
     }
 
-    // ✅ IMPORTANT: keep OTP as STRING (preserves leading zeros)
     final otpStr = _otp;
 
     setState(() => _verifying = true);
 
+    print("OTP VERIFICATION EMAIL ${widget.targetText.trim()}");
+        print("OTP VERIFICATION OP ${int.parse(otpStr)}");
+
     context.read<AuthBloc>().add(
           VerifyOtpRequested(
             email: widget.targetText.trim(),
-            otp: int.parse(otpStr), // ✅ string
+            otp: int.parse(otpStr),
           ),
         );
   }
