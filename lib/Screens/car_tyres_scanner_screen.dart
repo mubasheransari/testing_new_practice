@@ -218,8 +218,7 @@ class _CarTyresScannerScreenState extends State<CarTyresScannerScreen> {
     await _stopCameraSafely();
     if (!mounted) return;
 
-    await Navigator.of(context)
-        .push(
+    final result = await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => GenerateReportScreen(
           frontLeftPath: _frontLeft!.path,
@@ -237,11 +236,28 @@ class _CarTyresScannerScreenState extends State<CarTyresScannerScreen> {
           backRightTyreId: widget.backRightTyreId,
         ),
       ),
-    )
-        .then((_) {
-      _navigated = false;
-    });
-  }
+    );
+
+    // ✅ allow navigation again
+    _navigated = false;
+
+    // ✅ If user tapped "Retake Images" on report screen, clear selections and restart camera
+    if (mounted && result == 'retake') {
+      setState(() {
+        _frontLeft = null;
+        _frontRight = null;
+        _backLeft = null;
+        _backRight = null;
+        _active = TyrePos.frontLeft;
+        _error = null;
+      });
+    }
+
+    // ✅ ensure camera preview is back when returning
+    if (mounted) {
+      await _initCam();
+    }
+}
 
   void _retake(TyrePos pos) {
     setState(() {

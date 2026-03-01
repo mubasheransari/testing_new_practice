@@ -47,20 +47,25 @@ class TwoWheelerUploadData {
 }
 
 class TwoWheelerTyreSide {
+  /// ✅ NEW (Backend flag): tells if uploaded image contains a vehicle tyre.
+  final bool isTire;
+
+  /// If [isTire] is false, these fields can be empty/0.
   final String condition;
   final double treadDepth;
   final String wearPatterns;
   final TwoWheelerPressureAdvisory? pressureAdvisory;
   final String summary;
-  final String imageUrl;
+  final String image; // can be base64/data-uri/url
 
   TwoWheelerTyreSide({
+    required this.isTire,
     required this.condition,
     required this.treadDepth,
     required this.wearPatterns,
     required this.pressureAdvisory,
     required this.summary,
-    required this.imageUrl,
+    required this.image,
   });
 
   factory TwoWheelerTyreSide.fromJson(Map<String, dynamic> json) {
@@ -69,7 +74,15 @@ class TwoWheelerTyreSide {
       return double.tryParse((v ?? '').toString()) ?? 0.0;
     }
 
+    bool _asBool(dynamic v) {
+      if (v == null) return true; // backward compatibility
+      if (v is bool) return v;
+      final s = (v ?? '').toString().trim().toLowerCase();
+      return s == 'true' || s == '1' || s == 'yes';
+    }
+
     return TwoWheelerTyreSide(
+      isTire: _asBool(json['is_tire']),
       condition: (json['condition'] ?? '').toString(),
       treadDepth: _asDouble(json['tread_depth']),
       wearPatterns: (json['wear_patterns'] ?? '').toString(),
@@ -79,7 +92,8 @@ class TwoWheelerTyreSide {
             )
           : null,
       summary: (json['summary'] ?? '').toString(),
-      imageUrl: (json['image_url'] ?? '').toString(),
+      // ✅ backend sample returns `image`, but keep `image_url` fallback.
+      image: (json['image'] ?? json['image_url'] ?? '').toString(),
     );
   }
 }

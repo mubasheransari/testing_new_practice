@@ -8,6 +8,28 @@ ResponseFourWheeler responseFourWheelerFromJson(String str) =>
 String responseFourWheelerToJson(ResponseFourWheeler data) =>
     json.encode(data.toJson());
 
+/// ---------------------------------------------------------------------------
+/// 4-Wheeler upload response model
+///
+/// Supports **NEW** backend structure (nested objects):
+/// {
+///   "data": {
+///     "User ID": "...",
+///     "Vehicle type": "car",
+///     "Record ID": 675,
+///     "Vehicle ID": "...",
+///     "Vin": "",
+///     "front_left": {"is_tire": false, ...},
+///     "front_right": {"is_tire": true, ...},
+///     "back_left": {...},
+///     "back_right": {...}
+///   },
+///   "message": "successful"
+/// }
+///
+/// Also keeps backward compatibility with the older flat-key response (if any).
+/// ---------------------------------------------------------------------------
+
 class ResponseFourWheeler {
   final FourWheelerData data;
   final String message;
@@ -58,92 +80,45 @@ class TirePressure {
       };
 }
 
-class FourWheelerData {
-  final String userId;
-  final String vehicleType;
-  final int recordId;
-  final String vehicleId;
-  final String vin;
+class FourWheelerTyreSide {
+  /// ✅ NEW: backend tells if uploaded image is a tyre
+  final bool isTire;
 
-  final String frontLeftWheel;
-  final String frontRightWheel;
-  final String backLeftWheel;
-  final String backRightWheel;
+  /// Can be null/empty if [isTire] is false.
+  final String? condition;
+  final double? treadDepth;
+  final String? wearPatterns;
+  final TirePressure? pressure;
+  final String? summary;
+  final String? image; // base64/data-uri/url
 
-  final String frontLeftTyreStatus;
-  final String frontRightTyreStatus;
-  final String backLeftTyreStatus;
-  final String backRightTyreStatus;
-
-  final String frontLeftTreadDepth;
-  final String frontRightTreadDepth;
-  final String backLeftTreadDepth;
-  final String backRightTreadDepth;
-
-  final String frontLeftWearPatterns;
-  final String frontRightWearPatterns;
-  final String backLeftWearPatterns;
-  final String backRightWearPatterns;
-
-  final String frontLeftTypeImage;
-  final String frontRightTypeImage;
-  final String backLeftTypeImage;
-  final String backRightTypeImage;
-
-  // ✅ NEW: summaries (your API provides these)
-  final String frontLeftSummary;
-  final String frontRightSummary;
-  final String backLeftSummary;
-  final String backRightSummary;
-
-  // ✅ NEW: tire pressure objects (your API provides these)
-  final TirePressure? frontLeftTirePressure;
-  final TirePressure? frontRightTirePressure;
-  final TirePressure? backLeftTirePressure;
-  final TirePressure? backRightTirePressure;
-
-  const FourWheelerData({
-    required this.userId,
-    required this.vehicleType,
-    required this.recordId,
-    required this.vehicleId,
-    required this.vin,
-    required this.frontLeftWheel,
-    required this.frontRightWheel,
-    required this.backLeftWheel,
-    required this.backRightWheel,
-    required this.frontLeftTyreStatus,
-    required this.frontRightTyreStatus,
-    required this.backLeftTyreStatus,
-    required this.backRightTyreStatus,
-    required this.frontLeftTreadDepth,
-    required this.frontRightTreadDepth,
-    required this.backLeftTreadDepth,
-    required this.backRightTreadDepth,
-    required this.frontLeftWearPatterns,
-    required this.frontRightWearPatterns,
-    required this.backLeftWearPatterns,
-    required this.backRightWearPatterns,
-    required this.frontLeftTypeImage,
-    required this.frontRightTypeImage,
-    required this.backLeftTypeImage,
-    required this.backRightTypeImage,
-    required this.frontLeftSummary,
-    required this.frontRightSummary,
-    required this.backLeftSummary,
-    required this.backRightSummary,
-    required this.frontLeftTirePressure,
-    required this.frontRightTirePressure,
-    required this.backLeftTirePressure,
-    required this.backRightTirePressure,
+  const FourWheelerTyreSide({
+    required this.isTire,
+    required this.condition,
+    required this.treadDepth,
+    required this.wearPatterns,
+    required this.pressure,
+    required this.summary,
+    required this.image,
   });
 
-  /// ✅ helpers
-  static String _s(dynamic v) => v == null ? '' : v.toString();
-  static int _i(dynamic v) {
-    if (v == null) return 0;
-    if (v is int) return v;
-    return int.tryParse(v.toString()) ?? 0;
+  static String? _sn(dynamic v) {
+    if (v == null) return null;
+    final s = v.toString();
+    return s.isEmpty ? null : s;
+  }
+
+  static double? _dn(dynamic v) {
+    if (v == null) return null;
+    if (v is num) return v.toDouble();
+    return double.tryParse(v.toString());
+  }
+
+  static bool _bn(dynamic v) {
+    if (v == null) return true; // backward compatibility
+    if (v is bool) return v;
+    final s = (v ?? '').toString().trim().toLowerCase();
+    return s == 'true' || s == '1' || s == 'yes';
   }
 
   static TirePressure? _tp(dynamic v) {
@@ -152,50 +127,137 @@ class FourWheelerData {
     return null;
   }
 
-  factory FourWheelerData.fromJson(Map<String, dynamic> json) => FourWheelerData(
-        userId: _s(json['User ID']),
-        vehicleType: _s(json['Vehicle type']),
-        recordId: _i(json['Record ID']),
-        vehicleId: _s(json['Vehicle ID']),
-        vin: _s(json['Vin']),
+  factory FourWheelerTyreSide.fromJson(Map<String, dynamic> json) {
+    return FourWheelerTyreSide(
+      isTire: _bn(json['is_tire']),
+      condition: _sn(json['condition']),
+      treadDepth: _dn(json['tread_depth']),
+      wearPatterns: _sn(json['wear_patterns']),
+      pressure: _tp(json['pressure'] ?? json['pressure_advisory']),
+      summary: _sn(json['summary']),
+      image: _sn(json['image'] ?? json['image_url']),
+    );
+  }
 
-        frontLeftWheel: _s(json['Front Left Wheel']),
-        frontRightWheel: _s(json['Front Right Wheel']),
-        backLeftWheel: _s(json['Back Left Wheel']),
-        backRightWheel: _s(json['Back Right Wheel']),
+  Map<String, dynamic> toJson() => {
+        'is_tire': isTire,
+        'condition': condition,
+        'tread_depth': treadDepth,
+        'wear_patterns': wearPatterns,
+        'pressure': pressure?.toJson(),
+        'summary': summary,
+        'image': image,
+      };
+}
 
-        frontLeftTyreStatus: _s(json['Front Left Tyre status']),
-        frontRightTyreStatus: _s(json['Front Right Tyre status']),
-        backLeftTyreStatus: _s(json['Back Left Tyre status']),
-        backRightTyreStatus: _s(json['Back Right Tyre status']),
+class FourWheelerData {
+  final String userId;
+  final String vehicleType;
+  final int recordId;
+  final String vehicleId;
+  final String vin;
 
-        frontLeftTreadDepth: _s(json['Front Left Tread depth']),
-        frontRightTreadDepth: _s(json['Front Right Tread depth']),
-        backLeftTreadDepth: _s(json['Back Left Tread depth']),
-        backRightTreadDepth: _s(json['Back Right Tread depth']),
+  final FourWheelerTyreSide? frontLeft;
+  final FourWheelerTyreSide? frontRight;
+  final FourWheelerTyreSide? backLeft;
+  final FourWheelerTyreSide? backRight;
 
-        frontLeftWearPatterns: _s(json['Front Left Wear patterns']),
-        frontRightWearPatterns: _s(json['Front Right Wear patterns']),
-        backLeftWearPatterns: _s(json['Back Left Wear patterns']),
-        backRightWearPatterns: _s(json['Back Right Wear patterns']),
+  const FourWheelerData({
+    required this.userId,
+    required this.vehicleType,
+    required this.recordId,
+    required this.vehicleId,
+    required this.vin,
+    required this.frontLeft,
+    required this.frontRight,
+    required this.backLeft,
+    required this.backRight,
+  });
 
-        frontLeftTypeImage: _s(json['Front Left Type image']),
-        frontRightTypeImage: _s(json['Front Right Type image']),
-        backLeftTypeImage: _s(json['Back Left Type image']),
-        backRightTypeImage: _s(json['Back Right Type image']),
+  static String _s(dynamic v) => v == null ? '' : v.toString();
 
-        // ✅ NEW summaries
-        frontLeftSummary: _s(json['Front Left Summary']),
-        frontRightSummary: _s(json['Front Right Summary']),
-        backLeftSummary: _s(json['Back Left Summary']),
-        backRightSummary: _s(json['Back Right Summary']),
+  static int _i(dynamic v) {
+    if (v == null) return 0;
+    if (v is int) return v;
+    return int.tryParse(v.toString()) ?? 0;
+  }
 
-        // ✅ NEW pressure objects
-        frontLeftTirePressure: _tp(json['Front Left Tire pressure']),
-        frontRightTirePressure: _tp(json['Front Right Tire pressure']),
-        backLeftTirePressure: _tp(json['Back Left Tire pressure']),
-        backRightTirePressure: _tp(json['Back Right Tire pressure']),
+  static FourWheelerTyreSide? _side(dynamic v) {
+    if (v is Map<String, dynamic>) return FourWheelerTyreSide.fromJson(v);
+    if (v is Map) return FourWheelerTyreSide.fromJson(Map<String, dynamic>.from(v));
+    return null;
+  }
+
+  /// ✅ helper for validation
+  List<NotTyreSide> notTyreSides() {
+    final list = <NotTyreSide>[];
+    if (frontLeft != null && frontLeft!.isTire == false) {
+      list.add(const NotTyreSide('Front Left', 'front_left'));
+    }
+    if (frontRight != null && frontRight!.isTire == false) {
+      list.add(const NotTyreSide('Front Right', 'front_right'));
+    }
+    if (backLeft != null && backLeft!.isTire == false) {
+      list.add(const NotTyreSide('Back Left', 'back_left'));
+    }
+    if (backRight != null && backRight!.isTire == false) {
+      list.add(const NotTyreSide('Back Right', 'back_right'));
+    }
+    return list;
+  }
+
+  factory FourWheelerData.fromJson(Map<String, dynamic> json) {
+    // ✅ NEW nested structure
+    final hasNested = json.containsKey('front_left') ||
+        json.containsKey('front_right') ||
+        json.containsKey('back_left') ||
+        json.containsKey('back_right');
+
+    if (hasNested) {
+      return FourWheelerData(
+        userId: _s(json['User ID'] ?? json['user_id']),
+        vehicleType: _s(json['Vehicle type'] ?? json['vehicle_type']),
+        recordId: _i(json['Record ID'] ?? json['record_id']),
+        vehicleId: _s(json['Vehicle ID'] ?? json['vehicle_id']),
+        vin: _s(json['Vin'] ?? json['vin']),
+        frontLeft: _side(json['front_left']),
+        frontRight: _side(json['front_right']),
+        backLeft: _side(json['back_left']),
+        backRight: _side(json['back_right']),
       );
+    }
+
+    // ✅ BACKWARD COMPATIBILITY (older flat-key response)
+    // We map the old fields into the new structure so the UI still works.
+    FourWheelerTyreSide? _fromOld(String prefix) {
+      // Old payload didn't have is_tire, assume true.
+      return FourWheelerTyreSide(
+        isTire: true,
+        condition: _s(json['$prefix Tyre status']).isEmpty
+            ? null
+            : _s(json['$prefix Tyre status']),
+        treadDepth: double.tryParse(_s(json['$prefix Tread depth'])),
+        wearPatterns: _s(json['$prefix Wear patterns']).isEmpty
+            ? null
+            : _s(json['$prefix Wear patterns']),
+        pressure: null,
+        summary: _s(json['$prefix Summary']).isEmpty ? null : _s(json['$prefix Summary']),
+        image: _s(json['$prefix Wheel']).isEmpty ? null : _s(json['$prefix Wheel']),
+      );
+    }
+
+    return FourWheelerData(
+      userId: _s(json['User ID'] ?? json['user_id']),
+      vehicleType: _s(json['Vehicle type'] ?? json['vehicle_type']),
+      recordId: _i(json['Record ID'] ?? json['record_id']),
+      vehicleId: _s(json['Vehicle ID'] ?? json['vehicle_id']),
+      vin: _s(json['Vin'] ?? json['vin']),
+      frontLeft: _fromOld('Front Left'),
+      frontRight: _fromOld('Front Right'),
+      backLeft: _fromOld('Back Left'),
+      backRight: _fromOld('Back Right'),
+    );
+  }
 
   Map<String, dynamic> toJson() => {
         'User ID': userId,
@@ -203,42 +265,15 @@ class FourWheelerData {
         'Record ID': recordId,
         'Vehicle ID': vehicleId,
         'Vin': vin,
-
-        'Front Left Wheel': frontLeftWheel,
-        'Front Right Wheel': frontRightWheel,
-        'Back Left Wheel': backLeftWheel,
-        'Back Right Wheel': backRightWheel,
-
-        'Front Left Tyre status': frontLeftTyreStatus,
-        'Front Right Tyre status': frontRightTyreStatus,
-        'Back Left Tyre status': backLeftTyreStatus,
-        'Back Right Tyre status': backRightTyreStatus,
-
-        'Front Left Tread depth': frontLeftTreadDepth,
-        'Front Right Tread depth': frontRightTreadDepth,
-        'Back Left Tread depth': backLeftTreadDepth,
-        'Back Right Tread depth': backRightTreadDepth,
-
-        'Front Left Wear patterns': frontLeftWearPatterns,
-        'Front Right Wear patterns': frontRightWearPatterns,
-        'Back Left Wear patterns': backLeftWearPatterns,
-        'Back Right Wear patterns': backRightWearPatterns,
-
-        'Front Left Type image': frontLeftTypeImage,
-        'Front Right Type image': frontRightTypeImage,
-        'Back Left Type image': backLeftTypeImage,
-        'Back Right Type image': backRightTypeImage,
-
-        // ✅ NEW summaries
-        'Front Left Summary': frontLeftSummary,
-        'Front Right Summary': frontRightSummary,
-        'Back Left Summary': backLeftSummary,
-        'Back Right Summary': backRightSummary,
-
-        // ✅ NEW pressure objects
-        'Front Left Tire pressure': frontLeftTirePressure?.toJson(),
-        'Front Right Tire pressure': frontRightTirePressure?.toJson(),
-        'Back Left Tire pressure': backLeftTirePressure?.toJson(),
-        'Back Right Tire pressure': backRightTirePressure?.toJson(),
+        'front_left': frontLeft?.toJson(),
+        'front_right': frontRight?.toJson(),
+        'back_left': backLeft?.toJson(),
+        'back_right': backRight?.toJson(),
       };
+}
+
+class NotTyreSide {
+  final String label;
+  final String key;
+  const NotTyreSide(this.label, this.key);
 }

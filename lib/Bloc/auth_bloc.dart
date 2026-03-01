@@ -13,6 +13,7 @@ import 'package:ios_tiretest_ai/models/place_marker_data.dart';
 import 'package:ios_tiretest_ai/models/reset_password_request.dart';
 import 'package:ios_tiretest_ai/models/tyre_record.dart';
 import 'package:ios_tiretest_ai/models/tyre_upload_request.dart';
+import 'package:ios_tiretest_ai/models/response_four_wheeler.dart';
 import 'package:ios_tiretest_ai/Repository/repository.dart';
 import 'package:ios_tiretest_ai/models/update_user_details_model.dart' show UpdateUserDetailsRequest;
 import 'package:ios_tiretest_ai/models/user_profile.dart';
@@ -438,9 +439,31 @@ Future<void> _onPlacesPrewarmRequested(
   final result = await repo.uploadTwoWheeler(req);
 
   if (result.isSuccess) {
+    final resp = result.data;
+
+    // ✅ NEW: Validate is_tire flags so user knows image is not a tyre
+    final bad = <String>[];
+    final front = resp?.data?.front;
+    final back = resp?.data?.back;
+    if (front != null && front.isTire == false) bad.add('Front');
+    if (back != null && back.isTire == false) bad.add('Back');
+
+    if (bad.isNotEmpty) {
+      final msg =
+          '${bad.join(' & ')} image${bad.length > 1 ? 's are' : ' is'} not a tyre. Please upload a clear tyre photo.';
+
+      // Keep response for UI, but mark as failure to trigger Snackbar.
+      emit(state.copyWith(
+        twoWheelerStatus: TwoWheelerStatus.failure,
+        twoWheelerResponse: resp,
+        twoWheelerError: msg,
+      ));
+      return;
+    }
+
     emit(state.copyWith(
       twoWheelerStatus: TwoWheelerStatus.success,
-      twoWheelerResponse: result.data,
+      twoWheelerResponse: resp,
       twoWheelerError: '',
     ));
   } else {
@@ -1041,9 +1064,27 @@ Future<void> _onCurrentLocationRequested(
     final r = await repo.uploadFourWheeler(req);
 
     if (r.isSuccess) {
+      final resp = r.data;
+
+      // ✅ NEW: Validate is_tire flags (if any image isn't a tyre, show error)
+      final bad = resp?.data.notTyreSides() ?? const <NotTyreSide>[];
+      if (bad.isNotEmpty) {
+        final labels = bad.map((e) => e.label).toList();
+        final msg =
+            '${labels.join(', ')} image${labels.length > 1 ? 's are' : ' is'} not a tyre. Please upload clear tyre photos.';
+
+        // Keep response (optional), but mark as failure so GenerateReportScreen can show error.
+        emit(state.copyWith(
+          fourWheelerStatus: FourWheelerStatus.failure,
+          fourWheelerResponse: resp,
+          fourWheelerError: msg,
+        ));
+        return;
+      }
+
       emit(state.copyWith(
         fourWheelerStatus: FourWheelerStatus.success,
-        fourWheelerResponse: r.data,
+        fourWheelerResponse: resp,
         fourWheelerError: null,
       ));
     } else {

@@ -512,6 +512,34 @@ class _TyreUi {
       return s;
     }
 
+    // ✅ NEW: if backend says this uploaded image isn't a tyre, show clear UI.
+    if (side.isTire == false) {
+      final tp = side.pressureAdvisory;
+      final status = str(tp?.status);
+      final reason = str(tp?.reason);
+      final confidence = str(tp?.confidence);
+
+      final valueLines = <String>['Value: N/A'];
+      if (reason.isNotEmpty) valueLines.add('Reason: $reason');
+      if (confidence.isNotEmpty) valueLines.add('Confidence: $confidence');
+
+      return _TyreUi(
+        title: title,
+        treadDepthText: 'N/A',
+        conditionText: 'Status: Not a tyre',
+        wearPatternsText: 'N/A',
+        damageStatusText: 'Not a tyre',
+        summaryText: str(side.summary).isEmpty
+            ? 'Uploaded image does not contain a tyre. Please upload a clear tyre photo.'
+            : str(side.summary),
+        imageUrl: str(side.image),
+        pressureValueText: valueLines.join('\n'),
+        pressureStatusText: status.isEmpty ? '' : status,
+        pressureReasonText: reason,
+        pressureConfidenceText: confidence,
+      );
+    }
+
     final td = side.treadDepth;
     final tread = (td == null) ? '' : td.toString();
 
@@ -537,7 +565,7 @@ class _TyreUi {
           : str(side.wearPatterns),
       damageStatusText: str(side.condition).isEmpty ? "" : str(side.condition),
       summaryText: str(side.summary).isEmpty ? "N/A" : str(side.summary),
-      imageUrl: str(side.imageUrl),
+      imageUrl: str(side.image),
       pressureValueText: valueLines.join('\n'),
       pressureStatusText: status.isEmpty ? "" : status,
       pressureReasonText: reason,
@@ -994,6 +1022,16 @@ class _TyreImageCardModern extends StatelessWidget {
           color: const Color(0xFFF0F1F5),
           child: const Center(child: Icon(Icons.broken_image_outlined)),
         );
+      }
+    }
+
+    // ✅ raw base64 (no data-uri)
+    if (url.length > 100 && !url.contains(' ') && !url.startsWith('http')) {
+      try {
+        final bytes = base64Decode(url);
+        return Image.memory(bytes, fit: BoxFit.cover);
+      } catch (_) {
+        // fallthrough to network
       }
     }
 

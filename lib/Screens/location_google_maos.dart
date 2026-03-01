@@ -15,9 +15,6 @@ import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 
 
-
-
-
 class LocationVendorsMapScreen extends StatefulWidget {
   const LocationVendorsMapScreen({super.key, this.showFirstTooltipOnLoad = true});
   final bool showFirstTooltipOnLoad;
