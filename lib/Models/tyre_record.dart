@@ -91,8 +91,7 @@ import 'package:equatable/equatable.dart';
 
 
 
-
-
+// tyre_record.dart
 class TyreRecord {
   // common
   final String userId;
@@ -101,6 +100,13 @@ class TyreRecord {
   final String vehicleId;
   final String vin;
   final DateTime uploadedAt;
+
+  // ✅ NEW vehicle meta (from your sample)
+  final String vehicleBrand;
+  final String vehicleModel;
+  final String vehicleTyreBrand;
+  final String vehicleTyreDimension;
+  final String vehicleLicense;
 
   // car images
   final String frontLeftWheel;
@@ -112,7 +118,7 @@ class TyreRecord {
   final String bikeFrontWheel;
   final String bikeBackWheel;
 
-  // bike fields (from your screenshot)
+  // bike fields
   final String bikeFrontStatus;
   final String bikeFrontTread;
   final String bikeFrontWearPatterns;
@@ -125,7 +131,7 @@ class TyreRecord {
   final dynamic bikeBackPressure;
   final String bikeBackSummary;
 
-  // car fields (keep as string/dynamic; your API might differ)
+  // car fields
   final String frontLeftStatus;
   final String frontLeftTread;
   final String frontLeftWearPatterns;
@@ -157,6 +163,12 @@ class TyreRecord {
     required this.vehicleId,
     required this.vin,
     required this.uploadedAt,
+
+    required this.vehicleBrand,
+    required this.vehicleModel,
+    required this.vehicleTyreBrand,
+    required this.vehicleTyreDimension,
+    required this.vehicleLicense,
 
     required this.frontLeftWheel,
     required this.frontRightWheel,
@@ -204,6 +216,7 @@ class TyreRecord {
   });
 
   static String _s(dynamic v) => (v ?? '').toString();
+
   static String _pick(Map<String, dynamic> j, List<String> keys) {
     for (final k in keys) {
       if (j.containsKey(k) && j[k] != null) {
@@ -221,9 +234,14 @@ class TyreRecord {
   }
 
   factory TyreRecord.fromApi(Map<String, dynamic> j) {
-    // ✅ Common keys (supports your screenshot style)
     final vehicleType = _pick(j, ['Vehicle type', 'vehicle_type', 'vehicleType']);
-    final uploadedAt = _parseDate(_pick(j, ['Uploaded datetime', 'uploaded_datetime', 'uploadedAt', 'uploaded_at']));
+    final uploadedAt = _parseDate(_pick(j, [
+      'Uploaded Datetime',
+      'Uploaded datetime',
+      'uploaded_datetime',
+      'uploadedAt',
+      'uploaded_at'
+    ]));
 
     return TyreRecord(
       userId: _pick(j, ['User ID', 'user_id', 'userId']),
@@ -231,10 +249,16 @@ class TyreRecord {
       vehicleType: vehicleType,
       vehicleId: _pick(j, ['Vehicle ID', 'vehicle_id', 'vehicleId']),
       vin: _pick(j, ['Vin', 'VIN', 'vin']),
-
       uploadedAt: uploadedAt,
 
-      // ✅ Images
+      // ✅ NEW meta
+      vehicleBrand: _pick(j, ['Vehicle Brand', 'vehicle_brand', 'vehicleBrand']),
+      vehicleModel: _pick(j, ['Vehicle Model', 'vehicle_model', 'vehicleModel']),
+      vehicleTyreBrand: _pick(j, ['Vehicle Tyre Brand', 'vehicle_tyre_brand', 'vehicleTyreBrand']),
+      vehicleTyreDimension: _pick(j, ['Vehicle Tyre Dimension', 'vehicle_tyre_dimension', 'vehicleTyreDimension']),
+      vehicleLicense: _pick(j, ['Vehicle License', 'vehicle_license', 'vehicleLicense']),
+
+      // Images
       frontLeftWheel: _pick(j, ['Front Left Wheel', 'frontLeftWheel', 'front_left_wheel']),
       frontRightWheel: _pick(j, ['Front Right Wheel', 'frontRightWheel', 'front_right_wheel']),
       backLeftWheel: _pick(j, ['Back Left Wheel', 'backLeftWheel', 'back_left_wheel']),
@@ -243,7 +267,7 @@ class TyreRecord {
       bikeFrontWheel: _pick(j, ['Front Wheel', 'bikeFrontWheel', 'front_wheel']),
       bikeBackWheel: _pick(j, ['Back Wheel', 'bikeBackWheel', 'back_wheel']),
 
-      // ✅ Bike fields EXACTLY from your screenshot
+      // Bike fields
       bikeFrontStatus: _pick(j, ['Front Tyre status', 'frontTyreStatus']),
       bikeFrontTread: _pick(j, ['Front Tyre tread', 'frontTyreTread']),
       bikeFrontWearPatterns: _pick(j, ['Front Tyre wear patterns', 'frontTyreWearPatterns']),
@@ -256,29 +280,29 @@ class TyreRecord {
       bikeBackPressure: j['Back Tyre pressure'] ?? j['backTyrePressure'],
       bikeBackSummary: _pick(j, ['Back Tyre summary', 'backTyreSummary']),
 
-      // ✅ Car fields (support multiple key styles)
-      frontLeftStatus: _pick(j, ['Front Left status', 'front_left_status', 'frontLeftStatus']),
+      // Car fields (✅ fixed key names for your sample: "Front Left Tyre status")
+      frontLeftStatus: _pick(j, ['Front Left Tyre status', 'Front Left status', 'front_left_status', 'frontLeftStatus']),
       frontLeftTread: _pick(j, ['Front Left tread', 'front_left_tread', 'frontLeftTread']),
       frontLeftWearPatterns: _pick(j, ['Front Left wear patterns', 'front_left_wear_patterns', 'frontLeftWearPatterns']),
-      frontLeftPressure: j['Front Left pressure'] ?? j['front_left_pressure'] ?? j['frontLeftPressure'],
+      frontLeftPressure: j['Front Left Tyre pressure'] ?? j['Front Left pressure'] ?? j['front_left_pressure'] ?? j['frontLeftPressure'],
       frontLeftSummary: _pick(j, ['Front Left summary', 'front_left_summary', 'frontLeftSummary']),
 
-      frontRightStatus: _pick(j, ['Front Right status', 'front_right_status', 'frontRightStatus']),
+      frontRightStatus: _pick(j, ['Front Right Tyre status', 'Front Right status', 'front_right_status', 'frontRightStatus']),
       frontRightTread: _pick(j, ['Front Right tread', 'front_right_tread', 'frontRightTread']),
       frontRightWearPatterns: _pick(j, ['Front Right wear patterns', 'front_right_wear_patterns', 'frontRightWearPatterns']),
-      frontRightPressure: j['Front Right pressure'] ?? j['front_right_pressure'] ?? j['frontRightPressure'],
+      frontRightPressure: j['Front Right Tyre pressure'] ?? j['Front Right pressure'] ?? j['front_right_pressure'] ?? j['frontRightPressure'],
       frontRightSummary: _pick(j, ['Front Right summary', 'front_right_summary', 'frontRightSummary']),
 
-      backLeftStatus: _pick(j, ['Back Left status', 'back_left_status', 'backLeftStatus']),
+      backLeftStatus: _pick(j, ['Back Left Tyre status', 'Back Left status', 'back_left_status', 'backLeftStatus']),
       backLeftTread: _pick(j, ['Back Left tread', 'back_left_tread', 'backLeftTread']),
       backLeftWearPatterns: _pick(j, ['Back Left wear patterns', 'back_left_wear_patterns', 'backLeftWearPatterns']),
-      backLeftPressure: j['Back Left pressure'] ?? j['back_left_pressure'] ?? j['backLeftPressure'],
+      backLeftPressure: j['Back Left Tyre pressure'] ?? j['Back Left pressure'] ?? j['back_left_pressure'] ?? j['backLeftPressure'],
       backLeftSummary: _pick(j, ['Back Left summary', 'back_left_summary', 'backLeftSummary']),
 
-      backRightStatus: _pick(j, ['Back Right status', 'back_right_status', 'backRightStatus']),
+      backRightStatus: _pick(j, ['Back Right Tyre status', 'Back Right status', 'back_right_status', 'backRightStatus']),
       backRightTread: _pick(j, ['Back Right tread', 'back_right_tread', 'backRightTread']),
       backRightWearPatterns: _pick(j, ['Back Right wear patterns', 'back_right_wear_patterns', 'backRightWearPatterns']),
-      backRightPressure: j['Back Right pressure'] ?? j['back_right_pressure'] ?? j['backRightPressure'],
+      backRightPressure: j['Back Right Tyre pressure'] ?? j['Back Right pressure'] ?? j['back_right_pressure'] ?? j['backRightPressure'],
       backRightSummary: _pick(j, ['Back Right summary', 'back_right_summary', 'backRightSummary']),
     );
   }
