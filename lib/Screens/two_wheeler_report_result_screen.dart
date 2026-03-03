@@ -49,6 +49,9 @@ class _TwoWheelerReportResultScreenState
   bool _dispatched = false;
   _BikeTyrePos _active = _BikeTyrePos.front;
 
+  // ✅ keep navigation protection (same idea as 4-wheeler)
+  bool _navigated = false;
+
   // ✅ VIDEO STATE (ad video while generating)
   VideoPlayerController? _videoCtrl;
   String _currentVideoUrl = '';
@@ -180,25 +183,40 @@ class _TwoWheelerReportResultScreenState
                   if (!isLoading) _stopVideo();
                 },
               ),
-              BlocListener<AuthBloc, AuthState>(
-                listenWhen: (p, c) => p.twoWheelerStatus != c.twoWheelerStatus,
-                listener: (context, state) {
-                  if (state.twoWheelerStatus == TwoWheelerStatus.failure &&
-                      state.twoWheelerError.trim().isNotEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(state.twoWheelerError)),
-                    );
-                  }
-                },
-              ),
             ],
             child: BlocBuilder<AuthBloc, AuthState>(
               buildWhen: (p, c) =>
                   p.twoWheelerStatus != c.twoWheelerStatus ||
                   p.twoWheelerResponse != c.twoWheelerResponse,
               builder: (context, state) {
-                final loading =
-                    state.twoWheelerStatus == TwoWheelerStatus.uploading;
+                final st = state.twoWheelerStatus;
+                final loading = st == TwoWheelerStatus.uploading;
+
+                // ✅ APPLY SAME "SCAN FAILED" CONDITION AS 4-WHEELER
+                // AuthBloc already sets twoWheelerStatus=failure when front/back is_tire=false.
+                if (st == TwoWheelerStatus.failure) {
+                  final msg = state.twoWheelerError.trim().isEmpty
+                      ? 'Uploaded image is not a tyre. Please upload clear tyre photos.'
+                      : state.twoWheelerError.trim();
+
+                  return _ThemedScanFailedView(
+                    s: s,
+                    message: msg,
+                    gradient: _Ui.brandGrad,
+                    onRetake: () {
+                      if (_navigated) return;
+                      _navigated = true;
+                      Navigator.of(context).pop('retake');
+                    },
+                    onRetry: () {
+                      if (_navigated) return;
+                      setState(() {
+                        _dispatched = false;
+                      });
+                      _upload();
+                    },
+                  );
+                }
 
                 // ✅ SHOW FULLSCREEN VIDEO DURING LOADING
                 if (loading) {
@@ -1329,6 +1347,257 @@ class _SummaryCardModern extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ==============================
+// ✅ Scan Failed View (SAME behavior as 4-wheeler)
+// NOTE: This view is only shown when AuthBloc emits TwoWheelerStatus.failure
+// (including the "is_tire=false" validation).
+// ==============================
+
+class _ThemedScanFailedView extends StatelessWidget {
+  const _ThemedScanFailedView({
+    required this.s,
+    required this.message,
+    required this.gradient,
+    required this.onRetake,
+    required this.onRetry,
+  });
+
+  final double s;
+  final String message;
+  final LinearGradient gradient;
+  final VoidCallback onRetake;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFFF6F7FA), Color(0xFFF2F6FF)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: EdgeInsets.all(16 * s),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  width: double.infinity,
+                  constraints: BoxConstraints(maxWidth: 360 * s),
+                  padding: EdgeInsets.fromLTRB(18 * s, 44 * s, 18 * s, 18 * s),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20 * s),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(.10),
+                        blurRadius: 22,
+                        offset: const Offset(0, 12),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Scan Failed',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontFamily: 'ClashGrotesk',
+                          fontSize: 18 * s,
+                          fontWeight: FontWeight.w900,
+                          color: const Color(0xFF111827),
+                        ),
+                      ),
+                      SizedBox(height: 8 * s),
+                      Text(
+                        message,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontFamily: 'ClashGrotesk',
+                          fontSize: 13.8 * s,
+                          fontWeight: FontWeight.w600,
+                          height: 1.35,
+                          color: const Color(0xFF6B7280),
+                        ),
+                      ),
+                      SizedBox(height: 16 * s),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _GhostButton(
+                              s: s,
+                              label: 'Retake Images',
+                              icon: Icons.refresh_rounded,
+                              onTap: onRetake,
+                            ),
+                          ),
+                          SizedBox(width: 12 * s),
+                          Expanded(
+                            child: _GradientButton(
+                              s: s,
+                              label: 'Retry',
+                              icon: Icons.restart_alt_rounded,
+                              gradient: gradient,
+                              onTap: onRetry,
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 10 * s),
+                      Text(
+                        'Tip: Use clear photos with proper lighting and full tyre visible.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontFamily: 'ClashGrotesk',
+                          fontSize: 12.5 * s,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF9CA3AF),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Positioned(
+                  top: -26 * s,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: Container(
+                      width: 64 * s,
+                      height: 64 * s,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: gradient,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(.10),
+                            blurRadius: 18,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        Icons.error_outline_rounded,
+                        color: Colors.white,
+                        size: 34 * s,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GradientButton extends StatelessWidget {
+  const _GradientButton({
+    required this.s,
+    required this.label,
+    required this.icon,
+    required this.gradient,
+    required this.onTap,
+  });
+
+  final double s;
+  final String label;
+  final IconData icon;
+  final LinearGradient gradient;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14 * s),
+      child: Container(
+        padding: EdgeInsets.symmetric(vertical: 12.5 * s),
+        decoration: BoxDecoration(
+          gradient: gradient,
+          borderRadius: BorderRadius.circular(14 * s),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(.10),
+              blurRadius: 16,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 20 * s, color: Colors.white),
+            SizedBox(width: 8 * s),
+            Text(
+              label,
+              style: TextStyle(
+                fontFamily: 'ClashGrotesk',
+                fontWeight: FontWeight.w900,
+                fontSize: 14.5 * s,
+                color: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GhostButton extends StatelessWidget {
+  const _GhostButton({
+    required this.s,
+    required this.label,
+    required this.icon,
+    required this.onTap,
+  });
+
+  final double s;
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14 * s),
+      child: Container(
+        padding: EdgeInsets.symmetric(vertical: 12.5 * s),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF1F5F9),
+          borderRadius: BorderRadius.circular(14 * s),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 20 * s, color: const Color(0xFF111827)),
+            SizedBox(width: 8 * s),
+            Text(
+              label,
+              style: TextStyle(
+                fontFamily: 'ClashGrotesk',
+                fontWeight: FontWeight.w900,
+                fontSize: 14.5 * s,
+                color: const Color(0xFF111827),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
