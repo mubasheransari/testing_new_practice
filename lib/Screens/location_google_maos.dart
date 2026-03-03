@@ -579,6 +579,92 @@ class _LocationVendorsMapScreenState extends State<LocationVendorsMapScreen>
   }
 
   Future<_PlaceDetailsVm?> _fetchPlaceDetails(String placeId) async {
+  if (placeId.trim().isEmpty) return null;
+
+  final cached = _placeDetailsCache[placeId];
+  if (cached != null) return cached;
+
+  if (_placeDetailsLoading.contains(placeId)) return null;
+  _placeDetailsLoading.add(placeId);
+  if (mounted) setState(() {});
+
+  try {
+    final uri = Uri.parse(
+      'https://maps.googleapis.com/maps/api/place/details/json'
+      '?place_id=$placeId'
+      // ✅ add formatted_phone_number so we can call
+      '&fields=name,formatted_address,formatted_phone_number,rating,opening_hours,photos'
+      '&key=$_placesApiKey',
+    );
+
+    final res = await http.get(uri);
+    if (res.statusCode != 200) {
+      debugPrint('❌ Place details HTTP ${res.statusCode}');
+      return null;
+    }
+
+    final json = jsonDecode(res.body) as Map<String, dynamic>;
+    final status = (json['status'] ?? '').toString();
+    if (status != 'OK') {
+      debugPrint('❌ Place details status: $status');
+      return null;
+    }
+
+    final result = (json['result'] ?? {}) as Map<String, dynamic>;
+
+    final name = (result['name'] ?? '').toString();
+    final address = result['formatted_address']?.toString();
+
+    // ✅ phone number
+    final phone = result['formatted_phone_number']?.toString();
+
+    final ratingRaw = result['rating'];
+    final rating = (ratingRaw is num) ? ratingRaw.toDouble() : null;
+
+    bool? openNow;
+    List<String> weekdayText = const [];
+    final opening = result['opening_hours'];
+    if (opening is Map<String, dynamic>) {
+      final on = opening['open_now'];
+      if (on is bool) openNow = on;
+      final wt = opening['weekday_text'];
+      if (wt is List) weekdayText = wt.map((e) => e.toString()).toList();
+    }
+
+    String? photoRef;
+    final photos = result['photos'];
+    if (photos is List && photos.isNotEmpty) {
+      final first = photos.first;
+      if (first is Map<String, dynamic>) {
+        photoRef = first['photo_reference']?.toString();
+      }
+    }
+
+    final vm = _PlaceDetailsVm(
+      placeId: placeId,
+      name: name,
+      address: address,
+      rating: rating,
+      openNow: openNow,
+      weekdayText: weekdayText,
+      photoRef: photoRef,
+      phoneNumber: phone, // ✅
+    );
+
+    _placeDetailsCache[placeId] = vm;
+    return vm;
+  } catch (e) {
+    debugPrint('❌ _fetchPlaceDetails error: $e');
+    return null;
+  } finally {
+    _placeDetailsLoading.remove(placeId);
+    if (mounted) setState(() {});
+  }
+}
+
+  /*
+
+  Future<_PlaceDetailsVm?> _fetchPlaceDetails(String placeId) async {
     if (placeId.trim().isEmpty) return null;
 
     final cached = _placeDetailsCache[placeId];
@@ -655,7 +741,7 @@ class _LocationVendorsMapScreenState extends State<LocationVendorsMapScreen>
       _placeDetailsLoading.remove(placeId);
       if (mounted) setState(() {});
     }
-  }
+  }*/
 
   void _hidePopup() {
     if (_selectedVendorMarker != null || _selectedVendorScreenPx != null) {
@@ -961,10 +1047,246 @@ class _PlaceDetailsVm {
   });
 }
 
+class _PlacePopupCard extends StatelessWidget {
+  const _PlacePopupCard({
+    required this.place,
+    required this.details,
+    required this.loading,
+    required this.onTapDirections,
+    required this.placesApiKey,
+  });
+
+  final dynamic place;
+  final _PlaceDetailsVm? details;
+  final bool loading;
+  final VoidCallback onTapDirections;
+  final String placesApiKey;
+
+  String? _todayTimingLine(List<String> weekdayText) {
+    if (weekdayText.isEmpty) return null;
+    final idx = DateTime.now().weekday - 1;
+    if (idx < 0 || idx >= weekdayText.length) return null;
+    return weekdayText[idx];
+  }
+
+  String? _photoUrl(String? photoRef) {
+    if (photoRef == null || photoRef.isEmpty) return null;
+    return 'https://maps.googleapis.com/maps/api/place/photo'
+        '?maxwidth=900'
+        '&photoreference=$photoRef'
+        '&key=$placesApiKey';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final title = (details?.name.trim().isNotEmpty == true)
+        ? details!.name
+        : (place.name ?? 'Nearby Shop').toString();
+
+    final rating = details?.rating ?? 0.0;
+
+    final phone = details?.phoneNumber?.trim();
+    final bool canCall = phone != null && phone.isNotEmpty;
+
+    final openNow = details?.openNow;
+    final todayLine = _todayTimingLine(details?.weekdayText ?? const []);
+    final address = (details?.address?.trim().isNotEmpty == true) ? details!.address!.trim() : '';
+
+    final imgUrl = _photoUrl(details?.photoRef);
+
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        width: 230,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(.12),
+              blurRadius: 18,
+              offset: const Offset(0, 10),
+            )
+          ],
+        ),
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: SizedBox(
+                height: 118,
+                width: MediaQuery.of(context).size.width,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    if (imgUrl != null)
+                      Image.network(
+                        imgUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => _fallbackHeader(loading: false),
+                        loadingBuilder: (ctx, child, prog) {
+                          if (prog == null) return child;
+                          return _fallbackHeader(loading: true);
+                        },
+                      )
+                    else
+                      _fallbackHeader(loading: loading),
+                    Positioned(
+                      left: 10,
+                      top: 10,
+                      child: _ratingPillSmall(loading ? 0.0 : rating),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            // ✅ Title + BOTH actions (Call + Directions)
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Text(
+                    title,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontFamily: 'ClashGrotesk',
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF111827),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+
+                // ✅ Call button (only if phone exists)
+                if (canCall) ...[
+                  InkWell(
+                    onTap: () async {
+                      await LocationVendorsMapScreen._makePhoneCall(phone!);
+                    },
+                    child: _circleBlueIcon(Icons.call_rounded),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+
+                // ✅ Directions button (always)
+                InkWell(
+                  onTap: onTapDirections,
+                  child: _circleBlueIcon(Icons.navigation_rounded),
+                ),
+              ],
+            ),
+
+            // ✅ show phone text (optional)
+            if (canCall) ...[
+              const SizedBox(height: 6),
+              Text(
+                phone!,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontFamily: 'ClashGrotesk',
+                  fontSize: 13,
+                  color: Color(0xFF6C7A91),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+
+            const SizedBox(height: 6),
+            Text(
+              address.isNotEmpty ? address : 'Tyre shop / vehicle service',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontFamily: 'ClashGrotesk',
+                fontSize: 13.5,
+                color: Color(0xFF9CA3AF),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Text(
+                  openNow == null ? 'Hours' : (openNow ? 'Open' : 'Closed'),
+                  style: TextStyle(
+                    fontFamily: 'ClashGrotesk',
+                    fontSize: 13.5,
+                    color: openNow == null
+                        ? const Color(0xFF111827)
+                        : (openNow ? const Color(0xFF10B981) : const Color(0xFFEF4444)),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                if (todayLine != null) ...[
+                  Text(
+                    ' - ',
+                    style: TextStyle(
+                      fontFamily: 'ClashGrotesk',
+                      fontSize: 13.5,
+                      color: openNow == null
+                          ? const Color(0xFF111827)
+                          : (openNow ? const Color(0xFF10B981) : const Color(0xFFEF4444)),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      todayLine.replaceFirst(RegExp(r'^\w+:\s*'), ''),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontFamily: 'ClashGrotesk',
+                        fontSize: 13.5,
+                        color: Color(0xFF111827),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _fallbackHeader({required bool loading}) {
+    return Container(
+      color: const Color(0xFFF3F4F6),
+      child: Center(
+        child: loading
+            ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
+            : const Icon(Icons.storefront, size: 42, color: Color(0xFF9CA3AF)),
+      ),
+    );
+  }
+
+  static Widget _circleBlueIcon(IconData icon) {
+    return Container(
+      width: 34,
+      height: 34,
+      decoration: const BoxDecoration(
+        color: Color(0xFF3B82F6),
+        shape: BoxShape.circle,
+      ),
+      child: Icon(icon, size: 18, color: Colors.white),
+    );
+  }
+}
+
 /* ---------------------------
    UI widgets below unchanged
    --------------------------- */
-
+/*
 class _PlacePopupCard extends StatelessWidget {
   const _PlacePopupCard({
     required this.place,
@@ -1173,7 +1495,7 @@ class _PlacePopupCard extends StatelessWidget {
     );
   }
 }
-
+*/
 class _LoadingPill extends StatelessWidget {
   const _LoadingPill({required this.text, this.showSpinner = true});
   final String text;
