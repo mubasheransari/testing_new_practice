@@ -1328,11 +1328,11 @@ class _SummaryCardModern extends StatelessWidget {
                   ),
                 ),
               ),
-              Icon(
-                Icons.chevron_right_rounded,
-                color: _Ui.subInk,
-                size: 22 * s,
-              ),
+              // Icon(
+              //   Icons.chevron_right_rounded,
+              //   color: _Ui.subInk,
+              //   size: 22 * s,
+              // ),
             ],
           ),
           SizedBox(height: 12 * s),
