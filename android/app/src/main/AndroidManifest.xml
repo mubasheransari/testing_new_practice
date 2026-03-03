@@ -72,7 +72,7 @@
         <!-- ✅ Google Maps API key (for google_maps_flutter) -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyD64TeJchgwVToC1U2IbrCBtjWKeVzuy-U" />
+            android:value="AIzaSyClBCaZYLuCKg0fT9xsSYpFOJ8sKegE350" />
 
         <activity
             android:name=".MainActivity"

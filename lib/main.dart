@@ -75,16 +75,7 @@ import 'package:ios_tiretest_ai/Screens/splash_screen.dart';
 //   }
 // }
 
-import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:get_storage/get_storage.dart';
-import 'package:ios_tiretest_ai/Bloc/auth_bloc.dart';
-import 'package:ios_tiretest_ai/Bloc/auth_event.dart';
-import 'package:ios_tiretest_ai/Bloc/auth_state.dart';
-import 'package:ios_tiretest_ai/Data/app_routes.dart';
-import 'package:ios_tiretest_ai/Repository/repository.dart';
-import 'package:ios_tiretest_ai/Screens/auth_screen.dart';
-import 'package:ios_tiretest_ai/Screens/splash_screen.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

@@ -250,8 +250,16 @@ class VerifyOtpRequested extends AuthEvent {
   List<Object?> get props => [email, otp, token];
 }
 
+// class OtpIssuedNow extends AuthEvent {
+//   const OtpIssuedNow();
+// }
+
 class OtpIssuedNow extends AuthEvent {
-  const OtpIssuedNow();
+  final String email;
+  const OtpIssuedNow({required this.email});
+
+  @override
+  List<Object?> get props => [email];
 }
 
 class ForgotPasswordVerifyEmailRequested extends AuthEvent {

@@ -110,7 +110,7 @@ static const _kPlacesCacheLng = "places_cache_lng";
 static const _kPlacesCacheTs = "places_cache_ts";
 
 // NOTE: move your key to env later. For now using same key.
-static const String _googlePlacesApiKey = 'AIzaSyBFIEDQXjgT6djAIrXB466aR1oG5EmXojQ';
+static const String _googlePlacesApiKey = 'AIzaSyClBCaZYLuCKg0fT9xsSYpFOJ8sKegE350';
 
 final _placesSvc = PlacesService(apiKey: _googlePlacesApiKey);
 
@@ -652,6 +652,8 @@ Future<void> _onAdsSelect(AdsSelectRequested e, Emitter<AuthState> emit) async {
 
 
   Future<void> _onOtpIssuedNow(OtpIssuedNow e, Emitter<AuthState> emit) async {
+
+    await repo.verifyEmail(email: e.email);
    
     emit(state.copyWith(
       otpIssuedAt: DateTime.now(),
